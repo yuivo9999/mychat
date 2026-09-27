@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   migrate:
@@ -45,6 +46,7 @@ jobs:
           block = """      // Remove old Cerebras/Ollama/Groq model records; the fixed Groq roster below is authoritative.\n      const staleProviderIds = new Set(['cerebras', 'ollama', 'groq']);\n      const staleModels = results.filter(r => staleProviderIds.has(r.providerId));\n      for (const model of staleModels) store.delete(model.id);\n      if (staleModels.length) results = results.filter(r => !staleProviderIds.has(r.providerId));"""
           s = s[:start] + block + s[end:]
           path.write_text(s, encoding='utf-8')
+
       - name: Validate source
         run: |
           grep -q "id: 'groq'" src/services/db.ts
@@ -54,9 +56,20 @@ jobs:
           grep -q "id: 'openai/gpt-oss-120b'" src/services/db.ts
           grep -q "id: 'openai/gpt-oss-20b'" src/services/db.ts
           grep -q "id: 'qwen/qwen3.8-27b'" src/services/db.ts
+
       - name: Commit migration
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/services/db.ts
-          if git diff --cached --quiet; then echo "No source changes needed"; else git commit -m "fix: repurpose Ollama provider slot for Groq"; git push; fi
+          if git diff --cached --quiet; then
+            echo "No source changes needed"
+          else
+            git commit -m "fix: repurpose Ollama provider slot for Groq"
+            git push
+          fi
+
+      - name: Trigger deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref main
