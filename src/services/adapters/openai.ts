@@ -181,7 +181,7 @@ export class OpenAIAdapter implements BaseAdapter {
         throw new Error(`请求超时 (${timeout / 1000}秒)，请检查网络连接或在高级设置中增加超时时间`);
       }
       if (err.message && err.message.includes('Failed to fetch')) {
-        throw new Error(`网络请求失败 / CORS 跨域拦截: 浏览器直接向 ${endpoint} 发起请求受限。如果为内网或代理服务，请确认该端点已开启 CORS (Access-Control-Allow-Origin: *)。`);
+        throw new Error(`网络请求失败 / CORS 跨域拦截: 浏览器直连 ${endpoint} 被提供商拒绝。请确认该 API endpoint 允许浏览器跨域访问。`);
       }
       throw err;
     } finally {
