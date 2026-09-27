@@ -617,7 +617,7 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
             </div>
 
             {/* Folder Actions Menu */}
-            <div className="relative opacity-0 group-hover:opacity-100 flex items-center gap-1 transition">
+            <div className="relative flex items-center gap-0.5 transition">
               <button
                 type="button"
                 onClick={(e) => {
@@ -626,10 +626,10 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                   setCreateType('file');
                   setNewPathInput('');
                 }}
-                className="p-1 rounded text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                className="p-1 rounded text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 opacity-0 group-hover:opacity-100 transition-opacity"
                 title="在此目录下新建文件"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" />
               </button>
               <button
                 type="button"
@@ -637,9 +637,10 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                   e.stopPropagation();
                   setActiveMenuPath(isMenuOpen ? null : node.path);
                 }}
-                className="p-1 rounded text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+                className="p-1 rounded text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 cursor-pointer"
+                title="文件夹操作选项"
               >
-                <MoreVertical className="w-3 h-3" />
+                <MoreVertical className="w-3.5 h-3.5" />
               </button>
 
               {/* Folder Menu Popup */}
@@ -717,17 +718,18 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
           )}
         </div>
 
-        {/* File Actions Menu Button */}
-        <div className="relative opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition">
+        {/* File Actions Menu Button (Three Vertical Dots) */}
+        <div className="relative flex items-center transition">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setActiveMenuPath(isMenuOpen ? null : node.path);
             }}
-            className="p-1 rounded text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700"
+            className="p-1 rounded text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-200/80 dark:hover:bg-neutral-700 cursor-pointer transition-colors"
+            title="文件操作菜单 (打开, AI分析, AI诊断, 重命名, 删除等)"
           >
-            <MoreVertical className="w-3 h-3" />
+            <MoreVertical className="w-3.5 h-3.5" />
           </button>
 
           {/* File Menu Popup */}
