@@ -61,7 +61,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     const textarea = textareaRef.current;
     if (!textarea) return;
     textarea.style.height = 'auto';
-    const nextHeight = Math.min(Math.max(textarea.scrollHeight, 48), 240);
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight, 100), 360);
     textarea.style.height = `${nextHeight}px`;
   }, []);
 
@@ -170,7 +170,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     setContent('');
     setAttachments([]);
     if (textareaRef.current) {
-      textareaRef.current.style.height = '48px';
+      textareaRef.current.style.height = '100px';
     }
   };
 
@@ -226,54 +226,45 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           </div>
         )}
 
-        {/* Quick Reasoning & Parameters Header (matches user screenshot) */}
-        <div className="flex items-center justify-between px-3.5 py-1.5 border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/70 dark:bg-neutral-900/60 rounded-t-2xl">
-          {/* Reasoning Toggle: [ OFF | ON ] Reasoning */}
-          <div className="flex items-center gap-2">
-            <div 
-              onClick={() => onUpdateParameters({ ...parameters, enableReasoning: !parameters.enableReasoning })}
-              className="flex items-center bg-neutral-200 dark:bg-neutral-800 p-0.5 rounded-full cursor-pointer select-none text-[10px] font-bold transition border border-neutral-300/80 dark:border-neutral-700/80"
-              title="开启/关闭 深度推理思维链模式"
-            >
-              <span className={`px-2 py-0.5 rounded-full transition-all ${!parameters.enableReasoning ? 'bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white shadow-xs' : 'text-neutral-400'}`}>
+        {/* Half-height streamlined toolbar (Icon-only, no text clutter) */}
+        <div className="flex items-center justify-between px-3 py-1 border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/70 dark:bg-neutral-900/60 rounded-t-2xl">
+          {/* Reasoning Toggle: Minimalist switch */}
+          <div 
+            onClick={() => onUpdateParameters({ ...parameters, enableReasoning: !parameters.enableReasoning })}
+            className="flex items-center gap-1.5 cursor-pointer select-none"
+            title={parameters.enableReasoning ? '深度推理: 已开启 (Reasoning ON)' : '深度推理: 已关闭 (Reasoning OFF)'}
+          >
+            <Sparkles className={`w-3.5 h-3.5 ${parameters.enableReasoning ? 'text-[#84cc16]' : 'text-neutral-400'}`} />
+            <div className="flex items-center bg-neutral-200 dark:bg-neutral-800 p-0.5 rounded-full text-[9px] font-bold border border-neutral-300/60 dark:border-neutral-700/60">
+              <span className={`px-1.5 py-0.2 rounded-full transition-all ${!parameters.enableReasoning ? 'bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white shadow-xs' : 'text-neutral-400'}`}>
                 OFF
               </span>
-              <span className={`px-2 py-0.5 rounded-full transition-all ${parameters.enableReasoning ? 'bg-[#84cc16] text-black shadow-xs' : 'text-neutral-400'}`}>
+              <span className={`px-1.5 py-0.2 rounded-full transition-all ${parameters.enableReasoning ? 'bg-[#84cc16] text-black shadow-xs' : 'text-neutral-400'}`}>
                 ON
               </span>
             </div>
-            <div 
-              className="flex items-center gap-1.5 cursor-pointer" 
-              onClick={() => onUpdateParameters({ ...parameters, enableReasoning: !parameters.enableReasoning })}
-            >
-              <span className="font-semibold text-xs text-neutral-800 dark:text-neutral-200">深度推理</span>
-              <span className="text-[11px] text-neutral-400 font-mono">Reasoning</span>
-            </div>
           </div>
 
-          {/* Parameters & Model Config Buttons */}
-          <div className="flex items-center gap-1.5">
+          {/* Parameters & Model Config Buttons (Icon-only) */}
+          <div className="flex items-center gap-1">
             {onOpenModelConfig && (
               <button
                 type="button"
                 onClick={onOpenModelConfig}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-orange-500/30 hover:border-orange-500/60 bg-orange-500/10 hover:bg-orange-500/15 text-orange-600 dark:text-orange-400 text-xs font-medium transition cursor-pointer shadow-2xs"
-                title="打开独立 AI 模型与服务商配置面板"
+                className="p-1 rounded-lg hover:bg-orange-500/15 text-orange-600 dark:text-orange-400 transition cursor-pointer"
+                title="AI 模型与服务商配置"
               >
                 <Server className="w-3.5 h-3.5 text-orange-500" />
-                <span className="font-semibold">模型配置</span>
               </button>
             )}
 
             <button
               type="button"
               onClick={onOpenParameters}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-neutral-300 dark:border-neutral-700 hover:border-[#84cc16] dark:hover:border-[#84cc16] bg-white dark:bg-neutral-800/90 text-neutral-800 dark:text-neutral-200 text-xs font-medium hover:text-[#84cc16] dark:hover:text-[#84cc16] transition cursor-pointer shadow-2xs"
-              title="打开模型参数调整面板 (Parameters)"
+              className="p-1 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-[#84cc16] dark:hover:text-[#84cc16] transition cursor-pointer"
+              title="模型运行参数 (Parameters)"
             >
               <SlidersHorizontal className="w-3.5 h-3.5 text-[#84cc16]" />
-              <span className="font-semibold">参数设置</span>
-              <span className="text-[10px] text-neutral-400 font-mono hidden sm:inline">Parameters</span>
             </button>
           </div>
         </div>
@@ -314,7 +305,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           </div>
         )}
 
-        {/* Text Area */}
+        {/* Text Area (Double Height - min 100px) */}
         <div className="p-3 pt-2 pb-1">
           <textarea
             ref={textareaRef}
@@ -329,8 +320,8 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                 ? '请先配置 API Key，或在此输入您的问题...'
                 : '给 AI 发送消息... (Enter 发送，Shift + Enter 换行，支持粘贴图片与拖入文件)'
             }
-            rows={1}
-            className="w-full bg-transparent resize-none border-0 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 outline-hidden leading-relaxed max-h-[240px] font-sans"
+            rows={3}
+            className="w-full bg-transparent resize-none border-0 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 outline-hidden leading-relaxed min-h-[100px] max-h-[360px] font-sans"
           />
         </div>
 

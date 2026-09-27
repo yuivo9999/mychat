@@ -377,23 +377,6 @@ export const TopBar: React.FC<TopBarProps> = ({
           <ExternalLink className="w-4 h-4" />
         </button>
 
-        {/* Parameters button */}
-        {onOpenParameters && (
-          <button
-            type="button"
-            onClick={onOpenParameters}
-            className="p-2 rounded-xl text-neutral-500 hover:text-[#84cc16] dark:text-neutral-400 dark:hover:text-[#84cc16] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center gap-1.5"
-            title="模型运行参数 (Parameters)"
-          >
-            <SlidersHorizontal className="w-4 h-4 text-[#84cc16]" />
-            {isReasoningEnabled && (
-              <span className="hidden xl:inline text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-[#84cc16]/15 text-[#84cc16] border border-[#84cc16]/30">
-                Reasoning
-              </span>
-            )}
-          </button>
-        )}
-
         {/* Export chat button */}
         <button
           type="button"

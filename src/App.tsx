@@ -45,7 +45,7 @@ import { AiModelConfigModal } from './components/AiModelConfigModal';
 const DEFAULT_PARAMETERS: ModelParameters = {
   enableReasoning: false,
   stream: true,
-  maxTokens: 1024,
+  maxTokens: 4096,
   temperature: 0.5,
   topP: 1,
   frequencyPenalty: 0,
@@ -782,11 +782,13 @@ export default function App() {
   // Delete conversation
   const handleDeleteConversation = async (id: string) => {
     await deleteConversation(id);
-    setConversations(prev => prev.filter(c => c.id !== id));
-    if (activeConversationId === id) {
-      const remaining = conversations.filter(c => c.id !== id);
-      setActiveConversationId(remaining.length > 0 ? remaining[0].id : null);
-    }
+    setConversations(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      if (activeConversationId === id) {
+        setActiveConversationId(updated.length > 0 ? updated[0].id : null);
+      }
+      return updated;
+    });
   };
 
   // Toggle favorite
@@ -830,14 +832,14 @@ export default function App() {
 
   // Batch delete
   const handleBatchDelete = async (ids: string[]) => {
-    for (const id of ids) {
-      await deleteConversation(id);
-    }
-    setConversations(prev => prev.filter(c => !ids.includes(c.id)));
-    if (activeConversationId && ids.includes(activeConversationId)) {
-      const remaining = conversations.filter(c => !ids.includes(c.id));
-      setActiveConversationId(remaining.length > 0 ? remaining[0].id : null);
-    }
+    await Promise.all(ids.map(id => deleteConversation(id)));
+    setConversations(prev => {
+      const remaining = prev.filter(c => !ids.includes(c.id));
+      if (activeConversationId && ids.includes(activeConversationId)) {
+        setActiveConversationId(remaining.length > 0 ? remaining[0].id : null);
+      }
+      return remaining;
+    });
   };
 
   // Batch favorite

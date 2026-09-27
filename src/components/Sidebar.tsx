@@ -157,6 +157,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Star className="w-3.5 h-3.5 fill-current" />
             </button>
 
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm(`确定要删除对话窗口「${conv.title || '新对话'}」及其所有记录吗？`)) {
+                  onDeleteConversation(conv.id);
+                }
+              }}
+              className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-950/60 text-neutral-400 hover:text-red-600 dark:hover:text-red-400 transition"
+              title="删除此聊天窗口"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+
             <div className="relative">
               <button
                 type="button"

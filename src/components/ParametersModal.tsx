@@ -32,7 +32,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
     onChangeParameters({
       enableReasoning: false,
       stream: true,
-      maxTokens: 2048,
+      maxTokens: 4096,
       temperature: 0.7,
       topP: 1,
       frequencyPenalty: 0,
@@ -159,7 +159,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 type="number"
                 min={1}
                 max={32768}
-                value={parameters.maxTokens ?? 1024}
+                value={parameters.maxTokens ?? 4096}
                 onChange={(e) => updateParam('maxTokens', parseInt(e.target.value) || 1)}
                 className="w-24 text-right bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3 py-1.5 rounded-xl text-sm font-mono outline-hidden"
               />
@@ -170,18 +170,17 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
               <input
                 type="range"
                 min={1}
-                max={4096}
+                max={12288}
                 step={1}
-                value={parameters.maxTokens ?? 1024}
+                value={parameters.maxTokens ?? 4096}
                 onChange={(e) => updateParam('maxTokens', parseInt(e.target.value))}
                 className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#84cc16]"
               />
               <div className="flex justify-between text-[11px] text-neutral-500 font-mono mt-1 select-none">
                 <span>1</span>
-                <span>1024</span>
-                <span>2048</span>
-                <span>3072</span>
                 <span>4096</span>
+                <span>8192</span>
+                <span>12288</span>
               </div>
             </div>
           </div>
