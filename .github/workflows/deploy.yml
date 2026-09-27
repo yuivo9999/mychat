@@ -25,6 +25,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Restore known-good database service for build
+        run: git checkout 5fe90ad70f5d86f863f216e16dd18b1b336765fa -- src/services/db.ts
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -32,123 +35,6 @@ jobs:
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
-
-      - name: Integrate verified free AI models into runtime catalog
-        run: python3 scripts/integrate-free-models.py
-
-      - name: Repair model database service and provider migration
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('src/services/db.ts')
-          s = p.read_text(encoding='utf-8')
-
-          if 'export async function getConversations()' not in s:
-              marker = "export const DEFAULT_API_KEYS: ApiKeyConfig[] = ["
-              block = '''export async function getConversations(): Promise<Conversation[]> {
-            const db = await openDB();
-            return new Promise((resolve, reject) => {
-              const request = db.transaction('conversations', 'readonly').objectStore('conversations').getAll();
-              request.onsuccess = () => {
-                const list = (request.result as Conversation[]) || [];
-                list.sort((a, b) => b.updatedAt - a.updatedAt);
-                resolve(list);
-              };
-              request.onerror = () => reject(request.error);
-            });
-          }
-
-          export async function getConversation(id: string): Promise<Conversation | null> {
-            const db = await openDB();
-            return new Promise((resolve, reject) => {
-              const request = db.transaction('conversations', 'readonly').objectStore('conversations').get(id);
-              request.onsuccess = () => resolve(request.result || null);
-              request.onerror = () => reject(request.error);
-            });
-          }
-
-          export async function saveConversation(conversation: Conversation): Promise<void> {
-            const db = await openDB();
-            return new Promise((resolve, reject) => {
-              const request = db.transaction('conversations', 'readwrite').objectStore('conversations').put(conversation);
-              request.onsuccess = () => resolve();
-              request.onerror = () => reject(request.error);
-            });
-          }
-
-          export async function deleteConversation(id: string): Promise<void> {
-            const db = await openDB();
-            return new Promise((resolve, reject) => {
-              const request = db.transaction('conversations', 'readwrite').objectStore('conversations').delete(id);
-              request.onsuccess = () => resolve();
-              request.onerror = () => reject(request.error);
-            });
-          }
-
-          export async function clearAllConversations(): Promise<void> {
-            const db = await openDB();
-            return new Promise((resolve, reject) => {
-              const request = db.transaction('conversations', 'readwrite').objectStore('conversations').clear();
-              request.onsuccess = () => resolve();
-              request.onerror = () => reject(request.error);
-            });
-          }
-
-          '''
-              if marker not in s:
-                  raise SystemExit('conversation insertion marker not found')
-              s = s.replace(marker, block + marker, 1)
-
-          if 'export const DEFAULT_SETTINGS: UserSettings = {' not in s:
-              marker = '// Open IndexedDB instance'
-              block = '''export const DEFAULT_SETTINGS: UserSettings = {
-            theme: 'system',
-            fontSize: 'standard',
-            enterToSend: true,
-            autoScroll: true,
-            showTimestamps: true,
-            showModelName: true,
-            enableStreaming: true,
-            enableMarkdown: true,
-            enableCodeHighlight: true,
-            defaultProviderId: 'nvidia',
-            defaultModelId: 'deepseek-ai/deepseek-v4.1-flash',
-            defaultSystemPrompt: '你是一个知识渊博、表达严谨、思维敏捷的专业 AI 助手。请用清晰、结构化并得体的语言回答用户的问题。在提供代码时，请提供完整可执行的高质量代码，并附有必要解释。',
-            requestTimeout: 60,
-            sidebarOpen: true,
-          };
-
-          '''
-              if marker not in s:
-                  raise SystemExit('settings insertion marker not found')
-              s = s.replace(marker, block + marker, 1)
-
-          if 'const REMOVED_DEFAULT_PROVIDER_IDS' in s:
-              s = s.replace(
-                  "const REMOVED_DEFAULT_PROVIDER_IDS = new Set(['anthropic', 'moonshot', 'qwen', 'siliconflow']);",
-                  "const REMOVED_DEFAULT_PROVIDER_IDS = new Set(['anthropic', 'moonshot', 'qwen', 'siliconflow', 'cerebras', 'ollama']);"
-              )
-
-          needle = "      let results = (request.result as ProviderDefinition[]) || [];"
-          if needle in s and "const requiredDefaultProviders = DEFAULT_PROVIDERS.filter" not in s:
-              replacement = needle + '''
-
-              const staleProviderIds = new Set(['cerebras', 'ollama', 'anthropic', 'moonshot', 'qwen', 'siliconflow']);
-              for (const provider of results) {
-                if (staleProviderIds.has(provider.id)) store.delete(provider.id);
-              }
-              results = results.filter(p => !staleProviderIds.has(p.id));
-              const requiredDefaultProviders = DEFAULT_PROVIDERS.filter(
-                p => !results.some(r => r.id === p.id)
-              );
-              for (const provider of requiredDefaultProviders) {
-                store.put(provider);
-                results.push(provider);
-              }'''
-              s = s.replace(needle, replacement, 1)
-
-          p.write_text(s, encoding='utf-8')
-          PY
 
       - name: Build project
         run: npm run build
