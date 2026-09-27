@@ -135,7 +135,7 @@ export class OpenAIAdapter implements BaseAdapter {
     // so the API call only needs the standard Authorization + Content-Type headers.
 
     const bodyPayload: any = {
-      model: model.id,
+      model: (apiKeyConfig.providerId === 'groq' || apiKeyConfig.providerId === 'cerebras') ? model.id.replace(/^(groq|cerebras)\//, '') : model.id,
       messages: formattedMessages,
       stream,
     };
