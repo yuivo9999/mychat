@@ -596,6 +596,8 @@ export default function App() {
         model: currentModel.name,
         providerId: currentModel.providerId,
         status: 'streaming',
+        versions: [{ content: '', timestamp: Date.now(), model: currentModel.name }],
+        currentVersionIndex: 0,
       };
 
       const updatedConv = {
@@ -627,46 +629,70 @@ export default function App() {
             abortSignal: abortController.signal,
             timeoutSeconds: settings.requestTimeout,
           },
-          {
-            onChunk: (chunk) => {
+          settings.enableStreaming ? {
+            onChunk: (chunk: string) => {
               accumulatedText += chunk;
               setConversations(prev => prev.map(c => {
                 if (c.id !== updatedConv.id) return c;
-                return {
-                  ...c,
-                  messages: c.messages.map(m => m.id === assistantMsgId ? { ...m, content: accumulatedText } : m),
-                };
+                const messages = c.messages.map(m => {
+                  if (m.id !== assistantMsgId) return m;
+                  const versions = [...(m.versions || [])];
+                  if (versions.length > 0) {
+                    versions[0] = { ...versions[0], content: accumulatedText };
+                  }
+                  return { ...m, content: accumulatedText, status: 'streaming' as const, versions };
+                });
+                return { ...c, messages, updatedAt: Date.now() };
               }));
             },
-          }
+            onFinish: (fullText: string) => {
+              accumulatedText = fullText;
+            },
+          } : undefined
         );
 
         setConversations(prev => prev.map(c => {
           if (c.id !== updatedConv.id) return c;
           const finalC = {
             ...c,
-            messages: c.messages.map(m => m.id === assistantMsgId ? { ...m, content: accumulatedText, status: 'completed' as const } : m),
+            messages: c.messages.map(m => {
+              if (m.id !== assistantMsgId) return m;
+              const versions = [...(m.versions || [])];
+              if (versions.length > 0) {
+                versions[0] = { ...versions[0], content: accumulatedText };
+              }
+              return { ...m, content: accumulatedText, status: 'completed' as const, versions };
+            }),
+            updatedAt: Date.now(),
           };
           saveConversation(finalC);
           return finalC;
         }));
       } catch (err: any) {
+        const isAborted = err?.name === 'AbortError' || err?.message?.includes('停止生成');
         setConversations(prev => prev.map(c => {
           if (c.id !== updatedConv.id) return c;
-          const failed = {
-            ...c,
-            messages: c.messages.map(m =>
-              m.id === assistantMsgId
-                ? { ...m, status: 'error' as const, errorMessage: err.message }
-                : m
-            ),
-            updatedAt: Date.now(),
-          };
-          saveConversation(failed);
-          return failed;
+          const finalMessages = c.messages.map(m => {
+            if (m.id !== assistantMsgId) return m;
+            if (isAborted) {
+              return {
+                ...m,
+                content: accumulatedText || '（已手动停止生成）',
+                status: 'completed' as const,
+                versions: [{ ...(m.versions?.[0] || {}), content: accumulatedText || '（已手动停止生成）' }],
+              };
+            }
+            return { ...m, status: 'error' as const, errorMessage: err?.message || '重新生成失败' };
+          });
+          const finalC = { ...c, messages: finalMessages, updatedAt: Date.now() };
+          saveConversation(finalC);
+          return finalC;
         }));
+        setConnectionStatus(isAborted ? 'configured' : 'error');
+        if (!isAborted) setStatusMessage(err?.message || '重新生成失败');
       } finally {
         setIsGenerating(false);
+        abortControllerRef.current = null;
       }
       return;
     }
@@ -698,8 +724,25 @@ export default function App() {
             currentVersionIndex: newVersionIndex,
           };
         }),
+        updatedAt: Date.now(),
       };
     }));
+
+    const streamingConversation = {
+      ...currentConversation,
+      messages: currentConversation.messages.map(m => {
+        if (m.id !== messageId) return m;
+        return {
+          ...m,
+          content: '',
+          status: 'streaming' as const,
+          versions: [...prevVersions, { content: '', timestamp: Date.now(), model: currentModel.name }],
+          currentVersionIndex: newVersionIndex,
+        };
+      }),
+      updatedAt: Date.now(),
+    };
+    await saveConversation(streamingConversation);
 
     try {
       const activeParams = currentConversation.parameters || parameters;
@@ -709,11 +752,15 @@ export default function App() {
           apiKeyConfig: currentApiKey,
           messages: prevMessages,
           systemPrompt: currentConversation.systemPrompt || settings.defaultSystemPrompt,
+          temperature: currentModel.temperature,
+          maxTokens: currentModel.maxTokens,
+          topP: currentModel.topP,
           parameters: activeParams,
           abortSignal: abortController.signal,
+          timeoutSeconds: settings.requestTimeout,
         },
-        {
-          onChunk: (chunk) => {
+        settings.enableStreaming ? {
+          onChunk: (chunk: string) => {
             accumulatedText += chunk;
             setConversations(prev => prev.map(c => {
               if (c.id !== currentConversation.id) return c;
@@ -728,7 +775,7 @@ export default function App() {
               };
             }));
           },
-        }
+        } : undefined
       );
 
       setConversations(prev => prev.map(c => {
@@ -747,13 +794,16 @@ export default function App() {
       }));
       setConnectionStatus('success');
     } catch (err: any) {
+      const isAborted = err?.name === 'AbortError' || err?.message?.includes('停止生成');
       setConversations(prev => prev.map(c => {
         if (c.id !== currentConversation.id) return c;
         const failed = {
           ...c,
           messages: c.messages.map(m =>
             m.id === messageId
-              ? { ...m, status: 'error' as const, errorMessage: err.message }
+              ? isAborted
+                ? { ...m, content: accumulatedText || '（已手动停止生成）', status: 'completed' as const }
+                : { ...m, status: 'error' as const, errorMessage: err?.message || '重新生成失败' }
               : m
           ),
           updatedAt: Date.now(),
@@ -761,7 +811,8 @@ export default function App() {
         saveConversation(failed);
         return failed;
       }));
-      setConnectionStatus('error');
+      setConnectionStatus(isAborted ? 'configured' : 'error');
+      if (!isAborted) setStatusMessage(err?.message || '重新生成失败');
     } finally {
       setIsGenerating(false);
       abortControllerRef.current = null;
