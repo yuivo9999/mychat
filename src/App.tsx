@@ -775,7 +775,7 @@ export default function App() {
   };
 
   // Edit message content
-  const handleEditMessage = (messageId: string, newContent: string, resubmit: boolean) => {
+  const handleEditMessage = async (messageId: string, newContent: string, resubmit: boolean) => {
     if (!currentConversation) return;
 
     if (!resubmit) {
