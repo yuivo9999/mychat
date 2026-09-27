@@ -112,20 +112,23 @@ export class OpenAIAdapter implements BaseAdapter {
       ...model.customHeaders,
     };
 
-    // NVIDIA NIM explicitly expects an Accept header. Keep it provider-specific
-    // so other OpenAI-compatible providers retain their minimal request shape.
+    // Decide streaming mode before building provider-specific headers.
+    const stream = (parameters?.stream !== undefined ? parameters.stream : model.supportsStreaming !== false) && callbacks != null;
+
+    // NVIDIA NIM accepts JSON or SSE explicitly.
     if (apiKeyConfig.providerId === 'nvidia') {
       headers['Accept'] = stream ? 'text/event-stream' : 'application/json';
     }
 
     if (apiKeyConfig.apiKey) {
-      headers['Authorization'] = `Bearer ${apiKeyConfig.apiKey.trim()}`;
+      // Accept either a raw nvapi-... token or a value already prefixed with
+      // "Bearer ", without ever producing "Bearer Bearer ...".
+      const rawKey = apiKeyConfig.apiKey.trim().replace(/^Bearer\s+/i, '');
+      headers['Authorization'] = `Bearer ${rawKey}`;
     }
 
     // OpenRouter attribution headers are optional. Keep the browser request minimal
     // so the API call only needs the standard Authorization + Content-Type headers.
-
-    const stream = (parameters?.stream !== undefined ? parameters.stream : model.supportsStreaming !== false) && callbacks != null;
 
     const bodyPayload: any = {
       model: model.id,
@@ -288,7 +291,8 @@ export class OpenAIAdapter implements BaseAdapter {
         headers['Accept'] = 'application/json';
       }
       if (apiKeyConfig.apiKey) {
-        headers['Authorization'] = `Bearer ${apiKeyConfig.apiKey.trim()}`;
+        const rawKey = apiKeyConfig.apiKey.trim().replace(/^Bearer\s+/i, '');
+        headers['Authorization'] = `Bearer ${rawKey}`;
       }
 
       // Keep the connection probe to OpenRouter's standard headers only.
