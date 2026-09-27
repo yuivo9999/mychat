@@ -403,3 +403,133 @@ export function getWorkspaceDirectoryTree(workspace: Workspace): string {
 export function getModifiedFilesAgainstOriginal(workspace: Workspace): FileDiffItem[] {
   return computeDiffBetweenFileSnapshots(workspace.originalSnapshot.files, workspace.files);
 }
+
+// Add one or multiple files into current active workspace with safe path validation and conflict resolution
+export function addFilesToActiveWorkspace(
+  workspace: Workspace,
+  filesToAdd: { path: string; content: string }[],
+  conflictResolution: 'overwrite' | 'rename' | 'skip' = 'overwrite'
+): { updatedWorkspace: Workspace; addedCount: number; overwrittenCount: number; skippedCount: number } {
+  const updatedFiles = { ...workspace.files };
+  let addedCount = 0;
+  let overwrittenCount = 0;
+  let skippedCount = 0;
+  const now = Date.now();
+
+  for (const item of filesToAdd) {
+    const valid = validateSafeRelativePath(item.path);
+    if (!valid.valid) {
+      skippedCount++;
+      continue;
+    }
+
+    let targetPath = valid.normalizedPath;
+
+    if (updatedFiles[targetPath]) {
+      if (conflictResolution === 'skip') {
+        skippedCount++;
+        continue;
+      } else if (conflictResolution === 'rename') {
+        const parts = targetPath.split('/');
+        const fileName = parts.pop() || targetPath;
+        const lastDot = fileName.lastIndexOf('.');
+        const baseName = lastDot > 0 ? fileName.slice(0, lastDot) : fileName;
+        const ext = lastDot > 0 ? fileName.slice(lastDot) : '';
+        const dirPrefix = parts.length > 0 ? `${parts.join('/')}/` : '';
+        
+        let copyIndex = 1;
+        let newTarget = `${dirPrefix}${baseName}_copy${ext}`;
+        while (updatedFiles[newTarget]) {
+          copyIndex++;
+          newTarget = `${dirPrefix}${baseName}_copy${copyIndex}${ext}`;
+        }
+        targetPath = newTarget;
+        addedCount++;
+      } else {
+        overwrittenCount++;
+      }
+    } else {
+      addedCount++;
+    }
+
+    updatedFiles[targetPath] = {
+      path: targetPath,
+      content: item.content,
+      size: item.content.length,
+      isBinary: isBinaryFile(targetPath, item.content.slice(0, 200)),
+      updatedAt: now,
+    };
+  }
+
+  return {
+    updatedWorkspace: {
+      ...workspace,
+      files: updatedFiles,
+      updatedAt: now,
+    },
+    addedCount,
+    overwrittenCount,
+    skippedCount,
+  };
+}
+
+// Delete an entire directory and all files within it
+export function deleteFolderFromWorkspace(
+  workspace: Workspace,
+  folderPath: string
+): { updatedWorkspace: Workspace; deletedCount: number } {
+  const prefix = folderPath.replace(/^\/+/, '').replace(/\/+$/, '') + '/';
+  const updatedFiles = { ...workspace.files };
+  let deletedCount = 0;
+
+  for (const p of Object.keys(updatedFiles)) {
+    if (p.startsWith(prefix) || p === folderPath.replace(/^\/+/, '').replace(/\/+$/, '')) {
+      delete updatedFiles[p];
+      deletedCount++;
+    }
+  }
+
+  return {
+    updatedWorkspace: {
+      ...workspace,
+      files: updatedFiles,
+      updatedAt: Date.now(),
+    },
+    deletedCount,
+  };
+}
+
+// Rename an entire directory prefix
+export function renameFolderInWorkspace(
+  workspace: Workspace,
+  oldFolderPrefix: string,
+  newFolderPrefix: string
+): { updatedWorkspace: Workspace; renamedCount: number } {
+  const oldP = oldFolderPrefix.replace(/^\/+/, '').replace(/\/+$/, '') + '/';
+  const newP = newFolderPrefix.replace(/^\/+/, '').replace(/\/+$/, '') + '/';
+  const updatedFiles = { ...workspace.files };
+  let renamedCount = 0;
+
+  for (const [p, file] of Object.entries(workspace.files)) {
+    if (p.startsWith(oldP)) {
+      const rest = p.slice(oldP.length);
+      const newPath = `${newP}${rest}`;
+      delete updatedFiles[p];
+      updatedFiles[newPath] = {
+        ...file,
+        path: newPath,
+        updatedAt: Date.now(),
+      };
+      renamedCount++;
+    }
+  }
+
+  return {
+    updatedWorkspace: {
+      ...workspace,
+      files: updatedFiles,
+      updatedAt: Date.now(),
+    },
+    renamedCount,
+  };
+}

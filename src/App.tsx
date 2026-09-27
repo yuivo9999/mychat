@@ -1798,6 +1798,8 @@ export default function App() {
         onSelectWorkspace={handleSelectWorkspaceForCurrentChat}
         onSaveWorkspace={handleSaveWorkspaceState}
         onDeleteWorkspace={handleDeleteWorkspaceSafe}
+        onSendAiMessage={(prompt) => handleSendMessage(prompt, [])}
+        aiStatusText={isGenerating ? (statusMessage || 'AI 正在处理...') : undefined}
       />
     </div>
   );

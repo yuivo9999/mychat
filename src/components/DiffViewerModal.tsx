@@ -8,7 +8,8 @@ import {
   Download, 
   FileCheck,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Activity
 } from 'lucide-react';
 import { Workspace, FileDiffItem } from '../types/workspace';
 import { computeDiffBetweenFileSnapshots } from '../services/workspaceService';
@@ -18,6 +19,7 @@ interface DiffViewerModalProps {
   onClose: () => void;
   workspace: Workspace | null;
   onDownloadZip: () => void;
+  onDiagnoseDiff?: (path: string) => void;
 }
 
 export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
@@ -25,6 +27,7 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
   onClose,
   workspace,
   onDownloadZip,
+  onDiagnoseDiff,
 }) => {
   if (!isOpen || !workspace) return null;
 
@@ -200,10 +203,26 @@ export const DiffViewerModal: React.FC<DiffViewerModalProps> = ({
             {/* Right: Line Diff Viewer */}
             <div className="flex-1 flex flex-col bg-neutral-950 text-neutral-100 overflow-hidden font-mono text-xs">
               <div className="px-4 py-2 bg-neutral-900 border-b border-neutral-800 text-[11px] text-neutral-400 flex items-center justify-between">
-                <span>{activeDiff?.path}</span>
-                <span className="text-[10px] uppercase text-neutral-500">
-                  {activeDiff?.type === 'modified' ? '已对比原始基准' : activeDiff?.type}
-                </span>
+                <span className="font-semibold text-neutral-200">{activeDiff?.path}</span>
+                <div className="flex items-center gap-2">
+                  {onDiagnoseDiff && activeDiff && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onDiagnoseDiff(activeDiff.path);
+                        onClose();
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-medium transition cursor-pointer shadow-xs"
+                      title="让 AI 针对本文件的代码修改进行系统性静态诊断"
+                    >
+                      <Activity className="w-3 h-3" />
+                      <span>AI 诊断这个修改</span>
+                    </button>
+                  )}
+                  <span className="text-[10px] uppercase text-neutral-500 bg-neutral-800 px-2 py-0.5 rounded">
+                    {activeDiff?.type === 'modified' ? '已对比原始基准' : activeDiff?.type}
+                  </span>
+                </div>
               </div>
 
               <div className="flex-1 overflow-auto p-3 font-mono leading-relaxed select-text space-y-0.5">
