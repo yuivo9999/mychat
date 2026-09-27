@@ -1,4 +1,4 @@
-name: Migrate Ollama slot to Groq
+name: Validate and Deploy Groq catalog
 
 on:
   push:
@@ -7,47 +7,17 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   actions: write
 
 jobs:
-  migrate:
+  validate-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Rewrite provider and model catalog
-        shell: python
-        run: |
-          from pathlib import Path
-          import re
-          path = Path('src/services/db.ts')
-          s = path.read_text(encoding='utf-8')
-          def remove_object_by_id(text, object_id):
-              return re.sub(r"\n?  \{\n    id: '" + re.escape(object_id) + r"',[\s\S]*?\n  \},", '', text)
-          s = remove_object_by_id(s, 'groq')
-          s = remove_object_by_id(s, 'cerebras')
-          s = s.replace("id: 'ollama',\n    name: 'Ollama (本地私有大模型)',\n    description: '无需联网，在本地电脑运行 Llama 3, DeepSeek, Qwen',\n    icon: 'HardDrive',\n    defaultBaseUrl: 'http://localhost:11434',", "id: 'groq',\n    name: 'groq.com',\n    description: 'Groq.com 免费层高速推理（OpenAI 兼容 API）',\n    icon: 'Zap',\n    defaultBaseUrl: 'https://api.groq.com/openai/v1',")
-          for model_id in ['gpt-oss-120b', 'llama3.2:latest', 'deepseek-r1:latest', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'openai/gpt-oss-safeguard-20b', 'qwen/qwen3.8-27b']:
-              s = remove_object_by_id(s, model_id)
-          marker = "export const DEFAULT_MODELS: ModelItem[] = [\n"
-          models = """  // Groq.com Free Plan models.\n  { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B (groq.com 免费)', providerId: 'groq', description: 'Groq.com 免费层 GPT-OSS 120B', supportsVision: false, supportsFiles: false, supportsStreaming: true, contextWindow: 131072, temperature: 0.7 },\n  { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B (groq.com 免费)', providerId: 'groq', description: 'Groq.com 免费层 GPT-OSS 20B', supportsVision: false, supportsFiles: false, supportsStreaming: true, contextWindow: 131072, temperature: 0.7 },\n  { id: 'openai/gpt-oss-safeguard-20b', name: 'GPT-OSS Safeguard 20B (groq.com 免费)', providerId: 'groq', description: 'Groq.com 免费层 GPT-OSS Safeguard 20B', supportsVision: false, supportsFiles: false, supportsStreaming: true, contextWindow: 131072, temperature: 0.7 },\n  { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B (groq.com 免费)', providerId: 'groq', description: 'Groq.com 免费层 Qwen 3.8 27B，多模态', supportsVision: true, supportsFiles: false, supportsStreaming: true, contextWindow: 131072, temperature: 0.7 },\n\n"""
-          s = s.replace(marker, marker + models, 1)
-          s = s.replace("new Set(['anthropic', 'moonshot', 'qwen', 'siliconflow'])", "new Set(['anthropic', 'moonshot', 'qwen', 'siliconflow', 'cerebras', 'ollama'])")
-          start = s.find('      // Purge stale default provider groups persisted by older app versions.')
-          end = s.find('\n\n      if (results.length === 0) {', start)
-          if start == -1 or end == -1: raise SystemExit('provider migration block not found')
-          block = """      // Migrate old Ollama into the Groq slot and remove stale Groq/Cerebras records.\n      for (const staleId of ['groq', 'cerebras']) { store.delete(staleId); results = results.filter(p => p.id !== staleId); }\n      if (results.some(p => p.id === 'ollama')) { store.delete('ollama'); results = results.filter(p => p.id !== 'ollama'); }\n      const groqProvider = DEFAULT_PROVIDERS.find(p => p.id === 'groq');\n      if (groqProvider) { store.put(groqProvider); results.push(groqProvider); }\n      for (const provider of DEFAULT_PROVIDERS) { if (!results.some(p => p.id === provider.id)) { store.put(provider); results.push(provider); } }"""
-          s = s[:start] + block + s[end:]
-          start = s.find('      // Purge model records belonging to default provider groups removed from')
-          end = s.find('\n\n      if (results.length === 0) {', start)
-          if start == -1 or end == -1: raise SystemExit('model migration block not found')
-          block = """      // Remove old Cerebras/Ollama/Groq model records; the fixed Groq roster below is authoritative.\n      const staleProviderIds = new Set(['cerebras', 'ollama', 'groq']);\n      const staleModels = results.filter(r => staleProviderIds.has(r.providerId));\n      for (const model of staleModels) store.delete(model.id);\n      if (staleModels.length) results = results.filter(r => !staleProviderIds.has(r.providerId));"""
-          s = s[:start] + block + s[end:]
-          path.write_text(s, encoding='utf-8')
-
-      - name: Validate source
+      - name: Validate Groq catalog
         run: |
           grep -q "id: 'groq'" src/services/db.ts
           grep -q "name: 'groq.com'" src/services/db.ts
@@ -55,21 +25,11 @@ jobs:
           ! grep -q "id: 'ollama'" src/services/db.ts
           grep -q "id: 'openai/gpt-oss-120b'" src/services/db.ts
           grep -q "id: 'openai/gpt-oss-20b'" src/services/db.ts
+          grep -q "id: 'openai/gpt-oss-safeguard-20b'" src/services/db.ts
           grep -q "id: 'qwen/qwen3.8-27b'" src/services/db.ts
+          echo "Groq catalog validation passed"
 
-      - name: Commit migration
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/services/db.ts
-          if git diff --cached --quiet; then
-            echo "No source changes needed"
-          else
-            git commit -m "fix: repurpose Ollama provider slot for Groq"
-            git push
-          fi
-
-      - name: Trigger deployment
+      - name: Trigger GitHub Pages deployment
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run deploy.yml --ref main
