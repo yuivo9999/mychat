@@ -53,6 +53,22 @@ export interface Workspace {
   };
 }
 
+// Diagnosis session context stored strictly within the single Chat's working context
+export interface DiagnosisContext {
+  target: string;
+  depth: 'target' | 'related' | 'deep';
+  checkedFiles: string[];
+  checkedFunctions: string[];
+  relatedFiles: string[];
+  suspectedIssues: string[];
+  confirmedIssues: string[];
+  ruledOutIssues: string[];
+  unresolvedQuestions: string[];
+  lastConclusion?: 'confirmed_bug' | 'no_bug_found' | 'unconfirmed' | 'pending';
+  lastReportSummary?: string;
+  updatedAt: number;
+}
+
 // Individual Chat Context & Working Memory (strictly isolated per Chat!)
 export interface ChatContext {
   currentTask?: string;
@@ -60,6 +76,7 @@ export interface ChatContext {
   importantDecisions: string[];
   recentChanges: string[];
   lastModifiedFiles: string[];
+  diagnosisContext?: DiagnosisContext;
 }
 
 // Tool Call Execution representation

@@ -149,11 +149,12 @@ export const WORKSPACE_TOOLS_SPEC = [
   },
 ];
 
-// Build System Prompt containing workspace summary and strict constraints
+// Build System Prompt containing workspace summary, code diagnosis protocol, and strict constraints
 export function buildAgentSystemPrompt(
   workspace: Workspace | null,
   chatContext?: ChatContext,
-  baseSystemPrompt?: string
+  baseSystemPrompt?: string,
+  isDiagnosisMode?: boolean
 ): string {
   const customPrompt = baseSystemPrompt || '你是一个专业严谨的高级编程助手。';
 
@@ -166,10 +167,77 @@ ${getWorkspaceDirectoryTree(workspace).slice(0, 1500)}${Object.keys(workspace.fi
 
   const chatPrivateMemory = formatChatContextPrompt(chatContext);
 
+  const diagnosisProtocol = `
+## 🩺 代码诊断工作协议 (Code Diagnosis Protocol - 必须严格按 10 步法执行):
+当用户提出代码诊断、排查、找 Bug、审查或怀疑某处有问题时：
+你必须通过调用只读工具对工作区代码进行系统性、有据可查的静态代码诊断，绝不能未经工具调查凭空臆测，绝不能假装检查，并严格遵循以下 10 步流程：
+
+① 【确认目标】：明确用户指出的代码区域、函数名、组件或功能模块；若用户提供了 diff 或检查刚改的代码，优先使用 get_file_diff 或 get_workspace_diff。
+② 【搜索相关符号】：调用 search_code 或 search_files 搜索目标函数、变量、组件、事件名 (如 handleSend, onClick, API 路由等)。
+③ 【按需读取代码】：根据搜索到的文件和行号，调用 read_file 读取完整函数及所属组件上下文（严禁盲目把整个项目一次性读完，坚持按需最小读取）。
+④ 【追踪调用关系】：向上追踪 Caller（谁调用了它）、向下追踪 Callee（它调用了谁），逐步通过 search_code + read_file 还原关键调用链路。
+⑤ 【检查上下游依赖】：检查 import、props 传递、状态依赖、service 接口、网络 API 请求与回调。
+⑥ 【审查明显逻辑错误】：
+   - 条件判断（是否反向、分支是否遗漏、永远不会执行的分支、不可能成立的条件）
+   - 空值与未定义（null / undefined / 可选链缺失、空数组/对象属性访问）
+   - 越界与边界值、提前 return 造成后续关键逻辑跳过
+⑦ 【审查状态 / 异步 / Promise / 异常处理】：
+   - 忘记 await、未捕获的 Promise 异常、缺少 catch / finally
+   - loading 状态在异常时是否恢复（如 API 失败未恢复 loading 导致 UI 永远卡在加载中）
+   - React 状态更新异步性、旧值闭包、并发竞态与请求时序覆盖
+⑧ 【按需自动扩大范围】：Target (用户目标) ➔ Related (直接依赖/调用方) ➔ Deep (发现确凿线索时深入底层的 service/API)；相关才扩大，不相关绝不盲目扫描。
+⑨ 【综合分析并得出结论】：严格区分以下 3 种结论，禁止产生虚假确定性：
+   - A. **发现明确问题**：代码逻辑可确凿证明存在错误路径；
+   - B. **暂未发现明确代码错误**：已检查关键路径均正常（必须诚实回答，严禁为了表现而强行制造虚假 bug）；
+   - C. **无法确认 / 潜在风险**：代码存在边缘风险但无法静态证明一定会发生，明确指出所需运行时日志或复现条件。
+⑩ 【向用户输出结构化诊断报告 & 严格只读不改】：
+   - ⚠️ **诊断默认绝不修改代码**：诊断阶段只使用只读工具（search_code, read_file, get_file_diff 等），严禁调用 patch_file / write_file！
+   - 必须使用如下标准格式输出诊断报告：
+
+\`\`\`markdown
+## 代码诊断报告
+
+### 诊断目标
+[用户指出的区域/函数/功能]
+
+### 检查范围
+- [已检查文件/模块 1]
+- [已检查文件/模块 2]
+
+### 诊断结果
+[发现明确问题 / 暂未发现明确代码错误 / 无法确认]
+
+### 发现的问题 (如有)
+#### 问题 1: [简述]
+- **位置**: \`文件路径:行号\`
+- **原因**: [详细逻辑原因]
+- **影响**: [对运行、状态或UI的具体影响]
+- **证据代码**:
+\`\`\`ts
+// 关键证据代码
+\`\`\`
+
+### 关联链路检查情况
+- [调用方 / 被调用方 / 异步状态 / 异常处理等检查总结]
+
+### 已排除的问题
+- [已检查但确认正常的逻辑，如：Promise await 完整、条件分支正确等]
+
+### 待确认/限制部分 (如有)
+- [静态分析无法百分之百确定的边界情况]
+
+### 建议与后续
+- [建议修复方案]
+
+> ⚠️ **注意**：当前仅完成代码诊断与分析，**未修改任何代码**。若您确认需要修复，请回复“**修复它**”，AI 将为您进行精准局部代码替换。
+\`\`\`
+`;
+
   return `${customPrompt}
 
 ${workspaceSummary}
 ${chatPrivateMemory}
+${isDiagnosisMode ? diagnosisProtocol : ''}
 ## 核心运行原则与边界声明（必须严格遵守）:
 1. **不执行项目代码**：本环境是一个安全纯净的代码分析与修改工作区。你绝对不能也无法在服务器端执行任何代码、命令行、测试、npm run/test 等。
 2. **职责分工**：你负责阅读、搜索代码并做出精确优雅的修改；由用户在本地自行运行和测试。若用户测试遇到错误，用户会将错误信息贴回本聊天中由你继续分析与修改。
@@ -211,7 +279,7 @@ ${chatPrivateMemory}
 - get_file_diff({ path })
 - get_workspace_diff()
 
-当所有必要修改已完成无需再调用工具时，请直接给出清晰、结构化的中文说明，列出本次修改了哪些文件、做了哪些调整，并友好提醒用户自行在本地运行测试。`;
+当所有必要操作已完成无需再调用工具时，请直接给出清晰、结构化的中文说明。若为代码诊断，严格输出标准诊断报告；若为代码修改，列出本次修改了哪些文件、做了哪些调整，并友好提醒用户自行在本地运行测试。`;
 }
 
 // Extract tool calls from AI response string

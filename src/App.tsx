@@ -27,7 +27,8 @@ import {
 } from './services/workspaceService';
 import { 
   updateChatContext, 
-  prepareChatHistoryWithLocalCompaction 
+  prepareChatHistoryWithLocalCompaction,
+  detectDiagnosisIntent
 } from './services/chatContextService';
 import { 
   buildAgentSystemPrompt, 
@@ -621,16 +622,25 @@ export default function App() {
 
       let wsToOperate: Workspace | null = currentWorkspace ? JSON.parse(JSON.stringify(currentWorkspace)) : null;
 
+      // Detect Code Diagnosis intent vs Code repair / Normal task
+      const diagIntent = detectDiagnosisIntent(text, targetConv.chatContext);
+      const isDiagnosisMode = diagIntent.isDiagnosis;
+
       // If Agent Mode is enabled, inject workspace tools protocol and THIS chat's isolated context
       if (agentMode && wsToOperate) {
         effectiveSystemPrompt = buildAgentSystemPrompt(
           wsToOperate,
           targetConv.chatContext,
-          effectiveSystemPrompt
+          effectiveSystemPrompt,
+          isDiagnosisMode
         );
       }
 
-      setStatusMessage(agentMode ? 'Agent 正在分析任务与工作区...' : 'AI 正在组织回答...');
+      setStatusMessage(
+        isDiagnosisMode 
+          ? 'Agent 正在执行 10 步静态代码诊断与调用链分析...' 
+          : (agentMode ? 'Agent 正在分析任务与工作区...' : 'AI 正在组织回答...')
+      );
 
       const executedToolCalls: ToolCallExecution[] = [];
       const modifiedPaths = new Set<string>();
@@ -652,7 +662,7 @@ export default function App() {
       }
 
       let turn = 0;
-      const maxAgentTurns = agentMode && wsToOperate ? 6 : 1;
+      const maxAgentTurns = agentMode && wsToOperate ? 8 : 1;
       let finalFullText = '';
 
       while (turn < maxAgentTurns) {
@@ -721,7 +731,11 @@ export default function App() {
 
             for (const tc of detectedToolCalls) {
               const execId = `tool_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-              setStatusMessage(`Agent 正在执行: ${tc.tool}...`);
+              setStatusMessage(
+                isDiagnosisMode 
+                  ? `[代码诊断中] Agent 正在调用: ${tc.tool}...` 
+                  : `Agent 正在执行: ${tc.tool}...`
+              );
 
               const outcome = await executeWorkspaceTool(tc.tool, tc.args, wsToOperate);
               wsToOperate = outcome.updatedWorkspace;
@@ -745,7 +759,7 @@ export default function App() {
               currentThinkingSteps.push({
                 id: `step_exec_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
                 icon: outcome.stepIcon || 'github',
-                title: outcome.stepTitle,
+                title: isDiagnosisMode ? `[诊断调查] ${outcome.stepTitle}` : outcome.stepTitle,
                 status: 'completed',
               });
 
@@ -765,15 +779,23 @@ export default function App() {
               timestamp: Date.now(),
             });
 
+            const feedbackInstruction = isDiagnosisMode
+              ? `[代码诊断工具执行结果反馈]\n${toolResultsForPrompt.join('\n\n')}\n\n请审查上述代码与检索结果。若还需要追踪调用方/被调用方、检查关联依赖或对比 diff，请继续输出只读工具调用；若已完成 10 步调查，请严格按照【代码诊断报告】格式输出结构化报告（明确区分：发现明确问题 / 暂未发现明确错误 / 无法确认三种结论），并严格保持只读、不修改任何代码。`
+              : `[工作区工具执行结果反馈]\n${toolResultsForPrompt.join('\n\n')}\n\n请审查执行结果。若还需查看其他文件、修改代码或对比 diff，请继续输出工具调用；若全部任务已完成，请给出结构化的中文总结，列出本次修改了哪些文件与改动内容。注意：你无法运行代码，提醒用户自行在本地运行测试。`;
+
             currentHistoryMessages.push({
               id: `msg_tool_feedback_${turn}_${Date.now()}`,
               role: 'user',
-              content: `[工作区工具执行结果反馈]\n${toolResultsForPrompt.join('\n\n')}\n\n请审查执行结果。若还需查看其他文件、修改代码或对比 diff，请继续输出工具调用；若全部任务已完成，请给出结构化的中文总结，列出本次修改了哪些文件与改动内容。注意：你无法运行代码，提醒用户自行在本地运行测试。`,
+              content: feedbackInstruction,
               timestamp: Date.now(),
             });
 
             turn++;
-            setStatusMessage(`Agent 正在进行第 ${turn + 1} 轮推理与验证...`);
+            setStatusMessage(
+              isDiagnosisMode 
+                ? `Agent 正在进行第 ${turn + 1} 轮诊断分析与调用链追踪...` 
+                : `Agent 正在进行第 ${turn + 1} 轮推理与验证...`
+            );
             continue; // Continue loop
           }
         }
@@ -803,7 +825,8 @@ export default function App() {
         targetConv.chatContext,
         text,
         cleanedFinalAnswer,
-        Array.from(modifiedPaths)
+        Array.from(modifiedPaths),
+        executedToolCalls
       );
 
       const finalCompletedSteps = currentThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
