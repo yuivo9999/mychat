@@ -39,17 +39,19 @@ export class GeminiAdapter implements BaseAdapter {
 
   private supportsInlineFileMime(mimeType?: string): boolean {
     const mime = (mimeType || '').toLowerCase().split(';', 1)[0].trim();
+
+    // Gemini document input accepts text-like MIME types and PDF.
+    // Keep binary office formats such as DOCX on the explicit local-text
+    // fallback path instead of pretending they are native generateContent
+    // inputs.
+    if (mime === 'application/pdf' || mime === 'application/json') return true;
+    if (mime.startsWith('text/')) return true;
+
+    // Common source/config formats that browsers may label as application/*.
     return [
-      'text/plain',
-      'text/markdown',
-      'text/html',
-      'text/css',
-      'text/xml',
-      'text/csv',
-      'text/rtf',
-      'text/javascript',
-      'application/json',
-      'application/pdf',
+      'application/xml',
+      'application/yaml',
+      'application/sql',
     ].includes(mime);
   }
 
