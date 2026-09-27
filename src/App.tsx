@@ -768,10 +768,29 @@ export default function App() {
     }
   };
 
-  // Continue generation for incomplete answers
+  // Continue generation for a specific incomplete assistant answer.
   const handleContinue = (messageId: string) => {
-    if (!currentConversation?.messages.some(m => m.id === messageId)) return;
-    handleSendMessage('请从上次回答的结尾紧接着继续往下生成，不要重复前面的内容。', []);
+    if (!currentConversation || isGenerating) return;
+
+    const messageIndex = currentConversation.messages.findIndex(m => m.id === messageId);
+    if (messageIndex === -1) return;
+
+    const targetMessage = currentConversation.messages[messageIndex];
+    if (targetMessage.role !== 'assistant') return;
+
+    // Continue from the selected answer only. Do not accidentally include
+    // later messages when the conversation contains multiple turns.
+    const continuationBase: Conversation = {
+      ...currentConversation,
+      messages: currentConversation.messages.slice(0, messageIndex + 1),
+      updatedAt: Date.now(),
+    };
+
+    void handleSendMessage(
+      '请从上次回答的结尾紧接着继续往下生成，不要重复前面的内容。',
+      [],
+      continuationBase,
+    );
   };
 
   // Edit message content
