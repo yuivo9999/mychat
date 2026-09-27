@@ -558,17 +558,33 @@ export default function App() {
       }));
       setConnectionStatus('success');
     } catch (err: any) {
-      const errMsg = err.message || '重试失败';
+      const isAborted = err?.name === 'AbortError' || err?.message?.includes('停止生成');
       setConversations(prev => prev.map(c => {
         if (c.id !== currentConversation.id) return c;
         const updated = {
           ...c,
-          messages: c.messages.map(m => m.id === messageId ? { ...m, status: 'error' as const, errorMessage: errMsg } : m),
+          messages: c.messages.map(m => {
+            if (m.id !== messageId) return m;
+            if (isAborted) {
+              return {
+                ...m,
+                content: accumulatedText || '（已手动停止生成）',
+                status: 'completed' as const,
+              };
+            }
+            return {
+              ...m,
+              status: 'error' as const,
+              errorMessage: err?.message || '重试失败',
+            };
+          }),
+          updatedAt: Date.now(),
         };
         saveConversation(updated);
         return updated;
       }));
-      setConnectionStatus('error');
+      setConnectionStatus(isAborted ? 'configured' : 'error');
+      if (!isAborted) setStatusMessage(err?.message || '重试失败');
     } finally {
       setIsGenerating(false);
       abortControllerRef.current = null;
