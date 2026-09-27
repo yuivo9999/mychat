@@ -179,6 +179,40 @@ export const DEFAULT_MODELS: ModelItem[] = [
     temperature: 0.7,
   },
 
+  // NVIDIA current Free Endpoints (verified against NVIDIA Build)
+  {
+    id: 'z-ai/glm-5-3',
+    name: 'GLM 5.3 (NVIDIA Free)',
+    providerId: 'nvidia',
+    description: 'NVIDIA Free Endpoint：Z.ai GLM 5.3',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 202752,
+    temperature: 0.7,
+  },
+  {
+    id: 'z-ai/glm-5-3-flash',
+    name: 'GLM 5.3 Flash (NVIDIA Free)',
+    providerId: 'nvidia',
+    description: 'NVIDIA Free Endpoint：Z.ai GLM 5.3 Flash，多模态',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 202752,
+    temperature: 0.7,
+  },
+  {
+    id: 'nvidia/nemotron-3.5-lightning-30b-a3b',
+    name: 'Nemotron 3.5 Lightning 30B (NVIDIA Free)',
+    providerId: 'nvidia',
+    description: 'NVIDIA Free Endpoint：Nemotron 3.5 Lightning 30B A3B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
   // Google Gemini Models (免费层与最新前沿模型)
   {
     id: 'gemini-3.8-flash',
@@ -269,6 +303,40 @@ export const DEFAULT_MODELS: ModelItem[] = [
     temperature: 0.7,
   },
 
+  // OpenRouter current free models
+  {
+    id: 'openrouter/free',
+    name: 'OpenRouter Free Router',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费路由：自动选择当前可用的免费模型',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 200000,
+    temperature: 0.7,
+  },
+  {
+    id: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+    name: 'Nemotron 3 Ultra (OpenRouter Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：NVIDIA Nemotron 3 Ultra',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 1000000,
+    temperature: 0.7,
+  },
+  {
+    id: 'nvidia/nemotron-3.5-lightning-30b-a3b:free',
+    name: 'Nemotron 3.5 Lightning (OpenRouter Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：NVIDIA Nemotron 3.5 Lightning',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
   // OpenAI
   {
     id: 'gpt-4o',
