@@ -63,6 +63,7 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
 
 export const DEFAULT_MODELS: ModelItem[] = [
   // Groq.com Free Plan models.
+  // Groq.com Free Plan models.
   {
     id: 'openai/gpt-oss-120b',
     name: 'GPT-OSS 120B (groq.com 免费)',
@@ -106,6 +107,51 @@ export const DEFAULT_MODELS: ModelItem[] = [
     supportsStreaming: true,
     contextWindow: 131072,
     temperature: 0.7,
+  },
+  // NVIDIA current Free Endpoints (verified against NVIDIA Build)
+  {
+    id: 'z-ai/glm-5-3',
+    name: 'GLM 5.3 (NVIDIA Free)',
+    providerId: 'nvidia',
+    description: 'NVIDIA Free Endpoint：Z.ai GLM 5.3',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 202752,
+    temperature: 0.7,
+  },
+  {
+    id: 'z-ai/glm-5-3-flash',
+    name: 'GLM 5.3 Flash (NVIDIA Free)',
+    providerId: 'nvidia',
+    description: 'NVIDIA Free Endpoint：Z.ai GLM 5.3 Flash，多模态',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 202752,
+    temperature: 0.7,
+  },
+  {
+    id: 'nvidia/nemotron-3.5-lightning-30b-a3b',
+    name: 'Nemotron 3.5 Lightning 30B (NVIDIA Free)',
+    providerId: 'nvidia',
+    description: 'NVIDIA Free Endpoint：Nemotron 3.5 Lightning 30B A3B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'nvidia/nemotron-3-super-120b-a12b',
+    name: 'Nemotron 3 Super 120B A12B (NVIDIA Free)',
+    providerId: 'nvidia',
+    description: 'NVIDIA Free Endpoint：Nemotron 3 Super，1M 上下文。',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 1,
   },
   // Google Gemini Models (免费层与最新前沿模型)
   {
@@ -565,18 +611,8 @@ export async function getModels(): Promise<ModelItem[]> {
         results = [...DEFAULT_MODELS];
       }
 
-      // Purge models belonging to removed provider groups
-      const removedProviderIds = new Set(['nvidia', 'zhipu', 'anthropic', 'siliconflow', 'qwen', 'moonshot', 'ollama']);
-      results = results.filter(r => {
-        if (removedProviderIds.has(r.providerId) && !r.isCustom) {
-          store.delete(r.id);
-          return false;
-        }
-        return true;
-      });
-
       // Remove the obsolete OpenRouter free slug shipped by older builds.
-      const staleOpenRouterIds = ['nvidia/nemotron-3-super:free', 'nvidia/nemotron-3-nano-30b-a3b:free', 'nvidia/nemotron-nano-12b-v2-vl:free', 'nvidia/nemotron-nano-9b-v2:free', 'openai/gpt-oss-120b:free', 'openai/gpt-oss-20b:free', 'qwen/qwen3-coder:free', 'qwen/qwen3-next-80b-a3b-instruct:free', 'google/gemma-3-27b-it:free', 'google/gemma-3-12b-it:free', 'meta-llama/llama-3.3-70b-instruct:free', 'meta-llama/llama-3.2-3b-instruct:free', 'mistralai/mistral-small-3.1-24b-instruct:free', 'nousresearch/hermes-3-llama-3.1-405b:free', 'poolside/laguna-m.1:free', 'poolside/laguna-xs.2:free', 'z-ai/glm-4.5-air:free', 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free', 'liquid/lfm-2.5-1.2b-instruct:free', 'liquid/lfm-2.5-1.2b-thinking:free'];
+      const staleOpenRouterIds = ['nvidia/nemotron-3-super:free'];
       for (const staleId of staleOpenRouterIds) {
         if (results.some(r => r.id === staleId)) {
           store.delete(staleId);
@@ -603,6 +639,10 @@ export async function getModels(): Promise<ModelItem[]> {
         }
       }
 
+      // Return the actual catalog. The previous code referenced an undefined
+      // `withDefaults` variable here, leaving the IndexedDB success callback
+      // with an uncaught ReferenceError and causing the UI to wait forever for
+      // models/groups.
       resolve(updatedResults);
     };
     request.onerror = () => reject(request.error);
@@ -648,12 +688,12 @@ export async function getProviders(): Promise<ProviderDefinition[]> {
   const isInitialized = localStorage.getItem('omnichat_db_initialized') === 'true';
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction('providers', 'readwrite');
+    const transaction = db.transaction('providers', 'readonly');
     const store = transaction.objectStore('providers');
     const request = store.getAll();
 
     request.onsuccess = async () => {
-      let results = (request.result as ProviderDefinition[]) || [];
+      const results = (request.result as ProviderDefinition[]) || [];
       if (!isInitialized && results.length === 0) {
         localStorage.setItem('omnichat_db_initialized', 'true');
         await seedDefaultProviders();
@@ -662,24 +702,7 @@ export async function getProviders(): Promise<ProviderDefinition[]> {
         return;
       }
 
-      // Purge removed provider groups
-      const removedIds = new Set(['nvidia', 'zhipu', 'anthropic', 'siliconflow', 'qwen', 'moonshot', 'ollama']);
-      results = results.filter(p => {
-        if (removedIds.has(p.id) && !p.isCustom) {
-          store.delete(p.id);
-          return false;
-        }
-        return true;
-      });
-
-      // Ensure all current DEFAULT_PROVIDERS exist in store
-      for (const dp of DEFAULT_PROVIDERS) {
-        if (!results.some(p => p.id === dp.id)) {
-          store.put(dp);
-          results.push(dp);
-        }
-      }
-
+      // Keep NVIDIA as first provider order
       const providerOrder = DEFAULT_PROVIDERS.map(p => p.id);
       results.sort((a, b) => {
         const idxA = providerOrder.indexOf(a.id);
