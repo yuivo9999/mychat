@@ -16,10 +16,19 @@ export class GeminiAdapter implements BaseAdapter {
     return m || 'gemini-3.8-flash';
   }
 
+  private cleanKey(rawKey?: string): string {
+    let key = (rawKey || '').trim();
+    key = key.replace(/^["']|["']$/g, '').trim();
+    if (key.toLowerCase().startsWith('bearer ')) {
+      key = key.slice(7).trim();
+    }
+    return key;
+  }
+
   private resolveEndpoint(apiKeyConfig: ApiKeyConfig, modelId: string, isStream: boolean): string {
     let base = (apiKeyConfig.baseUrl?.trim() || 'https://generativelanguage.googleapis.com').replace(/\/+$/, '');
     const action = isStream ? 'streamGenerateContent' : 'generateContent';
-    const key = encodeURIComponent(apiKeyConfig.apiKey?.trim() || '');
+    const key = encodeURIComponent(this.cleanKey(apiKeyConfig.apiKey));
     const effectiveModel = this.normalizeModelId(modelId);
     
     // Check if base has /v1beta

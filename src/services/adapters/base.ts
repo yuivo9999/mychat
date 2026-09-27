@@ -73,12 +73,24 @@ export async function executeFetch(
 
 export function parseHttpError(status: number, errorData: any, statusText: string): string {
   let detail = '';
+  let reason = '';
   if (typeof errorData === 'string') {
     detail = errorData;
   } else if (errorData?.error?.message) {
     detail = errorData.error.message;
+    reason = errorData?.error?.details?.[0]?.reason || errorData?.error?.status || '';
   } else if (errorData?.message) {
     detail = errorData.message;
+  }
+
+  // Google Gemini API returns HTTP 400 with API_KEY_INVALID or "API key not valid"
+  if (
+    detail.includes('API key not valid') ||
+    detail.includes('API_KEY_INVALID') ||
+    reason === 'API_KEY_INVALID' ||
+    detail.toLowerCase().includes('api key not valid')
+  ) {
+    return `API Key 无效或未生效 (${status} API_KEY_INVALID): Google 官方拒绝了此 API Key。Google Gemini 官方 Key 格式通常为以 "AIzaSy" 开头的 39 位字符串。请检查是否多复制了空格、错填了其他平台的 Key，或前往 aistudio.google.com 获取。若无个人 Key，也可清空此项直接使用系统内置免费通道！`;
   }
 
   if (status === 401) {

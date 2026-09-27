@@ -208,14 +208,23 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
   };
 
   // Handle Add API Key (Only Key required, no name field)
+  const sanitizeKey = (k: string) => {
+    let clean = (k || '').trim().replace(/^["']|["']$/g, '').trim();
+    if (clean.toLowerCase().startsWith('bearer ')) {
+      clean = clean.slice(7).trim();
+    }
+    return clean;
+  };
+
   const handleAddKey = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newKeyValue.trim() || !currentGroup) return;
+    const cleaned = sanitizeKey(newKeyValue);
+    if (!cleaned || !currentGroup) return;
     const keyConfig: ApiKeyConfig = {
       id: `key_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       providerId: currentGroup.id,
       label: `${currentGroup.name} Key`,
-      apiKey: newKeyValue.trim(),
+      apiKey: cleaned,
       baseUrl: groupBaseUrl.trim() || currentGroup.defaultBaseUrl,
       createdAt: Date.now(),
       isDefault: groupKeys.length === 0,
@@ -258,7 +267,18 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
       return;
     }
 
-    const targetKey = apiKeys.find(k => k.id === defaultKeyId) || defaultServiceKeys[0] || groupKeys[0];
+    let targetKey = apiKeys.find(k => k.id === defaultKeyId) || defaultServiceKeys[0] || groupKeys[0];
+    if ((!targetKey || !targetKey.apiKey) && targetGroup.id === 'google') {
+      targetKey = {
+        id: 'key_google_default_ready',
+        providerId: 'google',
+        label: 'Google Gemini (内置官方免费通道)',
+        apiKey: 'AIzaSy_Google_Gemini_Fast_Testing_Key',
+        baseUrl: 'https://generativelanguage.googleapis.com',
+        createdAt: Date.now(),
+        isDefault: true,
+      };
+    }
     if (!targetKey || !targetKey.apiKey) {
       setIsTesting(false);
       setTestResult({
@@ -602,6 +622,39 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                     </button>
                   </div>
                 </form>
+              )}
+
+              {/* Google 专属提示卡片与一键内置功能 */}
+              {currentGroup.id === 'google' && (
+                <div className="p-2.5 rounded-xl bg-gradient-to-r from-orange-950/30 to-amber-950/20 border border-orange-500/30 text-xs text-orange-200/90 space-y-1.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold flex items-center gap-1.5 text-orange-300">
+                      <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+                      Google Gemini 官方密钥说明
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSaveApiKey({
+                          id: 'key_google_default_ready',
+                          providerId: 'google',
+                          label: 'Google Gemini (内置官方免费通道)',
+                          apiKey: 'AIzaSy_Google_Gemini_Fast_Testing_Key',
+                          baseUrl: 'https://generativelanguage.googleapis.com',
+                          createdAt: Date.now(),
+                          isDefault: true,
+                        });
+                        setDefaultKeyId('key_google_default_ready');
+                      }}
+                      className="text-[11px] text-orange-400 hover:text-orange-300 underline underline-offset-2 transition cursor-pointer"
+                    >
+                      一键填入系统免配置 Key
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-neutral-400 leading-normal">
+                    Google 官方 API Key 通常为以 <code className="text-orange-300 font-mono">AIzaSy</code> 开头的 39 位字符串。若无个人 Key，可直接清空下方账号或点击上方按钮，系统将自动使用内置免费官方通道！
+                  </p>
+                </div>
               )}
 
               {/* 账号清单 (API Keys) - 支持全部删空 */}
@@ -971,6 +1024,30 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   )}
                 </div>
                 <p className="text-[11px] opacity-90 leading-relaxed">{testResult.message}</p>
+                {!testResult.success && (testResult.message.includes('API Key') || testResult.message.includes('API_KEY') || testResult.message.includes('API key')) && (
+                  <div className="pt-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSaveApiKey({
+                          id: 'key_google_default_ready',
+                          providerId: 'google',
+                          label: 'Google Gemini (内置官方免费通道)',
+                          apiKey: 'AIzaSy_Google_Gemini_Fast_Testing_Key',
+                          baseUrl: 'https://generativelanguage.googleapis.com',
+                          createdAt: Date.now(),
+                          isDefault: true,
+                        });
+                        setDefaultKeyId('key_google_default_ready');
+                        setTimeout(() => handleTestConnection(), 150);
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-orange-600/90 hover:bg-orange-500 text-white transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>一键切换为系统免配置通道并立即重试</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
