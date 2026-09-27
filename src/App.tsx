@@ -125,13 +125,26 @@ export default function App() {
   useEffect(() => {
     async function init() {
       try {
-        const [loadedSettings, loadedProviders, loadedModels, loadedKeys, loadedConversations] = await Promise.all([
-          getUserSettings(),
-          getProviders(),
-          getModels(),
-          getApiKeys(),
-          getConversations(),
-        ]);
+        const [settingsResult, providersResult, modelsResult, keysResult, conversationsResult] =
+          await Promise.allSettled([
+            getUserSettings(),
+            getProviders(),
+            getModels(),
+            getApiKeys(),
+            getConversations(),
+          ]);
+
+        const loadedSettings = settingsResult.status === 'fulfilled' ? settingsResult.value : DEFAULT_SETTINGS;
+        const loadedProviders = providersResult.status === 'fulfilled' ? providersResult.value : [];
+        const loadedModels = modelsResult.status === 'fulfilled' ? modelsResult.value : [];
+        const loadedKeys = keysResult.status === 'fulfilled' ? keysResult.value : [];
+        const loadedConversations = conversationsResult.status === 'fulfilled' ? conversationsResult.value : [];
+
+        if (settingsResult.status === 'rejected') console.error('Failed to load settings:', settingsResult.reason);
+        if (providersResult.status === 'rejected') console.error('Failed to load providers:', providersResult.reason);
+        if (modelsResult.status === 'rejected') console.error('Failed to load models:', modelsResult.reason);
+        if (keysResult.status === 'rejected') console.error('Failed to load API keys:', keysResult.reason);
+        if (conversationsResult.status === 'rejected') console.error('Failed to load conversations:', conversationsResult.reason);
 
         setSettings(loadedSettings);
         setProviders(loadedProviders);
@@ -139,13 +152,12 @@ export default function App() {
         setApiKeys(loadedKeys);
         setConversations(loadedConversations);
 
-        // Pick initial model
-        const initialModel = loadedModels.find(m => m.id === loadedSettings.defaultModelId) || loadedModels[0];
+        const initialModel =
+          loadedModels.find(m => m.id === loadedSettings.defaultModelId) || loadedModels[0];
         if (initialModel) {
           setSelectedModelId(initialModel.id);
         }
 
-        // Pick initial conversation or create one
         if (loadedConversations.length > 0) {
           setActiveConversationId(loadedConversations[0].id);
         }
@@ -216,7 +228,31 @@ export default function App() {
     if (isMobile) {
       setSidebarOpen(false);
     }
-  }, [selectedModelId, currentModel, selectedApiKeyId, isMobile]);
+  }, [selectedModelId, currentModel, selectedApiKeyId, parameters, isMobile]);
+
+  const handleSelectModel = (id: string) => {
+    const model = models.find(m => m.id === id);
+    if (!model) return;
+
+    const providerKeys = apiKeys.filter(k => k.providerId === model.providerId);
+    const nextApiKeyId = providerKeys.find(k => k.isDefault)?.id || providerKeys[0]?.id;
+
+    setSelectedModelId(id);
+    setSelectedApiKeyId(nextApiKeyId);
+    setConnectionStatus(nextApiKeyId ? 'configured' : 'unconfigured');
+
+    if (currentConversation) {
+      const updated = {
+        ...currentConversation,
+        modelId: model.id,
+        providerId: model.providerId,
+        apiKeyId: nextApiKeyId,
+        updatedAt: Date.now(),
+      };
+      saveConversation(updated);
+      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+    }
+  };
 
   // Keyboard Shortcuts (⌘K search, ⌘N new chat)
   useEffect(() => {
@@ -245,10 +281,25 @@ export default function App() {
   };
 
   // Send Message Core Engine
-  const handleSendMessage = async (text: string, attachments: Attachment[]) => {
+  const handleSendMessage = async (
+    text: string,
+    attachments: Attachment[],
+    conversationOverride?: Conversation,
+  ) => {
     if (isGenerating) return;
+    if (!currentModel) {
+      alert('当前没有可用模型，请先进入设置检查模型配置。');
+      setIsModelConfigOpen(true);
+      return;
+    }
+    if (!currentApiKey) {
+      alert('未找到适用的 API Key，请先进入设置填写。');
+      setIsSettingsOpen(true);
+      setSettingsTab('keys');
+      return;
+    }
 
-    let targetConv = currentConversation;
+    let targetConv = conversationOverride || currentConversation;
     // Auto-create conversation if none exists
     if (!targetConv) {
       const newConv: Conversation = {
@@ -257,8 +308,9 @@ export default function App() {
         createdAt: Date.now(),
         updatedAt: Date.now(),
         modelId: selectedModelId,
-        providerId: currentModel?.providerId || 'google',
+        providerId: currentModel.providerId,
         apiKeyId: selectedApiKeyId,
+        parameters,
         messages: [],
       };
       targetConv = newConv;
@@ -280,8 +332,8 @@ export default function App() {
       role: 'assistant',
       content: '',
       timestamp: Date.now(),
-      model: currentModel?.name || selectedModelId,
-      providerId: currentModel?.providerId,
+      model: currentModel.name,
+      providerId: currentModel.providerId,
       status: 'streaming',
       versions: [{ content: '', timestamp: Date.now(), model: currentModel?.name }],
       currentVersionIndex: 0,
@@ -296,21 +348,16 @@ export default function App() {
       ...targetConv,
       title: nextTitle,
       updatedAt: Date.now(),
-      modelId: selectedModelId,
+      modelId: currentModel.id,
+      providerId: currentModel.providerId,
+      apiKeyId: selectedApiKeyId,
+      parameters: targetConv.parameters || parameters,
       messages: updatedMessages,
     };
 
     // Update state & persist
     setConversations(prev => prev.map(c => c.id === updatedConv.id ? updatedConv : c));
     saveConversation(updatedConv);
-
-    // Call AI Adapter
-    if (!currentApiKey) {
-      alert('未找到适用的 API Key，请先进入设置填写。');
-      setIsSettingsOpen(true);
-      setSettingsTab('keys');
-      return;
-    }
 
     setIsGenerating(true);
     setConnectionStatus('requesting');
@@ -323,7 +370,7 @@ export default function App() {
     let accumulatedText = '';
 
     try {
-      const activeParams = targetConv.parameters || parameters;
+      const activeParams = updatedConv.parameters || parameters;
       await adapter.sendMessage(
         {
           model: currentModel,
@@ -439,7 +486,7 @@ export default function App() {
 
   // Retry Assistant Message
   const handleRetry = async (messageId: string) => {
-    if (!currentConversation || isGenerating || !currentApiKey) return;
+    if (!currentConversation || isGenerating || !currentApiKey || !currentModel) return;
 
     const msgIndex = currentConversation.messages.findIndex(m => m.id === messageId);
     if (msgIndex === -1) return;
@@ -456,14 +503,18 @@ export default function App() {
     const adapter = getAdapterForProvider(currentModel.providerId);
     let accumulatedText = '';
 
-    // Set message to streaming
-    setConversations(prev => prev.map(c => {
-      if (c.id !== currentConversation.id) return c;
-      return {
-        ...c,
-        messages: c.messages.map(m => m.id === messageId ? { ...m, content: '', status: 'streaming', errorMessage: undefined } : m),
-      };
-    }));
+    // Persist the streaming state before the network request.
+    const streamingConversation = {
+      ...currentConversation,
+      messages: currentConversation.messages.map(m =>
+        m.id === messageId
+          ? { ...m, content: '', status: 'streaming' as const, errorMessage: undefined }
+          : m
+      ),
+      updatedAt: Date.now(),
+    };
+    setConversations(prev => prev.map(c => c.id === streamingConversation.id ? streamingConversation : c));
+    await saveConversation(streamingConversation);
 
     try {
       const activeParams = currentConversation.parameters || parameters;
@@ -526,7 +577,7 @@ export default function App() {
 
   // Regenerate (Preserves past version!)
   const handleRegenerate = async (messageId: string) => {
-    if (!currentConversation || isGenerating || !currentApiKey) return;
+    if (!currentConversation || isGenerating || !currentApiKey || !currentModel) return;
 
     const msgIndex = currentConversation.messages.findIndex(m => m.id === messageId);
     if (msgIndex === -1) return;
@@ -553,6 +604,7 @@ export default function App() {
         updatedAt: Date.now(),
       };
       setConversations(prev => prev.map(c => c.id === updatedConv.id ? updatedConv : c));
+      await saveConversation(updatedConv);
 
       // Trigger generation
       setIsGenerating(true);
@@ -568,7 +620,12 @@ export default function App() {
             apiKeyConfig: currentApiKey,
             messages: trimmedMessages,
             systemPrompt: currentConversation.systemPrompt || settings.defaultSystemPrompt,
+            temperature: currentModel.temperature,
+            maxTokens: currentModel.maxTokens,
+            topP: currentModel.topP,
+            parameters: currentConversation.parameters || parameters,
             abortSignal: abortController.signal,
+            timeoutSeconds: settings.requestTimeout,
           },
           {
             onChunk: (chunk) => {
@@ -596,10 +653,17 @@ export default function App() {
       } catch (err: any) {
         setConversations(prev => prev.map(c => {
           if (c.id !== updatedConv.id) return c;
-          return {
+          const failed = {
             ...c,
-            messages: c.messages.map(m => m.id === assistantMsgId ? { ...m, status: 'error' as const, errorMessage: err.message } : m),
+            messages: c.messages.map(m =>
+              m.id === assistantMsgId
+                ? { ...m, status: 'error' as const, errorMessage: err.message }
+                : m
+            ),
+            updatedAt: Date.now(),
           };
+          saveConversation(failed);
+          return failed;
         }));
       } finally {
         setIsGenerating(false);
@@ -685,10 +749,17 @@ export default function App() {
     } catch (err: any) {
       setConversations(prev => prev.map(c => {
         if (c.id !== currentConversation.id) return c;
-        return {
+        const failed = {
           ...c,
-          messages: c.messages.map(m => m.id === messageId ? { ...m, status: 'error' as const, errorMessage: err.message } : m),
+          messages: c.messages.map(m =>
+            m.id === messageId
+              ? { ...m, status: 'error' as const, errorMessage: err.message }
+              : m
+          ),
+          updatedAt: Date.now(),
         };
+        saveConversation(failed);
+        return failed;
       }));
       setConnectionStatus('error');
     } finally {
@@ -699,6 +770,7 @@ export default function App() {
 
   // Continue generation for incomplete answers
   const handleContinue = (messageId: string) => {
+    if (!currentConversation?.messages.some(m => m.id === messageId)) return;
     handleSendMessage('请从上次回答的结尾紧接着继续往下生成，不要重复前面的内容。', []);
   };
 
@@ -728,19 +800,21 @@ export default function App() {
         content: newContent,
       };
 
-      setConversations(prev => prev.map(c => {
-        if (c.id !== currentConversation.id) return c;
-        const updated = {
-          ...c,
-          messages: [...trimmed, editedUserMsg],
-          updatedAt: Date.now(),
-        };
-        saveConversation(updated);
-        return updated;
-      }));
+      const editedConversation: Conversation = {
+        ...currentConversation,
+        messages: [...trimmed, editedUserMsg],
+        updatedAt: Date.now(),
+      };
 
-      // Resend
-      handleSendMessage(newContent, editedUserMsg.attachments || []);
+      setConversations(prev => prev.map(c => c.id === editedConversation.id ? editedConversation : c));
+      await saveConversation(editedConversation);
+
+      // Resend from the edited history instead of the stale React closure.
+      const resendBase: Conversation = {
+        ...editedConversation,
+        messages: trimmed,
+      };
+      handleSendMessage(newContent, editedUserMsg.attachments || [], resendBase);
     }
   };
 
@@ -997,14 +1071,7 @@ export default function App() {
           providers={providers}
           apiKeys={apiKeys}
           selectedModelId={selectedModelId}
-          onSelectModel={(id) => {
-            setSelectedModelId(id);
-            if (currentConversation) {
-              const updated = { ...currentConversation, modelId: id };
-              saveConversation(updated);
-              setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
-            }
-          }}
+          onSelectModel={handleSelectModel}
           selectedApiKeyId={selectedApiKeyId}
           onSelectApiKey={(id) => setSelectedApiKeyId(id)}
           connectionStatus={connectionStatus}
@@ -1077,14 +1144,7 @@ export default function App() {
         settings={settings}
         onSaveSettings={handleSaveSettingsObj}
         currentModelId={selectedModelId}
-        onSelectModel={(id) => {
-          setSelectedModelId(id);
-          if (currentConversation) {
-            const updated = { ...currentConversation, modelId: id };
-            saveConversation(updated);
-            setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
-          }
-        }}
+        onSelectModel={handleSelectModel}
         selectedApiKeyId={selectedApiKeyId}
         onSelectApiKey={(id) => setSelectedApiKeyId(id)}
       />
