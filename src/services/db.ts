@@ -179,45 +179,67 @@ export const DEFAULT_MODELS: ModelItem[] = [
     temperature: 0.7,
   },
 
-  // Google Gemini Models (1.5 Flash, 1.5 Flash-8B, 1.5 Pro, 2.5 Flash, 2.0 Flash)
+  // Google Gemini Models (免费层与最新前沿模型)
+  {
+    id: 'gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash (免费可用 · 最新全模态旗舰)',
+    providerId: 'google',
+    description: '谷歌最新一代前沿多模态大模型，具备极高智力与极速响应，支持免费层调用',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
+  {
+    id: 'gemini-flash-lite-latest',
+    name: 'Gemini Flash-Lite (免费可用 · 极速测试专选)',
+    providerId: 'google',
+    description: '轻量化极低延迟模型，响应迅猛，特别适合日常连通性测试与快速问答',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
+  {
+    id: 'gemini-flash-latest',
+    name: 'Gemini Flash Latest (免费可用 · 官方推荐默认)',
+    providerId: 'google',
+    description: '官方 Flash 最新稳定版本，多模态综合能力均衡，免费配额友好',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
+  {
+    id: 'gemini-3.7-flash',
+    name: 'Gemini 3.7 Flash (免费可用 · 深度思考推理)',
+    providerId: 'google',
+    description: '具备思维链推理能力的敏捷多模态模型，支持免费层使用',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
+  {
+    id: 'gemini-3.6-flash',
+    name: 'Gemini 3.6 Flash (免费可用 · 稳定版)',
+    providerId: 'google',
+    description: '稳定高效的 3.6 代模型，免费层支持良好',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
   {
     id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash (基础低延迟测试)',
+    name: 'Gemini 1.5 Flash (自动兼容最新模型)',
     providerId: 'google',
-    description: '谷歌轻量级高速度多模态模型，响应极快，非常适合连通性测试与日常交流',
-    supportsVision: true,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 1048576,
-    temperature: 0.7,
-  },
-  {
-    id: 'gemini-1.5-flash-8b',
-    name: 'Gemini 1.5 Flash-8B (极小轻量测试)',
-    providerId: 'google',
-    description: '极小参数量轻量模型，超低延迟与极高吞吐，快速测试专用',
-    supportsVision: true,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 1048576,
-    temperature: 0.7,
-  },
-  {
-    id: 'gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash (快速全模态/新版)',
-    providerId: 'google',
-    description: '谷歌 2.5 代高性能快速多模态模型，具备深度推理分析能力',
-    supportsVision: true,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 1048576,
-    temperature: 0.7,
-  },
-  {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash (新一代多模态)',
-    providerId: 'google',
-    description: '谷歌 2.0 代高性价比敏捷模型，兼顾速度与多模态感知能力',
+    description: '经典 1.5 Flash 规格，系统自动平滑接入最新 Flash 引擎',
     supportsVision: true,
     supportsFiles: true,
     supportsStreaming: true,
@@ -226,13 +248,24 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
   {
     id: 'gemini-1.5-pro',
-    name: 'Gemini 1.5 Pro (百万上下文旗舰)',
+    name: 'Gemini 1.5 Pro (自动兼容最新模型)',
     providerId: 'google',
-    description: '超长百万级上下文窗口与复杂深度逻辑分析模型',
+    description: '经典 1.5 Pro 规格，系统自动平滑接入最新引擎',
     supportsVision: true,
     supportsFiles: true,
     supportsStreaming: true,
-    contextWindow: 2097152,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
+  {
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash (自动兼容最新模型)',
+    providerId: 'google',
+    description: '经典 2.5 Flash 规格，系统自动平滑接入最新引擎',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
     temperature: 0.7,
   },
 
@@ -634,20 +667,29 @@ export async function clearAllApiKeys(): Promise<void> {
 // Models Operations
 export async function getModels(): Promise<ModelItem[]> {
   const db = await openDB();
-  const isInitialized = localStorage.getItem('omnichat_db_initialized') === 'true';
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction('models', 'readonly');
+    const transaction = db.transaction('models', 'readwrite');
     const store = transaction.objectStore('models');
     const request = store.getAll();
 
     request.onsuccess = async () => {
-      const results = (request.result as ModelItem[]) || [];
-      if (!isInitialized && results.length === 0) {
-        localStorage.setItem('omnichat_db_initialized', 'true');
-        await seedDefaultModels();
+      let results = (request.result as ModelItem[]) || [];
+      if (results.length === 0) {
+        for (const m of DEFAULT_MODELS) {
+          store.put(m);
+        }
         resolve(DEFAULT_MODELS);
         return;
+      }
+
+      // Check for missing default models (e.g. newly added Google Gemini models)
+      const missingDefaults = DEFAULT_MODELS.filter(dm => !results.some(r => r.id === dm.id));
+      if (missingDefaults.length > 0) {
+        for (const m of missingDefaults) {
+          store.put(m);
+        }
+        results = [...results, ...missingDefaults];
       }
       resolve(results);
     };

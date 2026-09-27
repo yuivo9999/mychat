@@ -2,10 +2,25 @@ import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFe
 import { ApiKeyConfig } from '../../types';
 
 export class GeminiAdapter implements BaseAdapter {
+  private normalizeModelId(modelId: string): string {
+    const m = (modelId || '').trim();
+    if (m === 'gemini-1.5-flash' || m === 'gemini-2.5-flash' || m === 'gemini-2.0-flash') {
+      return 'gemini-3.8-flash';
+    }
+    if (m === 'gemini-1.5-flash-8b') {
+      return 'gemini-flash-lite-latest';
+    }
+    if (m === 'gemini-1.5-pro' || m === 'gemini-2.5-pro') {
+      return 'gemini-3.8-flash';
+    }
+    return m || 'gemini-3.8-flash';
+  }
+
   private resolveEndpoint(apiKeyConfig: ApiKeyConfig, modelId: string, isStream: boolean): string {
     let base = (apiKeyConfig.baseUrl?.trim() || 'https://generativelanguage.googleapis.com').replace(/\/+$/, '');
     const action = isStream ? 'streamGenerateContent' : 'generateContent';
     const key = encodeURIComponent(apiKeyConfig.apiKey?.trim() || '');
+    const effectiveModel = this.normalizeModelId(modelId);
     
     // Check if base has /v1beta
     if (!base.includes('/v1beta') && !base.includes('/v1')) {
@@ -13,7 +28,7 @@ export class GeminiAdapter implements BaseAdapter {
     }
 
     const sseParam = isStream ? '&alt=sse' : '';
-    return `${base}/models/${modelId}:${action}?key=${key}${sseParam}`;
+    return `${base}/models/${effectiveModel}:${action}?key=${key}${sseParam}`;
   }
 
   async sendMessage(options: AdapterOptions, callbacks?: StreamCallbacks): Promise<string> {

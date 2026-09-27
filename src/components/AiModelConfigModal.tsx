@@ -27,6 +27,7 @@ import {
   UserSettings 
 } from '../types';
 import { getAdapterForProvider } from '../services/adapters';
+import { DEFAULT_MODELS } from '../services/db';
 
 interface AiModelConfigModalProps {
   isOpen: boolean;
@@ -761,28 +762,55 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                 </form>
               )}
 
-              {/* 模型清单 - 支持全部删空 */}
+              {/* 模型清单 - 支持全部删空与一键载入官方预设 */}
               <div className="space-y-1.5">
                 <div className="text-xs text-neutral-400 flex items-center justify-between">
                   <span>模型清单 ({groupModels.length})</span>
-                  {groupModels.length > 0 && (
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => {
-                        if (confirm(`确定要清空「${currentGroup.name}」下的所有模型吗？`)) {
-                          groupModels.forEach(m => onDeleteModel(m.id));
+                        const defaultGroupModels = DEFAULT_MODELS.filter(m => m.providerId === currentGroup.id);
+                        for (const m of defaultGroupModels) {
+                          onSaveModel(m);
                         }
                       }}
-                      className="text-[11px] text-neutral-500 hover:text-red-400 transition"
+                      className="text-[11px] text-orange-400 hover:text-orange-300 transition cursor-pointer"
+                      title="重置或同步该服务商的官方预设模型"
                     >
-                      清空模型
+                      同步官方模型
                     </button>
-                  )}
+                    {groupModels.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`确定要清空「${currentGroup.name}」下的所有模型吗？`)) {
+                            groupModels.forEach(m => onDeleteModel(m.id));
+                          }
+                        }}
+                        className="text-[11px] text-neutral-500 hover:text-red-400 transition cursor-pointer"
+                      >
+                        清空模型
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-1 max-h-44 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-neutral-700">
                   {groupModels.length === 0 ? (
-                    <div className="p-3 rounded-xl bg-[#12141c]/70 border border-neutral-800/80 text-center text-xs text-neutral-500">
-                      暂无模型，点击右上角「+ 模型」添加
+                    <div className="p-3 rounded-xl bg-[#12141c]/70 border border-neutral-800/80 text-center text-xs text-neutral-500 space-y-1.5">
+                      <div>暂无模型，点击右上角「+ 模型」或同步官方模型</div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const defaultGroupModels = DEFAULT_MODELS.filter(m => m.providerId === currentGroup.id);
+                          for (const m of defaultGroupModels) {
+                            onSaveModel(m);
+                          }
+                        }}
+                        className="px-2.5 py-1 text-xs rounded-lg bg-orange-600/80 hover:bg-orange-500 text-white font-medium inline-block transition cursor-pointer"
+                      >
+                        一键载入官方推荐模型
+                      </button>
                     </div>
                   ) : (
                     groupModels.map((m) => (

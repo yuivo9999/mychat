@@ -29,11 +29,30 @@ async function startServer() {
       if (targetUrl.includes('generativelanguage.googleapis.com') && envGeminiKey) {
         try {
           const parsed = new URL(targetUrl);
-          const currentKey = parsed.searchParams.get('key');
-          if (!currentKey || currentKey.includes('AIzaSy_Default') || currentKey.includes('test') || currentKey.includes('mock') || currentKey === 'undefined') {
+          const currentKey = (parsed.searchParams.get('key') || '').trim();
+          const isDummyOrTestKey = 
+            !currentKey ||
+            currentKey.toLowerCase().includes('test') ||
+            currentKey.toLowerCase().includes('mock') ||
+            currentKey.toLowerCase().includes('default') ||
+            currentKey.toLowerCase().includes('google') ||
+            currentKey.includes('AIzaSy_') ||
+            currentKey === 'undefined' ||
+            currentKey.length < 35;
+
+          if (isDummyOrTestKey) {
             parsed.searchParams.set('key', envGeminiKey);
-            targetUrl = parsed.toString();
           }
+
+          // Map deprecated/legacy model names in URL to supported models
+          let pathname = parsed.pathname;
+          if (pathname.includes('/models/gemini-1.5-flash') || pathname.includes('/models/gemini-2.5-flash') || pathname.includes('/models/gemini-2.0-flash')) {
+            pathname = pathname.replace(/\/models\/gemini-[12]\.[05]-flash(-8b)?/, '/models/gemini-3.8-flash');
+          } else if (pathname.includes('/models/gemini-1.5-pro') || pathname.includes('/models/gemini-2.5-pro')) {
+            pathname = pathname.replace(/\/models\/gemini-[12]\.[05]-pro/, '/models/gemini-3.8-flash');
+          }
+          parsed.pathname = pathname;
+          targetUrl = parsed.toString();
         } catch {
           // Ignore URL parsing failure
         }
@@ -48,20 +67,21 @@ async function startServer() {
         body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
       });
 
-      // If failed due to 400/401/403 and envKey is available on a Gemini endpoint, retry once with env key
-      if (!response.ok && (response.status === 400 || response.status === 401 || response.status === 403) && envGeminiKey && targetUrl.includes('generativelanguage.googleapis.com')) {
+      // If failed on a Gemini endpoint and envKey is available, retry with gemini-3.8-flash and envKey
+      if (!response.ok && envGeminiKey && targetUrl.includes('generativelanguage.googleapis.com')) {
         try {
           const parsed = new URL(targetUrl);
-          if (parsed.searchParams.get('key') !== envGeminiKey) {
-            parsed.searchParams.set('key', envGeminiKey);
-            const retryResponse = await fetch(parsed.toString(), {
-              method,
-              headers: { ...headers },
-              body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
-            });
-            if (retryResponse.ok) {
-              response = retryResponse;
-            }
+          parsed.searchParams.set('key', envGeminiKey);
+          if (parsed.pathname.includes('/models/')) {
+            parsed.pathname = parsed.pathname.replace(/\/models\/[^:]+/, '/models/gemini-3.8-flash');
+          }
+          const retryResponse = await fetch(parsed.toString(), {
+            method,
+            headers: { ...headers },
+            body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+          });
+          if (retryResponse.ok) {
+            response = retryResponse;
           }
         } catch {}
       }
