@@ -17,39 +17,44 @@ jobs:
           fetch-depth: 0
 
       - name: Repair db catalog
-        shell: python
         run: |
+          python3 <<'PY'
           from pathlib import Path
+          import re
+
           p = Path('src/services/db.ts')
           s = p.read_text(encoding='utf-8')
 
           # Remove Cerebras from the built-in provider catalog.
-          import re
           s = re.sub(r"\n  \{\n    id: 'cerebras',[\s\S]*?\n  \},", "", s, count=1)
 
-          # Remove Cerebras built-in model(s), including the stale model kept
-          # in IndexedDB by previous builds.
+          # Remove Cerebras built-in model.
           s = re.sub(r"\n  // cerebras\.ai free-tier model currently listed by Cerebras\n  \{\n    id: 'gpt-oss-120b',[\s\S]*?\n  \},", "", s, count=1)
           s = s.replace("  // Groq free-tier models\n  // Cerebras free API models\n", "")
 
-          # Treat Cerebras as a removed provider so existing IndexedDB records
-          # are purged on the next app load.
-          s = s.replace(
-              "const REMOVED_DEFAULT_PROVIDER_IDS = new Set(['anthropic', 'moonshot', 'qwen', 'siliconflow']);",
-              "const REMOVED_DEFAULT_PROVIDER_IDS = new Set(['anthropic', 'moonshot', 'qwen', 'siliconflow', 'cerebras']);"
-          )
+          # Purge stale Cerebras records from existing IndexedDB installations.
+          old = "const REMOVED_DEFAULT_PROVIDER_IDS = new Set(['anthropic', 'moonshot', 'qwen', 'siliconflow']);"
+          new = "const REMOVED_DEFAULT_PROVIDER_IDS = new Set(['anthropic', 'moonshot', 'qwen', 'siliconflow', 'cerebras']);"
+          if old in s:
+              s = s.replace(old, new, 1)
 
-          # IMPORTANT: older installations already have providers stored in
-          # IndexedDB. The old getProviders() only sorted those records, so a
-          # newly-added Groq provider was never inserted when the DB was
-          # already initialized. Always reconcile missing built-in providers.
-          needle = """      if (results.length === 0) {\n        localStorage.setItem('omnichat_db_initialized', 'true');"""
-          replacement = """      // Reconcile the built-in provider catalog even when IndexedDB was initialized by an older build.\n      const missingProviders = DEFAULT_PROVIDERS.filter(dp => !results.some(p => p.id === dp.id));\n      for (const provider of missingProviders) {\n        store.put(provider);\n        results.push(provider);\n      }\n\n      if (results.length === 0) {\n        localStorage.setItem('omnichat_db_initialized', 'true');"""
+          # Existing users already have providers stored in IndexedDB. Reconcile
+          # missing built-in providers so Groq is inserted into old databases.
+          needle = "      if (results.length === 0) {\n        localStorage.setItem('omnichat_db_initialized', 'true');"
+          replacement = """      const missingProviders = DEFAULT_PROVIDERS.filter(dp => !results.some(p => p.id === dp.id));
+          for (const provider of missingProviders) {
+            store.put(provider);
+            results.push(provider);
+          }
+
+          if (results.length === 0) {
+            localStorage.setItem('omnichat_db_initialized', 'true');"""
           if needle not in s:
               raise SystemExit('provider reconciliation insertion point not found')
           s = s.replace(needle, replacement, 1)
 
           p.write_text(s, encoding='utf-8')
+          PY
 
       - name: Commit repaired catalog
         run: |
