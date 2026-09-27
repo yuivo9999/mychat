@@ -13,7 +13,11 @@ import {
   Check,
   Zap,
   Globe,
-  RefreshCw
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Edit2,
+  Copy
 } from 'lucide-react';
 import { 
   ProviderDefinition, 
@@ -87,13 +91,16 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
 
   // Add Key Modal/Form state
   const [isAddingKey, setIsAddingKey] = useState(false);
-  const [newKeyLabel, setNewKeyLabel] = useState('');
   const [newKeyValue, setNewKeyValue] = useState('');
+
+  // Key View & Edit state
+  const [visibleKeyIds, setVisibleKeyIds] = useState<Record<string, boolean>>({});
+  const [editingKeyId, setEditingKeyId] = useState<string | null>(null);
+  const [editKeyValue, setEditKeyValue] = useState('');
 
   // Add Model Modal/Form state
   const [isAddingModel, setIsAddingModel] = useState(false);
   const [newModelId, setNewModelId] = useState('');
-  const [newModelName, setNewModelName] = useState('');
 
   // Testing connection state
   const [isTesting, setIsTesting] = useState(false);
@@ -113,9 +120,12 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
       if (activeP) {
         setSelectedGroupId(activeP.id);
         setGroupBaseUrl(activeP.defaultBaseUrl || '');
+      } else {
+        setSelectedGroupId('');
+        setGroupBaseUrl('');
       }
-      setDefaultServiceGroupId(settings.defaultProviderId || providers[0]?.id || 'nvidia');
-      setDefaultModelId(currentModelId || settings.defaultModelId || 'deepseek-ai/deepseek-v4.1-flash');
+      setDefaultServiceGroupId(settings.defaultProviderId || providers[0]?.id || '');
+      setDefaultModelId(currentModelId || settings.defaultModelId || models[0]?.id || '');
       setDefaultKeyId(selectedApiKeyId || '');
       setTestResult(null);
     }
@@ -127,6 +137,8 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
     const p = providers.find(item => item.id === pId);
     if (p) {
       setGroupBaseUrl(p.defaultBaseUrl || '');
+    } else {
+      setGroupBaseUrl('');
     }
     setTestResult(null);
     setIsAddingKey(false);
@@ -135,9 +147,9 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentGroup = providers.find(p => p.id === selectedGroupId) || providers[0];
-  const groupModels = models.filter(m => m.providerId === selectedGroupId);
-  const groupKeys = apiKeys.filter(k => k.providerId === selectedGroupId);
+  const currentGroup = providers.find(p => p.id === selectedGroupId) || providers[0] || undefined;
+  const groupModels = currentGroup ? models.filter(m => m.providerId === currentGroup.id) : [];
+  const groupKeys = currentGroup ? apiKeys.filter(k => k.providerId === currentGroup.id) : [];
 
   // Models for Default Service dropdown
   const defaultServiceModels = models.filter(m => m.providerId === defaultServiceGroupId);
@@ -175,31 +187,30 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
     setNewGroupUrl('');
   };
 
-  // Handle Delete Current Group
+  // Handle Delete Current Group (Allows deleting all groups to empty)
   const handleDeleteCurrentGroup = () => {
     if (!currentGroup) return;
-    if (providers.length <= 1) {
-      alert('至少需要保留一个服务组。');
-      return;
-    }
     if (confirm(`确定要删除服务商分组「${currentGroup.name}」及其关联设置吗？`)) {
       onDeleteProvider(currentGroup.id);
       const remaining = providers.filter(p => p.id !== currentGroup.id);
       if (remaining.length > 0) {
         setSelectedGroupId(remaining[0].id);
         setGroupBaseUrl(remaining[0].defaultBaseUrl || '');
+      } else {
+        setSelectedGroupId('');
+        setGroupBaseUrl('');
       }
     }
   };
 
-  // Handle Add API Key
+  // Handle Add API Key (Only Key required, no name field)
   const handleAddKey = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newKeyValue.trim() || !currentGroup) return;
     const keyConfig: ApiKeyConfig = {
       id: `key_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       providerId: currentGroup.id,
-      label: newKeyLabel.trim() || `${currentGroup.name} Key`,
+      label: `${currentGroup.name} Key`,
       apiKey: newKeyValue.trim(),
       baseUrl: groupBaseUrl.trim() || currentGroup.defaultBaseUrl,
       createdAt: Date.now(),
@@ -207,17 +218,17 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
     };
     onSaveApiKey(keyConfig);
     setIsAddingKey(false);
-    setNewKeyLabel('');
     setNewKeyValue('');
   };
 
-  // Handle Add Model
+  // Handle Add Model (Only Model ID required, no name field)
   const handleAddModel = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newModelId.trim() || !currentGroup) return;
+    const modelId = newModelId.trim();
     const newModelItem: ModelItem = {
-      id: newModelId.trim(),
-      name: newModelName.trim() || newModelId.trim(),
+      id: modelId,
+      name: modelId,
       providerId: currentGroup.id,
       supportsVision: false,
       supportsFiles: true,
@@ -229,7 +240,6 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
     onSaveModel(newModelItem);
     setIsAddingModel(false);
     setNewModelId('');
-    setNewModelName('');
   };
 
   // Test Connection
@@ -345,7 +355,24 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
           {/* 1. 服务商 / 账号组 */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-neutral-400">服务商 / 账号组</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-neutral-400">服务商 / 账号组 ({providers.length})</span>
+                {providers.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm('确定要清空删除所有服务商分组吗？这将一并移除所有组的关联配置。')) {
+                        providers.forEach(p => onDeleteProvider(p.id));
+                        setSelectedGroupId('');
+                        setGroupBaseUrl('');
+                      }
+                    }}
+                    className="text-[11px] text-neutral-500 hover:text-red-400 transition"
+                  >
+                    清空所有组
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setIsAddingGroup(true)}
@@ -357,40 +384,54 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
             </div>
 
             {/* Group List Cards */}
-            <div className="space-y-1.5">
-              {providers.map((p) => {
-                const isSelected = p.id === selectedGroupId;
-                const pKeys = apiKeys.filter(k => k.providerId === p.id);
-                const pModels = models.filter(m => m.providerId === p.id);
+            {providers.length === 0 ? (
+              <div className="p-4 rounded-xl bg-[#181c26]/60 border border-dashed border-neutral-800 text-center space-y-2">
+                <p className="text-xs text-neutral-400">暂无服务商分组，已全部删空</p>
+                <button
+                  type="button"
+                  onClick={() => setIsAddingGroup(true)}
+                  className="px-3 py-1.5 text-xs rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-medium inline-flex items-center gap-1.5 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>添加第一个服务组</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {providers.map((p) => {
+                  const isSelected = p.id === selectedGroupId;
+                  const pKeys = apiKeys.filter(k => k.providerId === p.id);
+                  const pModels = models.filter(m => m.providerId === p.id);
 
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => handleSelectGroup(p.id)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition text-left ${
-                      isSelected
-                        ? 'bg-[#221c1f] border-orange-500/60 shadow-xs shadow-orange-950/20'
-                        : 'bg-[#181c26]/80 hover:bg-[#1f2430] border-neutral-800/90 text-neutral-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <span className={`font-semibold ${isSelected ? 'text-orange-200' : 'text-neutral-200'}`}>
-                        {p.name}
-                      </span>
-                      {p.id === 'nvidia' && (
-                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          推荐
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectGroup(p.id)}
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition text-left ${
+                        isSelected
+                          ? 'bg-[#221c1f] border-orange-500/60 shadow-xs shadow-orange-950/20'
+                          : 'bg-[#181c26]/80 hover:bg-[#1f2430] border-neutral-800/90 text-neutral-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className={`font-semibold ${isSelected ? 'text-orange-200' : 'text-neutral-200'}`}>
+                          {p.name}
                         </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-neutral-400">
-                      {pKeys.length} 账号 · {pModels.length} 模型
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+                        {p.id === 'nvidia' && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            推荐
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-neutral-400">
+                        {pKeys.length} 账号 · {pModels.length} 模型
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Add Group Inline Modal/Card */}
             {isAddingGroup && (
@@ -438,7 +479,13 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
           </div>
 
           {/* 2. 服务商详情卡片 */}
-          {currentGroup && (
+          {!currentGroup && providers.length === 0 ? (
+            <div className="bg-[#181c26]/60 border border-dashed border-neutral-800 rounded-xl p-6 text-center space-y-2">
+              <Server className="w-8 h-8 text-neutral-600 mx-auto" />
+              <div className="text-xs font-medium text-neutral-400">目前没有配置任何服务商分组</div>
+              <p className="text-[11px] text-neutral-500">点击上方「新增组」按钮创建服务商后即可添加对应的 API Key 与模型清单</p>
+            </div>
+          ) : currentGroup ? (
             <div className="bg-[#181c26] border border-neutral-800 rounded-xl p-4 space-y-3.5">
               {/* Card Header with +账号, +模型, 删组 */}
               <div className="flex items-center justify-between pb-2 border-b border-neutral-800/80">
@@ -466,6 +513,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                     type="button"
                     onClick={handleDeleteCurrentGroup}
                     className="px-2.5 py-1 text-xs rounded-lg bg-neutral-800/80 hover:bg-red-950/60 text-red-400 border border-neutral-700/60 transition active:scale-95"
+                    title="删除当前服务商组"
                   >
                     删组
                   </button>
@@ -502,60 +550,157 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                     </button>
                   </div>
                   <input
-                    type="text"
-                    placeholder="账号备注 (如: 主账号, 免费测试Key)"
-                    value={newKeyLabel}
-                    onChange={(e) => setNewKeyLabel(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
-                  />
-                  <input
                     type="password"
-                    placeholder="输入 API Key (如 nvapi-... 或 sk-...)"
+                    placeholder="输入或粘贴 API Key (如 nvapi-... 或 sk-...)"
                     value={newKeyValue}
                     onChange={(e) => setNewKeyValue(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs font-mono rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
                     required
+                    autoFocus
                   />
                   <div className="flex justify-end gap-2 pt-1">
-                    <button type="button" onClick={() => setIsAddingKey(false)} className="px-2 py-1 text-xs text-neutral-400">
+                    <button type="button" onClick={() => setIsAddingKey(false)} className="px-2.5 py-1 text-xs text-neutral-400 hover:text-white">
                       取消
                     </button>
-                    <button type="submit" className="px-3 py-1 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white">
-                      保存账号
+                    <button type="submit" className="px-3.5 py-1 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white">
+                      保存 Key
                     </button>
                   </div>
                 </form>
               )}
 
-              {/* 账号清单 (API Keys) */}
-              {groupKeys.length > 0 && (
-                <div className="space-y-1.5">
-                  <div className="text-xs text-neutral-400">已配置账号清单</div>
-                  <div className="space-y-1">
-                    {groupKeys.map((k) => (
-                      <div
-                        key={k.id}
-                        className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#12141c] border border-neutral-800/80 text-xs"
-                      >
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <Key className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                          <span className="font-medium text-neutral-200 truncate">{k.label}</span>
-                          <span className="text-[10px] text-neutral-500 font-mono">
-                            ({k.apiKey.slice(0, 6)}...{k.apiKey.slice(-4)})
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteApiKey(k.id)}
-                          className="px-2 py-0.5 text-xs text-neutral-400 hover:text-red-400 rounded-md hover:bg-red-950/40 transition"
-                        >
-                          删
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+              {/* 账号清单 (API Keys) - 支持全部删空 */}
+              <div className="space-y-1.5">
+                <div className="text-xs text-neutral-400 flex items-center justify-between">
+                  <span>已配置账号清单 ({groupKeys.length})</span>
+                  {groupKeys.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`确定要清空「${currentGroup.name}」下的所有 API Key 账号吗？`)) {
+                          groupKeys.forEach(k => onDeleteApiKey(k.id));
+                        }
+                      }}
+                      className="text-[11px] text-neutral-500 hover:text-red-400 transition"
+                    >
+                      清空账号
+                    </button>
+                  )}
                 </div>
-              )}
+                {groupKeys.length === 0 ? (
+                  <div className="p-3 rounded-xl bg-[#12141c]/70 border border-neutral-800/80 text-center text-xs text-neutral-500">
+                    暂无已配置账号 (API Key)，点击右上角「+ 账号」添加
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {groupKeys.map((k) => {
+                      const isVisible = !!visibleKeyIds[k.id];
+                      const isEditingThis = editingKeyId === k.id;
+
+                      if (isEditingThis) {
+                        return (
+                          <div key={k.id} className="p-2.5 rounded-xl bg-[#131620] border border-orange-500/50 space-y-2 text-xs animate-in fade-in">
+                            <div className="font-bold text-orange-300 text-[11px]">修改 API Key</div>
+                            <input
+                              type="text"
+                              placeholder="输入或粘贴新的 API Key"
+                              value={editKeyValue}
+                              onChange={(e) => setEditKeyValue(e.target.value)}
+                              className="w-full px-2.5 py-1.5 rounded bg-[#1a1e2b] border border-neutral-700 text-white font-mono text-xs focus:outline-hidden focus:border-orange-500"
+                              required
+                              autoFocus
+                            />
+                            <div className="flex justify-end gap-2 pt-0.5">
+                              <button
+                                type="button"
+                                onClick={() => setEditingKeyId(null)}
+                                className="px-2 py-0.5 text-xs text-neutral-400 hover:text-white"
+                              >
+                                取消
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!editKeyValue.trim()) return;
+                                  onSaveApiKey({
+                                    ...k,
+                                    apiKey: editKeyValue.trim(),
+                                  });
+                                  setEditingKeyId(null);
+                                }}
+                                className="px-2.5 py-0.5 text-xs font-semibold rounded bg-orange-600 hover:bg-orange-500 text-white"
+                              >
+                                保存
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={k.id}
+                          className="p-2.5 rounded-xl bg-[#12141c] border border-neutral-800/90 text-xs space-y-1"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Key className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                              <span className="font-mono text-neutral-200 truncate">
+                                {isVisible ? k.apiKey : `${k.apiKey.slice(0, 6)}••••••••••••••••••••${k.apiKey.slice(-4)}`}
+                              </span>
+                            </div>
+
+                            {/* Actions: View/Hide, Edit, Copy, Delete */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setVisibleKeyIds(prev => ({ ...prev, [k.id]: !prev[k.id] }))}
+                                className="p-1 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+                                title={isVisible ? '隐藏 Key' : '查看完整 Key'}
+                              >
+                                {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingKeyId(k.id);
+                                  setEditKeyValue(k.apiKey);
+                                }}
+                                className="p-1 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+                                title="编辑 Key"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(k.apiKey);
+                                  alert('已复制 API Key 到剪贴板');
+                                }}
+                                className="p-1 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+                                title="复制 Key"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => onDeleteApiKey(k.id)}
+                                className="p-1 rounded text-neutral-400 hover:text-red-400 hover:bg-red-950/40 transition"
+                                title="删除 Key"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               {/* Add Model In-place Form */}
               {isAddingModel && (
@@ -568,36 +713,45 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   </div>
                   <input
                     type="text"
-                    placeholder="模型 ID (如 deepseek-ai/deepseek-v4.1-flash, gpt-4o)"
+                    placeholder="输入或粘贴模型 ID (如 deepseek-ai/deepseek-v4.1-flash 或 gpt-4o)"
                     value={newModelId}
                     onChange={(e) => setNewModelId(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs font-mono rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
                     required
-                  />
-                  <input
-                    type="text"
-                    placeholder="模型展示名称 (选填)"
-                    value={newModelName}
-                    onChange={(e) => setNewModelName(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                    autoFocus
                   />
                   <div className="flex justify-end gap-2 pt-1">
-                    <button type="button" onClick={() => setIsAddingModel(false)} className="px-2 py-1 text-xs text-neutral-400">
+                    <button type="button" onClick={() => setIsAddingModel(false)} className="px-2.5 py-1 text-xs text-neutral-400 hover:text-white">
                       取消
                     </button>
-                    <button type="submit" className="px-3 py-1 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white">
+                    <button type="submit" className="px-3.5 py-1 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white">
                       添加模型
                     </button>
                   </div>
                 </form>
               )}
 
-              {/* 模型清单 */}
+              {/* 模型清单 - 支持全部删空 */}
               <div className="space-y-1.5">
-                <div className="text-xs text-neutral-400">模型清单</div>
+                <div className="text-xs text-neutral-400 flex items-center justify-between">
+                  <span>模型清单 ({groupModels.length})</span>
+                  {groupModels.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`确定要清空「${currentGroup.name}」下的所有模型吗？`)) {
+                          groupModels.forEach(m => onDeleteModel(m.id));
+                        }
+                      }}
+                      className="text-[11px] text-neutral-500 hover:text-red-400 transition"
+                    >
+                      清空模型
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-1 max-h-44 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-neutral-700">
                   {groupModels.length === 0 ? (
-                    <div className="text-xs text-neutral-500 py-2 text-center">
+                    <div className="p-3 rounded-xl bg-[#12141c]/70 border border-neutral-800/80 text-center text-xs text-neutral-500">
                       暂无模型，点击右上角「+ 模型」添加
                     </div>
                   ) : (
@@ -623,7 +777,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* 3. 默认模型服务 */}
           <div className="bg-[#181c26] border border-neutral-800 rounded-xl p-4 space-y-3">
@@ -641,6 +795,8 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                     const matchingModels = models.filter(m => m.providerId === newGId);
                     if (matchingModels.length > 0) {
                       setDefaultModelId(matchingModels[0].id);
+                    } else {
+                      setDefaultModelId('');
                     }
                     const matchingKeys = apiKeys.filter(k => k.providerId === newGId);
                     if (matchingKeys.length > 0) {
@@ -651,11 +807,15 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   }}
                   className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
                 >
-                  {providers.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-[#181c26] text-white">
-                      {p.name}
-                    </option>
-                  ))}
+                  {providers.length === 0 ? (
+                    <option value="" className="bg-[#181c26] text-neutral-400">（暂无服务组）</option>
+                  ) : (
+                    providers.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-[#181c26] text-white">
+                        {p.name}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -675,7 +835,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   </option>
                   {defaultServiceKeys.map((k) => (
                     <option key={k.id} value={k.id} className="bg-[#181c26] text-white">
-                      {k.label} ({k.apiKey.slice(0, 4)}...{k.apiKey.slice(-4)})
+                      Key ({k.apiKey.slice(0, 6)}...{k.apiKey.slice(-4)})
                     </option>
                   ))}
                 </select>
@@ -692,11 +852,15 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   onChange={(e) => setDefaultModelId(e.target.value)}
                   className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
                 >
-                  {defaultServiceModels.map((m) => (
-                    <option key={m.id} value={m.id} className="bg-[#181c26] text-white">
-                      {m.name || m.id} {m.id === currentModelId ? '· (现用)' : ''}
-                    </option>
-                  ))}
+                  {defaultServiceModels.length === 0 ? (
+                    <option value="" className="bg-[#181c26] text-neutral-400">（尚未配置模型）</option>
+                  ) : (
+                    defaultServiceModels.map((m) => (
+                      <option key={m.id} value={m.id} className="bg-[#181c26] text-white">
+                        {m.name || m.id} {m.id === currentModelId ? '· (现用)' : ''}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -732,43 +896,71 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
           )}
         </div>
 
-        {/* Bottom Action Footer (Matches Image 3) */}
-        <div className="px-5 py-3.5 border-t border-neutral-800/80 bg-[#151821] flex items-center justify-between gap-3">
-          {/* 测试连接 Button */}
-          <button
-            type="button"
-            onClick={handleTestConnection}
-            disabled={isTesting}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-[#1e2330] hover:bg-[#262c3d] text-neutral-200 border border-neutral-700/80 font-medium text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {isTesting ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin text-orange-400" />
-                <span>正在测试...</span>
-              </>
-            ) : (
-              <>
-                <Activity className="w-4 h-4 text-neutral-400" />
-                <span>测试连接</span>
-              </>
-            )}
-          </button>
+        {/* Bottom Action Footer */}
+        <div className="px-5 py-3 border-t border-neutral-800/80 bg-[#151821] flex items-start justify-between gap-3">
+          {/* 测试连接 Column with Status Feedback Text Right Below */}
+          <div className="flex-1 flex flex-col">
+            <button
+              type="button"
+              onClick={handleTestConnection}
+              disabled={isTesting}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#1e2330] hover:bg-[#262c3d] text-neutral-200 border border-neutral-700/80 font-medium text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isTesting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-orange-400" />
+                  <span>正在测试...</span>
+                </>
+              ) : (
+                <>
+                  <Activity className="w-4 h-4 text-neutral-400" />
+                  <span>测试连接</span>
+                </>
+              )}
+            </button>
 
-          {/* 保存 Button (Glowing Coral/Orange) */}
-          <button
-            type="button"
-            onClick={handleSaveAll}
-            className="flex-1 py-2.5 px-4 rounded-xl bg-linear-to-r from-[#f97316] to-[#ea580c] hover:from-[#fb923c] hover:to-[#f97316] text-white font-semibold text-sm shadow-lg shadow-orange-600/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-          >
-            {showSavedToast ? (
-              <>
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>已保存生效！</span>
-              </>
-            ) : (
-              <span>保存</span>
-            )}
-          </button>
+            {/* 小字反馈连接状态 */}
+            <div className="mt-1.5 px-0.5 text-[11px] leading-tight min-h-[16px]">
+              {isTesting ? (
+                <span className="text-orange-400 font-medium flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3 animate-spin inline shrink-0" />
+                  <span>测试连接中...</span>
+                </span>
+              ) : testResult ? (
+                testResult.success ? (
+                  <span className="text-emerald-400 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 inline shrink-0 text-emerald-400" />
+                    <span>连接OK {testResult.latencyMs !== undefined ? `(延迟: ${testResult.latencyMs}ms)` : ''}</span>
+                  </span>
+                ) : (
+                  <span className="text-red-400 font-medium flex items-start gap-1 break-all" title={testResult.message}>
+                    <AlertCircle className="w-3.5 h-3.5 inline shrink-0 text-red-400 mt-0.5" />
+                    <span>连接失败: {testResult.message}</span>
+                  </span>
+                )
+              ) : (
+                <span className="text-neutral-500">点击发起连通性测试</span>
+              )}
+            </div>
+          </div>
+
+          {/* 保存 Button */}
+          <div className="flex-1 flex flex-col">
+            <button
+              type="button"
+              onClick={handleSaveAll}
+              className="w-full py-2.5 px-4 rounded-xl bg-linear-to-r from-[#f97316] to-[#ea580c] hover:from-[#fb923c] hover:to-[#f97316] text-white font-semibold text-sm shadow-lg shadow-orange-600/30 transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+            >
+              {showSavedToast ? (
+                <>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>已保存生效！</span>
+                </>
+              ) : (
+                <span>保存</span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

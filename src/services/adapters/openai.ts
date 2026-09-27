@@ -1,4 +1,4 @@
-import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError } from './base';
+import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch } from './base';
 import { ApiKeyConfig } from '../../types';
 
 export class OpenAIAdapter implements BaseAdapter {
@@ -166,7 +166,7 @@ export class OpenAIAdapter implements BaseAdapter {
 
     let response: Response;
     try {
-      response = await fetch(endpoint, {
+      response = await executeFetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(bodyPayload),
@@ -285,7 +285,7 @@ export class OpenAIAdapter implements BaseAdapter {
         headers['Authorization'] = `Bearer ${apiKeyConfig.apiKey.trim()}`;
       }
 
-      const res = await fetch(endpoint, {
+      const res = await executeFetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify({

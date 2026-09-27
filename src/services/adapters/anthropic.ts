@@ -1,4 +1,4 @@
-import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError } from './base';
+import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch } from './base';
 import { ApiKeyConfig } from '../../types';
 
 export class AnthropicAdapter implements BaseAdapter {
@@ -118,7 +118,7 @@ export class AnthropicAdapter implements BaseAdapter {
 
     let response: Response;
     try {
-      response = await fetch(endpoint, {
+      response = await executeFetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(bodyPayload),
@@ -200,7 +200,7 @@ export class AnthropicAdapter implements BaseAdapter {
   async testConnection(apiKeyConfig: ApiKeyConfig, modelId = 'claude-3-5-haiku-20241022'): Promise<{ success: boolean; message: string }> {
     try {
       const endpoint = this.resolveEndpoint(apiKeyConfig);
-      const res = await fetch(endpoint, {
+      const res = await executeFetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -24,6 +24,53 @@ export interface BaseAdapter {
   testConnection(apiKeyConfig: ApiKeyConfig, modelId?: string): Promise<{ success: boolean; message: string }>;
 }
 
+export async function executeFetch(
+  targetUrl: string, 
+  init: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    signal?: AbortSignal;
+  }
+): Promise<Response> {
+  const method = init.method || 'POST';
+  const headers = init.headers || {};
+  const body = init.body;
+
+  let parsedBody: any = body;
+  if (typeof body === 'string') {
+    try {
+      parsedBody = JSON.parse(body);
+    } catch {
+      parsedBody = body;
+    }
+  }
+
+  try {
+    // Try via /api/proxy to bypass browser CORS for external LLM endpoints
+    const proxyResponse = await fetch('/api/proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: targetUrl,
+        method,
+        headers,
+        body: parsedBody,
+      }),
+      signal: init.signal,
+    });
+    return proxyResponse;
+  } catch (proxyErr: any) {
+    if (proxyErr.name === 'AbortError') {
+      throw proxyErr;
+    }
+    // Fallback to direct fetch
+    return fetch(targetUrl, init);
+  }
+}
+
 export function parseHttpError(status: number, errorData: any, statusText: string): string {
   let detail = '';
   if (typeof errorData === 'string') {

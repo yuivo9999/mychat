@@ -1,4 +1,4 @@
-import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError } from './base';
+import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch } from './base';
 import { ApiKeyConfig } from '../../types';
 
 export class GeminiAdapter implements BaseAdapter {
@@ -108,7 +108,7 @@ export class GeminiAdapter implements BaseAdapter {
 
     let response: Response;
     try {
-      response = await fetch(endpoint, {
+      response = await executeFetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -195,7 +195,7 @@ export class GeminiAdapter implements BaseAdapter {
   async testConnection(apiKeyConfig: ApiKeyConfig, modelId = 'gemini-2.5-flash'): Promise<{ success: boolean; message: string }> {
     try {
       const endpoint = this.resolveEndpoint(apiKeyConfig, modelId, false);
-      const res = await fetch(endpoint, {
+      const res = await executeFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
