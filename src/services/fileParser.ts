@@ -85,10 +85,10 @@ export function decodeBase64Text(base64: string): string {
 
 export function extractPdfRoughText(base64: string, fileName: string): string {
   const rawString = decodeBase64Text(base64);
-  const textMatches = rawString.match(/\(([^()]+)\)[\\s]*T[jJ]/g);
+  const textMatches = rawString.match(/\(([^()]+)\)[\s]*T[jJ]/g);
   if (textMatches && textMatches.length > 0) {
     const extracted = textMatches
-      .map(m => m.replace(/^[\\s(]+|[)TjJ\\s]+$/g, ''))
+      .map(m => m.replace(/^[\s(]+|[)TjJ\s]+$/g, ''))
       .filter(t => t.length > 1)
       .join(' ');
     if (extracted.trim().length > 30) return extracted.slice(0, 50000);
@@ -115,7 +115,7 @@ export function extractAttachmentText(att: Attachment): string {
 
   if (
     att.type.startsWith('text/') ||
-    /\\.(txt|md|markdown|json|csv|tsv|js|jsx|ts|tsx|html|css|py|java|c|cpp|h|go|rs|sh|yaml|yml|xml|sql|env)$/i.test(att.name)
+    /\.(txt|md|markdown|json|csv|tsv|js|jsx|ts|tsx|html|css|py|java|c|cpp|h|go|rs|sh|yaml|yml|xml|sql|env)$/i.test(att.name)
   ) {
     return decodeBase64Text(att.base64Data).slice(0, 100000);
   }
