@@ -2,6 +2,7 @@
   "name": "react-example",
   "private": true,
   "version": "0.0.0",
+  "description": "OmniChat",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
