@@ -112,6 +112,12 @@ export class OpenAIAdapter implements BaseAdapter {
       ...model.customHeaders,
     };
 
+    // NVIDIA NIM explicitly expects an Accept header. Keep it provider-specific
+    // so other OpenAI-compatible providers retain their minimal request shape.
+    if (apiKeyConfig.providerId === 'nvidia') {
+      headers['Accept'] = stream ? 'text/event-stream' : 'application/json';
+    }
+
     if (apiKeyConfig.apiKey) {
       headers['Authorization'] = `Bearer ${apiKeyConfig.apiKey.trim()}`;
     }
@@ -278,6 +284,9 @@ export class OpenAIAdapter implements BaseAdapter {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
       };
+      if (apiKeyConfig.providerId === 'nvidia') {
+        headers['Accept'] = 'application/json';
+      }
       if (apiKeyConfig.apiKey) {
         headers['Authorization'] = `Bearer ${apiKeyConfig.apiKey.trim()}`;
       }
