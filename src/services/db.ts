@@ -374,6 +374,33 @@ export const DEFAULT_MODELS: ModelItem[] = [
     temperature: 0.7,
   },
 
+  // Google Gemma 4 models hosted by the Gemini API.
+  // Gemma 4 supports native image input; document/text attachments that are
+  // not explicitly supported by the hosted Gemma endpoint remain eligible
+  // for the adapter's explicit local-text fallback.
+  {
+    id: 'gemma-4-31b-it',
+    name: 'Gemma 4 31B IT',
+    providerId: 'google',
+    description: 'Google Gemma 4 31B IT，支持原生图像输入。',
+    supportsVision: true,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 262144,
+    temperature: 0.7,
+  },
+  {
+    id: 'gemma-4-26b-a4b-it',
+    name: 'Gemma 4 26B A4B IT',
+    providerId: 'google',
+    description: 'Google Gemma 4 26B A4B IT，支持原生图像输入。',
+    supportsVision: true,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 262144,
+    temperature: 0.7,
+  },
+
   // OpenRouter fixed free-model roster.
   // Deliberately hard-coded: the app must not depend on the Settings-page
   // auto-refresh/live catalog to expose the free models.
