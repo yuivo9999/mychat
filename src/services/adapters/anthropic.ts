@@ -25,24 +25,17 @@ export class AnthropicAdapter implements BaseAdapter {
     for (const msg of messages) {
       if (msg.role === 'user') {
         const hasAttachments = msg.attachments && msg.attachments.length > 0;
-        
-        if (hasAttachments && model.supportsVision) {
+
+        if (hasAttachments) {
           const contentParts: any[] = [];
-          
           let textWithExtracted = msg.content;
-          for (const att of msg.attachments || []) {
-            if (att.extractedText) {
-              textWithExtracted += `\n\n[附件: ${att.name}]\n${att.extractedText}`;
-            }
-          }
+
           if (textWithExtracted) {
             contentParts.push({ type: 'text', text: textWithExtracted });
           }
 
-          // Images stay as native vision parts. Non-image files use local
-          // text extraction here until a provider-native document upload is available.
           for (const att of msg.attachments || []) {
-            if (att.type.startsWith('image/') && att.dataUrl) {
+            if (att.type.startsWith('image/') && att.dataUrl && model.supportsVision) {
               const matches = att.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
               if (matches) {
                 contentParts.push({
@@ -66,10 +59,10 @@ export class AnthropicAdapter implements BaseAdapter {
                   data: att.base64Data,
                 },
               });
-            } else if (att.base64Data) {
+            } else if (att.base64Data || att.extractedText) {
               contentParts.push({
                 type: 'text',
-                text: `[附件文本: ${att.name}]\n${extractAttachmentText(att)}`,
+                text: `[附件文本: ${att.name}]\\n${extractAttachmentText(att)}`,
               });
             }
           }
@@ -79,15 +72,7 @@ export class AnthropicAdapter implements BaseAdapter {
             content: contentParts.length > 0 ? contentParts : [{ type: 'text', text: '你好' }],
           });
         } else {
-          let text = msg.content;
-          if (hasAttachments) {
-            for (const att of msg.attachments || []) {
-              if (att.extractedText) {
-                text += `\n\n[附件文本: ${att.name}]\n${att.extractedText}`;
-              }
-            }
-          }
-          formattedMessages.push({ role: 'user', content: text });
+          formattedMessages.push({ role: 'user', content: msg.content });
         }
       } else if (msg.role === 'assistant') {
         formattedMessages.push({
