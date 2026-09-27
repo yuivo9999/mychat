@@ -403,12 +403,14 @@ export const DEFAULT_MODELS: ModelItem[] = [
     temperature: 0.7,
   },
 
-  // OpenRouter current free models
+  // OpenRouter fixed free-model roster.
+  // Deliberately hard-coded: the app must not depend on the Settings-page
+  // auto-refresh/live catalog to expose the free models.
   {
     id: 'openrouter/free',
     name: 'OpenRouter Free Router',
     providerId: 'openrouter',
-    description: 'OpenRouter 免费路由：自动选择当前可用的免费模型',
+    description: 'OpenRouter 免费模型：OpenRouter Free Router',
     supportsVision: true,
     supportsFiles: true,
     supportsStreaming: true,
@@ -417,9 +419,9 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
   {
     id: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-    name: 'Nemotron 3 Ultra (OpenRouter Free)',
+    name: 'Nemotron 3 Ultra (Free)',
     providerId: 'openrouter',
-    description: 'OpenRouter 免费模型：NVIDIA Nemotron 3 Ultra',
+    description: 'OpenRouter 免费模型：Nemotron 3 Ultra (Free)',
     supportsVision: false,
     supportsFiles: false,
     supportsStreaming: true,
@@ -428,9 +430,9 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
   {
     id: 'nvidia/nemotron-3.5-lightning:free',
-    name: 'Nemotron 3.5 Lightning (OpenRouter Free)',
+    name: 'Nemotron 3.5 Lightning (Free)',
     providerId: 'openrouter',
-    description: 'OpenRouter 免费模型：NVIDIA Nemotron 3.5 Lightning',
+    description: 'OpenRouter 免费模型：Nemotron 3.5 Lightning (Free)',
     supportsVision: false,
     supportsFiles: false,
     supportsStreaming: true,
@@ -439,25 +441,256 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
   {
     id: 'nvidia/nemotron-3-super-120b-a12b:free',
-    name: 'Nemotron 3 Super (OpenRouter Free)',
+    name: 'Nemotron 3 Super 120B (Free)',
     providerId: 'openrouter',
-    description: 'OpenRouter 当前 $0 免费模型：NVIDIA Nemotron 3 Super',
+    description: 'OpenRouter 免费模型：Nemotron 3 Super 120B (Free)',
     supportsVision: false,
     supportsFiles: false,
     supportsStreaming: true,
-    contextWindow: 262144,
-    temperature: 1,
+    contextWindow: 1000000,
+    temperature: 0.7,
   },
   {
-    id: 'nvidia/nemotron-3-super:free',
-    name: 'Nemotron 3 Super (OpenRouter Free)',
+    id: 'nvidia/nemotron-3-nano-30b-a3b:free',
+    name: 'Nemotron 3 Nano 30B (Free)',
     providerId: 'openrouter',
-    description: 'OpenRouter 当前 $0 免费模型：NVIDIA Nemotron 3 Super',
+    description: 'OpenRouter 免费模型：Nemotron 3 Nano 30B (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 256000,
+    temperature: 0.7,
+  },
+  {
+    id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+    name: 'Nemotron 3 Nano Omni (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Nemotron 3 Nano Omni (Free)',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 256000,
+    temperature: 0.7,
+  },
+  {
+    id: 'nvidia/nemotron-nano-12b-v2-vl:free',
+    name: 'Nemotron Nano 12B 2 VL (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Nemotron Nano 12B 2 VL (Free)',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 128000,
+    temperature: 0.7,
+  },
+  {
+    id: 'nvidia/nemotron-nano-9b-v2:free',
+    name: 'Nemotron Nano 9B V2 (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Nemotron Nano 9B V2 (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 128000,
+    temperature: 0.7,
+  },
+  {
+    id: 'openai/gpt-oss-120b:free',
+    name: 'GPT-OSS 120B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：GPT-OSS 120B (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'openai/gpt-oss-20b:free',
+    name: 'GPT-OSS 20B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：GPT-OSS 20B (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'qwen/qwen3-coder:free',
+    name: 'Qwen3 Coder 480B A35B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Qwen3 Coder 480B A35B (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
+  {
+    id: 'qwen/qwen3-next-80b-a3b-instruct:free',
+    name: 'Qwen3 Next 80B A3B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Qwen3 Next 80B A3B (Free)',
     supportsVision: false,
     supportsFiles: false,
     supportsStreaming: true,
     contextWindow: 262144,
-    temperature: 1,
+    temperature: 0.7,
+  },
+  {
+    id: 'google/gemma-4-26b-a4b-it:free',
+    name: 'Gemma 4 26B A4B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Gemma 4 26B A4B (Free)',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 262144,
+    temperature: 0.7,
+  },
+  {
+    id: 'google/gemma-4-31b-it:free',
+    name: 'Gemma 4 31B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Gemma 4 31B (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 262144,
+    temperature: 0.7,
+  },
+  {
+    id: 'google/gemma-3-27b-it:free',
+    name: 'Gemma 3 27B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Gemma 3 27B (Free)',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'google/gemma-3-12b-it:free',
+    name: 'Gemma 3 12B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Gemma 3 12B (Free)',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'meta-llama/llama-3.3-70b-instruct:free',
+    name: 'Llama 3.3 70B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Llama 3.3 70B (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'meta-llama/llama-3.2-3b-instruct:free',
+    name: 'Llama 3.2 3B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Llama 3.2 3B (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'mistralai/mistral-small-3.1-24b-instruct:free',
+    name: 'Mistral Small 3.1 24B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Mistral Small 3.1 24B (Free)',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'nousresearch/hermes-3-llama-3.1-405b:free',
+    name: 'Hermes 3 405B (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Hermes 3 405B (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'poolside/laguna-m.1:free',
+    name: 'Laguna M.1 (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Laguna M.1 (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 262144,
+    temperature: 0.7,
+  },
+  {
+    id: 'poolside/laguna-xs.2:free',
+    name: 'Laguna XS.2 (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Laguna XS.2 (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 262144,
+    temperature: 0.7,
+  },
+  {
+    id: 'z-ai/glm-4.5-air:free',
+    name: 'GLM 4.5 Air (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：GLM 4.5 Air (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free',
+    name: 'Venice Uncensored (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：Venice Uncensored (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 32768,
+    temperature: 0.7,
+  },
+  {
+    id: 'liquid/lfm-2.5-1.2b-instruct:free',
+    name: 'LFM2.5 1.2B Instruct (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：LFM2.5 1.2B Instruct (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 32768,
+    temperature: 0.7,
+  },
+  {
+    id: 'liquid/lfm-2.5-1.2b-thinking:free',
+    name: 'LFM2.5 1.2B Thinking (Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 免费模型：LFM2.5 1.2B Thinking (Free)',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 32768,
+    temperature: 0.7,
   },
   // OpenAI
   {
@@ -854,53 +1087,6 @@ export async function clearAllApiKeys(): Promise<void> {
   });
 }
 
-// OpenRouter free-model sync: the free roster changes frequently, so do not hard-code
-// a frozen list. The official Models API returns the live catalog.
-const OPENROUTER_FREE_SYNC_KEY = 'omnichat_openrouter_free_models_synced_at_v2';
-const OPENROUTER_FREE_SYNC_INTERVAL = 10 * 60 * 1000;
-
-async function syncOpenRouterFreeModels(store: IDBObjectStore): Promise<ModelItem[]> {
-  try {
-    const lastSync = Number(localStorage.getItem(OPENROUTER_FREE_SYNC_KEY) || '0');
-    if (Date.now() - lastSync < OPENROUTER_FREE_SYNC_INTERVAL) return [];
-
-    const response = await fetch('https://openrouter.ai/api/v1/models?output_modalities=text', {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    });
-    if (!response.ok) return [];
-
-    const payload = await response.json();
-    const liveFreeModels = Array.isArray(payload?.data)
-      ? payload.data.filter((m: any) =>
-          m?.pricing?.prompt === '0' &&
-          m?.pricing?.completion === '0' &&
-          m?.id &&
-          m?.architecture?.output_modalities?.includes('text')
-        )
-      : [];
-
-    const synced: ModelItem[] = liveFreeModels.map((m: any) => ({
-      id: String(m.id),
-      name: String(m.name || m.id),
-      providerId: 'openrouter',
-      description: 'OpenRouter 免费模型：' + String(m.name || m.id),
-      supportsVision: Array.isArray(m.architecture?.input_modalities) && m.architecture.input_modalities.includes('image'),
-      supportsFiles: Array.isArray(m.architecture?.input_modalities) && m.architecture.input_modalities.includes('file'),
-      supportsStreaming: true,
-      contextWindow: typeof m.context_length === 'number' ? m.context_length : undefined,
-      temperature: typeof m.default_parameters?.temperature === 'number' ? m.default_parameters.temperature : 0.7,
-      topP: typeof m.default_parameters?.top_p === 'number' ? m.default_parameters.top_p : undefined,
-    }));
-
-    for (const model of synced) store.put(model);
-    localStorage.setItem(OPENROUTER_FREE_SYNC_KEY, String(Date.now()));
-    return synced;
-  } catch {
-    // Sync failure must never prevent the existing local model list from loading.
-    return [];
-  }
-}
 // Models Operations
 export async function getModels(): Promise<ModelItem[]> {
   const db = await openDB();
@@ -926,7 +1112,7 @@ export async function getModels(): Promise<ModelItem[]> {
         }
       }
 
-      // Check for missing default models and update existing default definitions to clean standard names
+      // Ensure the fixed built-in model roster is present and keep user custom models.
       const updatedResults = results.map(r => {
         const defaultDef = DEFAULT_MODELS.find(dm => dm.id === r.id);
         if (defaultDef && r.name !== defaultDef.name && !r.isCustom) {
@@ -944,17 +1130,6 @@ export async function getModels(): Promise<ModelItem[]> {
         }
       }
 
-      // Always attempt the live OpenRouter free-model sync before returning.
-      // This is intentionally after default seeding so a partially populated
-      // IndexedDB can still receive the complete current free-model roster.
-      const withDefaults = [...updatedResults, ...missingDefaults];
-      const syncedOpenRouterModels = await syncOpenRouterFreeModels(store);
-      if (syncedOpenRouterModels.length > 0) {
-        const byId = new Map(withDefaults.map(m => [m.id, m]));
-        for (const model of syncedOpenRouterModels) byId.set(model.id, model);
-        resolve(Array.from(byId.values()));
-        return;
-      }
       resolve(withDefaults);
     };
     request.onerror = () => reject(request.error);
