@@ -1,5 +1,6 @@
 import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch } from './base';
 import { ApiKeyConfig } from '../../types';
+import { extractAttachmentText } from '../fileParser';
 
 export class AnthropicAdapter implements BaseAdapter {
   private resolveEndpoint(apiKeyConfig: ApiKeyConfig): string {
