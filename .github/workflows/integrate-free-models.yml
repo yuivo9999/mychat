@@ -1,173 +1,36 @@
-name: Integrate Current Free AI Models
+name: Integrate Verified Free AI Models
 
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'src/services/db.ts'
+    paths:
+      - 'scripts/integrate-free-models.py'
+      - '.github/workflows/integrate-free-models.yml'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  integrate-free-models:
+  integrate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Integrate current free model catalog
-        shell: python
-        run: |
-          from pathlib import Path
+      - name: Integrate verified free models into runtime catalog
+        run: python3 scripts/integrate-free-models.py
 
-          path = Path('src/services/db.ts')
-          text = path.read_text(encoding='utf-8')
-
-          nvidia_marker = "  // NVIDIA current free endpoints (verified 2026-09-27)\n"
-          nvidia_models = """  // NVIDIA current free endpoints (verified 2026-09-27)
-          {
-            id: 'deepseek-ai/deepseek-v4.1-flash',
-            name: 'DeepSeek V4.1 Flash (NVIDIA 免费)',
-            providerId: 'nvidia',
-            description: 'NVIDIA Build 当前 Free Endpoint；多模态 MoE。',
-            supportsVision: true,
-            supportsFiles: true,
-            supportsStreaming: true,
-            contextWindow: 1048576,
-            temperature: 0.7,
-            topP: 0.95,
-          },
-          {
-            id: 'z-ai/glm-5.3',
-            name: 'GLM 5.3 (NVIDIA 免费)',
-            providerId: 'nvidia',
-            description: 'NVIDIA Build 当前 Free Endpoint；推理、工具调用、文本对话。',
-            supportsVision: false,
-            supportsFiles: true,
-            supportsStreaming: true,
-            contextWindow: 1048576,
-            temperature: 0.7,
-          },
-          {
-            id: 'z-ai/glm-5.3-flash',
-            name: 'GLM 5.3 Flash (NVIDIA 免费)',
-            providerId: 'nvidia',
-            description: 'NVIDIA Build 当前 Free Endpoint；支持多模态、推理和工具调用。',
-            supportsVision: true,
-            supportsFiles: true,
-            supportsStreaming: true,
-            contextWindow: 1048576,
-            temperature: 0.7,
-          },
-          {
-            id: 'nvidia/nemotron-3.5-lightning-30b-a3b',
-            name: 'Nemotron 3.5 Lightning 30B A3B (NVIDIA 免费)',
-            providerId: 'nvidia',
-            description: 'NVIDIA Build 当前 Free Endpoint；高速 30B A3B MoE。',
-            supportsVision: false,
-            supportsFiles: true,
-            supportsStreaming: true,
-            contextWindow: 1048576,
-            temperature: 0.7,
-          },
-          {
-            id: 'openai/gpt-oss-20b',
-            name: 'GPT-OSS 20B (NVIDIA 免费)',
-            providerId: 'nvidia',
-            description: 'NVIDIA Build 当前 Free Endpoint；OpenAI 开源推理模型。',
-            supportsVision: false,
-            supportsFiles: true,
-            supportsStreaming: true,
-            contextWindow: 131072,
-            temperature: 1,
-          },
-          {
-            id: 'openai/gpt-oss-120b',
-            name: 'GPT-OSS 120B (NVIDIA 免费)',
-            providerId: 'nvidia',
-            description: 'NVIDIA Build 当前 Free Endpoint；OpenAI 开源 MoE 推理模型。',
-            supportsVision: false,
-            supportsFiles: true,
-            supportsStreaming: true,
-            contextWindow: 131072,
-            temperature: 1,
-          },
-          {
-            id: 'nvidia/nemotron-3-super-120b-a12b',
-            name: 'Nemotron 3 Super 120B A12B (NVIDIA 免费)',
-            providerId: 'nvidia',
-            description: 'NVIDIA Build 当前 Free Endpoint；长上下文推理、编码与 Agent。',
-            supportsVision: false,
-            supportsFiles: true,
-            supportsStreaming: true,
-            contextWindow: 1048576,
-            temperature: 1,
-          },
-
-"""
-
-          if nvidia_marker not in text:
-              anchor = "  // Google Gemini Models"
-              if anchor not in text:
-                  raise SystemExit('Could not find Google Gemini model anchor in db.ts')
-              text = text.replace(anchor, nvidia_models + anchor, 1)
-
-          openrouter_marker = "  // OpenRouter current free models (verified 2026-09-27)\n"
-          openrouter_models = """  // OpenRouter current free models (verified 2026-09-27)
-          {
-            id: 'openrouter/free',
-            name: 'OpenRouter Free Router (自动免费模型)',
-            providerId: 'openrouter',
-            description: 'OpenRouter 官方免费路由；自动选择当前可用的免费模型。',
-            supportsVision: true,
-            supportsFiles: false,
-            supportsStreaming: true,
-            contextWindow: 200000,
-            temperature: 0.7,
-          },
-          {
-            id: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-            name: 'Nemotron 3 Ultra (OpenRouter 免费)',
-            providerId: 'openrouter',
-            description: 'OpenRouter 当前 $0 免费模型；NVIDIA Nemotron 3 Ultra。',
-            supportsVision: false,
-            supportsFiles: false,
-            supportsStreaming: true,
-            contextWindow: 1000000,
-            temperature: 0.7,
-          },
-          {
-            id: 'nvidia/nemotron-3.5-lightning:free',
-            name: 'Nemotron 3.5 Lightning (OpenRouter 免费)',
-            providerId: 'openrouter',
-            description: 'OpenRouter 当前 $0 免费模型；NVIDIA Nemotron 3.5 Lightning。',
-            supportsVision: false,
-            supportsFiles: false,
-            supportsStreaming: true,
-            contextWindow: 1000000,
-            temperature: 0.7,
-          },
-
-"""
-
-          if openrouter_marker not in text:
-              anchor = "  // OpenAI"
-              if anchor not in text:
-                  raise SystemExit('Could not find OpenAI model anchor in db.ts')
-              text = text.replace(anchor, openrouter_models + anchor, 1)
-
-          path.write_text(text, encoding='utf-8')
-
-      - name: Commit integrated model catalog
+      - name: Commit runtime catalog
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add src/services/db.ts
-          if git diff --cached --quiet; then
-            echo 'No model catalog changes needed.'
+          if git diff --quiet -- src/services/db.ts; then
+            echo 'No runtime catalog changes needed.'
             exit 0
           fi
-          git commit -m "feat: add current free NVIDIA and OpenRouter models"
+          git add src/services/db.ts
+          git commit -m 'feat: add verified NVIDIA and OpenRouter free models'
           git push
