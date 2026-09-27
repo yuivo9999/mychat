@@ -11,7 +11,8 @@ import {
   SlidersHorizontal,
   FileCode,
   AlertCircle,
-  Server
+  Server,
+  Globe
 } from 'lucide-react';
 import { Attachment, ModelItem, ApiKeyConfig, UserSettings, ModelParameters } from '../types';
 import { parseFileToAttachment, formatFileSize } from '../services/fileParser';
@@ -29,7 +30,9 @@ interface ChatComposerProps {
   onClearQuote?: () => void;
   parameters: ModelParameters;
   onUpdateParameters: (params: ModelParameters) => void;
-  onOpenParameters: () => void;
+  onOpenParameters?: () => void;
+  webAccessEnabled?: boolean;
+  onToggleWebAccess?: (enabled: boolean) => void;
 }
 
 export const ChatComposer: React.FC<ChatComposerProps> = ({
@@ -46,6 +49,8 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   parameters,
   onUpdateParameters,
   onOpenParameters,
+  webAccessEnabled = false,
+  onToggleWebAccess,
 }) => {
   const [content, setContent] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -366,13 +371,26 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               <span className="hidden sm:inline text-[11px]">图片</span>
             </button>
 
+            {/* 访问网络按钮 (默认关闭) */}
             <button
               type="button"
-              onClick={onOpenParameters}
-              className="p-2 rounded-xl text-neutral-500 hover:text-[#84cc16] dark:text-neutral-400 dark:hover:text-[#84cc16] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              title="调整当前模型运行参数 (Parameters: Stream, Max Tokens, Temperature, Top P, Penalties, Stop, Seed)"
+              onClick={() => onToggleWebAccess?.(!webAccessEnabled)}
+              className={`p-2 rounded-xl transition flex items-center gap-1.5 text-xs select-none cursor-pointer ${
+                webAccessEnabled
+                  ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 font-medium shadow-2xs'
+                  : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
+              }`}
+              title={
+                webAccessEnabled
+                  ? '访问网络 (已开启): AI 回答时将自动检索最新网络资料与网页'
+                  : '访问网络 (默认关闭): 点击开启允许 AI 检索互联网资料与网页来回答问题'
+              }
             >
-              <SlidersHorizontal className="w-4 h-4" />
+              <Globe className={`w-4 h-4 ${webAccessEnabled ? 'text-blue-600 dark:text-blue-400' : ''}`} />
+              <span className="hidden sm:inline text-[11px]">访问网络</span>
+              {webAccessEnabled && (
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              )}
             </button>
           </div>
 

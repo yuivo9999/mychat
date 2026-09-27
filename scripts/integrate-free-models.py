@@ -25,7 +25,7 @@ def remove_provider(text: str, provider_id: str) -> str:
     pattern = r"\n  \{\n    id: '" + re.escape(provider_id) + r"',[\s\S]*?\n  \},"
     return re.sub(pattern, '', text, count=1)
 
-for provider_id in ['moonshot', 'qwen', 'siliconflow']:
+for provider_id in ['nvidia', 'zhipu', 'anthropic', 'siliconflow', 'qwen', 'moonshot', 'ollama']:
     # These are removed default groups.
     text = remove_provider(text, provider_id)
 
@@ -36,7 +36,7 @@ def remove_models_for_provider(text: str, provider_id: str) -> str:
     pattern = r"\n  \{\n    id: '[^']+',\n    name: '[^']*',\n    providerId: '" + re.escape(provider_id) + r"',[\s\S]*?\n  \},"
     return re.sub(pattern, '', text)
 
-for provider_id in ['moonshot', 'qwen', 'siliconflow']:
+for provider_id in ['nvidia', 'zhipu', 'anthropic', 'siliconflow', 'qwen', 'moonshot', 'ollama']:
     text = remove_models_for_provider(text, provider_id)
 
 # Remove the old Groq entries and rebuild them with the stable IDs used by the

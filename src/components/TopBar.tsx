@@ -420,6 +420,17 @@ export const TopBar: React.FC<TopBarProps> = ({
                 >
                   <Download className="w-4 h-4" /> 导出当前对话
                 </button>
+                {onOpenParameters && (
+                  <button
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      onOpenParameters();
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                  >
+                    <SlidersHorizontal className="w-4 h-4 text-neutral-500" /> 高级运行参数
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setMoreMenuOpen(false);

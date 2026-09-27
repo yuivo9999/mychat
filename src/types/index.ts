@@ -65,6 +65,20 @@ export interface MessageVersion {
   model?: string;
 }
 
+export interface WebSearchResultItem {
+  title: string;
+  url: string;
+  snippet: string;
+}
+
+export interface ThinkingStep {
+  id: string;
+  icon?: 'github' | 'lightning' | 'search' | 'code' | 'database' | 'brain' | 'file';
+  title: string;
+  status: 'pending' | 'running' | 'completed';
+  timestamp?: number;
+}
+
 export interface Message {
   id: string;
   role: Role;
@@ -77,6 +91,8 @@ export interface Message {
   errorMessage?: string;
   versions?: MessageVersion[];
   currentVersionIndex?: number;
+  webSearchResults?: WebSearchResultItem[];
+  thinkingSteps?: ThinkingStep[];
 }
 
 export interface ModelParameters {
@@ -103,6 +119,7 @@ export interface Conversation {
   category?: string;
   systemPrompt?: string;
   parameters?: ModelParameters;
+  webAccessEnabled?: boolean;
   messages: Message[];
 }
 

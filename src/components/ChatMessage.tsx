@@ -15,11 +15,13 @@ import {
   AlertTriangle,
   FileText,
   Eye,
-  FileCode
+  FileCode,
+  Globe
 } from 'lucide-react';
 import { Message, Attachment, UserSettings } from '../types';
 import { renderMarkdown, getFileExtensionForLang } from '../services/markdown';
 import { formatFileSize } from '../services/fileParser';
+import { ThinkingSteps } from './ThinkingSteps';
 
 interface ChatMessageProps {
   message: Message;
@@ -213,6 +215,53 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Thinking & Action Steps Stream (图片中展示的信息条样式) */}
+        {!isUser && (
+          <ThinkingSteps
+            steps={
+              message.thinkingSteps && message.thinkingSteps.length > 0
+                ? message.thinkingSteps
+                : message.status === 'streaming' && !message.content
+                ? [
+                    {
+                      id: 'default-step-1',
+                      icon: 'github',
+                      title: '分析输入内容与构建模型上下文',
+                      status: 'running',
+                    },
+                  ]
+                : undefined
+            }
+            isStreaming={message.status === 'streaming'}
+            hasContent={Boolean(message.content && message.content.trim().length > 0)}
+          />
+        )}
+
+        {/* Web Search Sources Citation */}
+        {!isUser && message.webSearchResults && message.webSearchResults.length > 0 && (
+          <div className="mb-2.5 p-2 rounded-xl bg-blue-500/5 dark:bg-blue-950/25 border border-blue-500/20 text-xs animate-in fade-in">
+            <div className="flex items-center gap-1.5 font-medium text-blue-600 dark:text-blue-400 mb-1.5">
+              <Globe className="w-3.5 h-3.5 shrink-0" />
+              <span>已参考 {message.webSearchResults.length} 个网络网页资料：</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {message.webSearchResults.map((source, idx) => (
+                <a
+                  key={idx}
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700/80 text-[11px] text-neutral-700 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-400 dark:hover:border-blue-500/50 transition truncate max-w-[240px]"
+                  title={`${source.title}\n${source.snippet}\n${source.url}`}
+                >
+                  <span className="font-mono text-neutral-400 font-semibold">[{idx + 1}]</span>
+                  <span className="truncate">{source.title}</span>
+                </a>
+              ))}
+            </div>
           </div>
         )}
 

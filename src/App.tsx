@@ -8,7 +8,9 @@ import {
   ApiKeyConfig, 
   UserSettings, 
   ConnectionStatus,
-  ModelParameters
+  ModelParameters,
+  WebSearchResultItem,
+  ThinkingStep
 } from './types';
 import { 
   getConversations, 
@@ -32,6 +34,7 @@ import {
   DEFAULT_SETTINGS
 } from './services/db';
 import { getAdapterForProvider } from './services/adapters';
+import { performWebSearch, buildWebSearchContext } from './services/webSearch';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { MessageList } from './components/MessageList';
@@ -85,6 +88,9 @@ export default function App() {
 
   // Model Parameters State (Reasoning, Stream, Max Tokens, Temp, Top P, Penalties, Stop, Seed)
   const [parameters, setParameters] = useState<ModelParameters>(DEFAULT_PARAMETERS);
+
+  // Web Access State (访问网络, 默认关闭 false)
+  const [webAccessEnabled, setWebAccessEnabled] = useState(false);
 
   // Layout & Responsive
   const [isMobile, setIsMobile] = useState(false);
@@ -189,12 +195,17 @@ export default function App() {
   const currentModel = models.find(m => m.id === selectedModelId) || models[0];
   const currentApiKey = apiKeys.find(k => k.id === selectedApiKeyId);
 
-  // Sync parameters with current conversation
+  // Sync parameters and web access with current conversation
   useEffect(() => {
     if (currentConversation?.parameters) {
       setParameters({ ...DEFAULT_PARAMETERS, ...currentConversation.parameters });
     } else {
       setParameters(DEFAULT_PARAMETERS);
+    }
+    if (currentConversation?.webAccessEnabled !== undefined) {
+      setWebAccessEnabled(currentConversation.webAccessEnabled);
+    } else {
+      setWebAccessEnabled(false);
     }
   }, [activeConversationId]);
 
@@ -202,6 +213,20 @@ export default function App() {
     setParameters(newParams);
     if (currentConversation) {
       const updated = { ...currentConversation, parameters: newParams, updatedAt: Date.now() };
+      saveConversation(updated);
+      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+    }
+  };
+
+  // Toggle Web Access (默认关闭)
+  const handleToggleWebAccess = (enabled: boolean) => {
+    setWebAccessEnabled(enabled);
+    if (currentConversation) {
+      const updated = {
+        ...currentConversation,
+        webAccessEnabled: enabled,
+        updatedAt: Date.now(),
+      };
       saveConversation(updated);
       setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
     }
@@ -218,11 +243,13 @@ export default function App() {
       providerId: currentModel?.providerId || DEFAULT_SETTINGS.defaultProviderId,
       apiKeyId: selectedApiKeyId,
       parameters: parameters,
+      webAccessEnabled: false, // 默认关闭
       messages: [],
     };
 
     setConversations(prev => [newConv, ...prev]);
     setActiveConversationId(newConv.id);
+    setWebAccessEnabled(false);
     saveConversation(newConv);
 
     if (isMobile) {
@@ -326,6 +353,42 @@ export default function App() {
       attachments,
     };
 
+    const initialThinkingSteps: ThinkingStep[] = [
+      {
+        id: `step_analyze_${Date.now()}`,
+        icon: 'github',
+        title: '获取上下文并分析模型交互配置',
+        status: 'completed',
+      },
+    ];
+
+    if (attachments && attachments.length > 0) {
+      initialThinkingSteps.push({
+        id: `step_att_${Date.now()}`,
+        icon: 'code',
+        title: `审查解析多模态附件数据（${attachments.length} 个文件）`,
+        status: 'completed',
+      });
+    }
+
+    if (webAccessEnabled) {
+      initialThinkingSteps.push({
+        id: `step_search_${Date.now()}`,
+        icon: 'lightning',
+        title: '正在联网检索最新网页与参考资料...',
+        status: 'running',
+      });
+    } else {
+      initialThinkingSteps.push({
+        id: `step_engine_${Date.now()}`,
+        icon: 'github',
+        title: `调用 ${currentModel.name} 推理引擎并准备输出`,
+        status: 'running',
+      });
+    }
+
+    let currentThinkingSteps = [...initialThinkingSteps];
+
     const assistantMsgId = `msg_a_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const assistantMessage: Message = {
       id: assistantMsgId,
@@ -335,6 +398,7 @@ export default function App() {
       model: currentModel.name,
       providerId: currentModel.providerId,
       status: 'streaming',
+      thinkingSteps: currentThinkingSteps,
       versions: [{ content: '', timestamp: Date.now(), model: currentModel?.name }],
       currentVersionIndex: 0,
     };
@@ -352,6 +416,7 @@ export default function App() {
       providerId: currentModel.providerId,
       apiKeyId: selectedApiKeyId,
       parameters: targetConv.parameters || parameters,
+      webAccessEnabled,
       messages: updatedMessages,
     };
 
@@ -369,14 +434,77 @@ export default function App() {
     const adapter = getAdapterForProvider(currentModel.providerId);
     let accumulatedText = '';
 
+    // Web Search Grounding (if 访问网络 is enabled)
+    let webResults: WebSearchResultItem[] = [];
+    let webContext = '';
+
+    if (webAccessEnabled) {
+      setStatusMessage('正在联网检索最新网页与资料...');
+      try {
+        const searchRes = await performWebSearch(text);
+        if (searchRes.results.length > 0 || searchRes.pageContents.length > 0) {
+          webResults = searchRes.results;
+          webContext = buildWebSearchContext(searchRes);
+
+          // Update thinking steps with search result count (精确还原图片展示)
+          const updatedSteps: ThinkingStep[] = currentThinkingSteps.map(s => {
+            if (s.id.startsWith('step_search_')) {
+              return {
+                ...s,
+                icon: 'lightning',
+                title: `已搜索 ${webResults.length} 个网站`,
+                status: 'completed',
+              };
+            }
+            return s;
+          });
+
+          if (searchRes.pageContents.length > 0) {
+            updatedSteps.push({
+              id: `step_page_${Date.now()}`,
+              icon: 'search',
+              title: `审查并读取 ${searchRes.pageContents.length} 个目标网页正文`,
+              status: 'completed',
+            });
+          }
+
+          updatedSteps.push({
+            id: `step_engine_${Date.now()}`,
+            icon: 'github',
+            title: `调用 ${currentModel.name} 推理引擎并组织回答`,
+            status: 'running',
+          });
+
+          currentThinkingSteps = updatedSteps;
+
+          setConversations(prev => prev.map(c => {
+            if (c.id !== updatedConv.id) return c;
+            return {
+              ...c,
+              messages: c.messages.map(m => m.id === assistantMsgId ? { ...m, thinkingSteps: updatedSteps } : m),
+            };
+          }));
+        }
+      } catch (searchErr) {
+        console.warn('Web search error:', searchErr);
+      }
+    }
+
     try {
       const activeParams = updatedConv.parameters || parameters;
+      const baseSystemPrompt = targetConv.systemPrompt || settings.defaultSystemPrompt;
+      const effectiveSystemPrompt = webContext
+        ? (baseSystemPrompt ? `${baseSystemPrompt}\n\n${webContext}` : webContext)
+        : baseSystemPrompt;
+
+      setStatusMessage('AI 正在组织回答...');
+
       await adapter.sendMessage(
         {
           model: currentModel,
           apiKeyConfig: currentApiKey,
           messages: [...targetConv.messages, userMessage],
-          systemPrompt: targetConv.systemPrompt || settings.defaultSystemPrompt,
+          systemPrompt: effectiveSystemPrompt,
           temperature: currentModel.temperature,
           maxTokens: currentModel.maxTokens,
           topP: currentModel.topP,
@@ -387,6 +515,7 @@ export default function App() {
         settings.enableStreaming ? {
           onChunk: (chunk: string) => {
             accumulatedText += chunk;
+            const completedSteps = currentThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
             setConversations(prev => prev.map(c => {
               if (c.id !== updatedConv.id) return c;
               return {
@@ -405,6 +534,8 @@ export default function App() {
                     content: accumulatedText,
                     status: 'streaming',
                     versions,
+                    thinkingSteps: completedSteps,
+                    webSearchResults: webResults.length > 0 ? webResults : undefined,
                   };
                 }),
               };
@@ -417,6 +548,7 @@ export default function App() {
       );
 
       // Generation successful
+      const finalCompletedSteps = currentThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
       setConversations(prev => prev.map(c => {
         if (c.id !== updatedConv.id) return c;
         const finalMessages = c.messages.map(m => {
@@ -430,6 +562,8 @@ export default function App() {
             content: accumulatedText,
             status: 'completed' as const,
             versions,
+            thinkingSteps: finalCompletedSteps,
+            webSearchResults: webResults.length > 0 ? webResults : m.webSearchResults,
           };
         });
         const finalConv = { ...c, messages: finalMessages, updatedAt: Date.now() };
@@ -503,12 +637,27 @@ export default function App() {
     const adapter = getAdapterForProvider(currentModel.providerId);
     let accumulatedText = '';
 
+    const retryThinkingSteps: ThinkingStep[] = [
+      {
+        id: `step_retry_${Date.now()}`,
+        icon: 'github',
+        title: '获取历史上下文并重新配置模型',
+        status: 'completed',
+      },
+      {
+        id: `step_retry_engine_${Date.now()}`,
+        icon: 'github',
+        title: `调用 ${currentModel.name} 推理引擎重新生成`,
+        status: 'running',
+      },
+    ];
+
     // Persist the streaming state before the network request.
     const streamingConversation = {
       ...currentConversation,
       messages: currentConversation.messages.map(m =>
         m.id === messageId
-          ? { ...m, content: '', status: 'streaming' as const, errorMessage: undefined }
+          ? { ...m, content: '', status: 'streaming' as const, errorMessage: undefined, thinkingSteps: retryThinkingSteps }
           : m
       ),
       updatedAt: Date.now(),
@@ -534,11 +683,12 @@ export default function App() {
         settings.enableStreaming ? {
           onChunk: (chunk: string) => {
             accumulatedText += chunk;
+            const completedSteps = retryThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
             setConversations(prev => prev.map(c => {
               if (c.id !== currentConversation.id) return c;
               return {
                 ...c,
-                messages: c.messages.map(m => m.id === messageId ? { ...m, content: accumulatedText, status: 'streaming' } : m),
+                messages: c.messages.map(m => m.id === messageId ? { ...m, content: accumulatedText, status: 'streaming', thinkingSteps: completedSteps } : m),
               };
             }));
           },
@@ -546,11 +696,12 @@ export default function App() {
       );
 
       // Save success
+      const finalSteps = retryThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
       setConversations(prev => prev.map(c => {
         if (c.id !== currentConversation.id) return c;
         const updated = {
           ...c,
-          messages: c.messages.map(m => m.id === messageId ? { ...m, content: accumulatedText, status: 'completed' as const } : m),
+          messages: c.messages.map(m => m.id === messageId ? { ...m, content: accumulatedText, status: 'completed' as const, thinkingSteps: finalSteps } : m),
           updatedAt: Date.now(),
         };
         saveConversation(updated);
@@ -604,6 +755,21 @@ export default function App() {
     if (targetMsg.role === 'user') {
       const trimmedMessages = currentConversation.messages.slice(0, msgIndex + 1);
       const assistantMsgId = `msg_a_${Date.now()}`;
+      const regenThinkingSteps: ThinkingStep[] = [
+        {
+          id: `step_analyze_${Date.now()}`,
+          icon: 'github',
+          title: '获取上下文并分析模型交互配置',
+          status: 'completed',
+        },
+        {
+          id: `step_engine_${Date.now()}`,
+          icon: 'github',
+          title: `调用 ${currentModel.name} 推理引擎重新生成`,
+          status: 'running',
+        },
+      ];
+
       const assistantMessage: Message = {
         id: assistantMsgId,
         role: 'assistant',
@@ -612,6 +778,7 @@ export default function App() {
         model: currentModel.name,
         providerId: currentModel.providerId,
         status: 'streaming',
+        thinkingSteps: regenThinkingSteps,
         versions: [{ content: '', timestamp: Date.now(), model: currentModel.name }],
         currentVersionIndex: 0,
       };
@@ -648,6 +815,7 @@ export default function App() {
           settings.enableStreaming ? {
             onChunk: (chunk: string) => {
               accumulatedText += chunk;
+              const completedSteps = regenThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
               setConversations(prev => prev.map(c => {
                 if (c.id !== updatedConv.id) return c;
                 const messages = c.messages.map(m => {
@@ -656,7 +824,7 @@ export default function App() {
                   if (versions.length > 0) {
                     versions[0] = { ...versions[0], content: accumulatedText };
                   }
-                  return { ...m, content: accumulatedText, status: 'streaming' as const, versions };
+                  return { ...m, content: accumulatedText, status: 'streaming' as const, versions, thinkingSteps: completedSteps };
                 });
                 return { ...c, messages, updatedAt: Date.now() };
               }));
@@ -667,6 +835,7 @@ export default function App() {
           } : undefined
         );
 
+        const finalSteps = regenThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
         setConversations(prev => prev.map(c => {
           if (c.id !== updatedConv.id) return c;
           const finalC = {
@@ -677,7 +846,7 @@ export default function App() {
               if (versions.length > 0) {
                 versions[0] = { ...versions[0], content: accumulatedText };
               }
-              return { ...m, content: accumulatedText, status: 'completed' as const, versions };
+              return { ...m, content: accumulatedText, status: 'completed' as const, versions, thinkingSteps: finalSteps };
             }),
             updatedAt: Date.now(),
           };
@@ -695,7 +864,11 @@ export default function App() {
                 ...m,
                 content: accumulatedText || '（已手动停止生成）',
                 status: 'completed' as const,
-                versions: [{ ...(m.versions?.[0] || {}), content: accumulatedText || '（已手动停止生成）' }],
+                versions: [{
+                  content: accumulatedText || '（已手动停止生成）',
+                  timestamp: m.versions?.[0]?.timestamp ?? Date.now(),
+                  model: m.versions?.[0]?.model,
+                }],
               };
             }
             return { ...m, status: 'error' as const, errorMessage: err?.message || '重新生成失败' };
@@ -726,6 +899,21 @@ export default function App() {
     const adapter = getAdapterForProvider(currentModel.providerId);
     let accumulatedText = '';
 
+    const versionThinkingSteps: ThinkingStep[] = [
+      {
+        id: `step_analyze_${Date.now()}`,
+        icon: 'github',
+        title: '获取上下文并分析模型交互配置',
+        status: 'completed',
+      },
+      {
+        id: `step_engine_${Date.now()}`,
+        icon: 'github',
+        title: `调用 ${currentModel.name} 推理引擎生成新版本`,
+        status: 'running',
+      },
+    ];
+
     setConversations(prev => prev.map(c => {
       if (c.id !== currentConversation.id) return c;
       return {
@@ -736,6 +924,7 @@ export default function App() {
             ...m,
             content: '',
             status: 'streaming',
+            thinkingSteps: versionThinkingSteps,
             versions: [...prevVersions, { content: '', timestamp: Date.now(), model: currentModel.name }],
             currentVersionIndex: newVersionIndex,
           };
@@ -752,6 +941,7 @@ export default function App() {
           ...m,
           content: '',
           status: 'streaming' as const,
+          thinkingSteps: versionThinkingSteps,
           versions: [...prevVersions, { content: '', timestamp: Date.now(), model: currentModel.name }],
           currentVersionIndex: newVersionIndex,
         };
@@ -778,6 +968,7 @@ export default function App() {
         settings.enableStreaming ? {
           onChunk: (chunk: string) => {
             accumulatedText += chunk;
+            const completedSteps = versionThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
             setConversations(prev => prev.map(c => {
               if (c.id !== currentConversation.id) return c;
               return {
@@ -786,7 +977,7 @@ export default function App() {
                   if (m.id !== messageId) return m;
                   const v = [...(m.versions || [])];
                   v[newVersionIndex] = { content: accumulatedText, timestamp: Date.now(), model: currentModel.name };
-                  return { ...m, content: accumulatedText, versions: v };
+                  return { ...m, content: accumulatedText, versions: v, thinkingSteps: completedSteps };
                 }),
               };
             }));
@@ -794,6 +985,7 @@ export default function App() {
         } : undefined
       );
 
+      const finalSteps = versionThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
       setConversations(prev => prev.map(c => {
         if (c.id !== currentConversation.id) return c;
         const finalC = {
@@ -802,8 +994,9 @@ export default function App() {
             if (m.id !== messageId) return m;
             const v = [...(m.versions || [])];
             v[newVersionIndex] = { content: accumulatedText, timestamp: Date.now(), model: currentModel.name };
-            return { ...m, content: accumulatedText, status: 'completed' as const, versions: v };
+            return { ...m, content: accumulatedText, status: 'completed' as const, versions: v, thinkingSteps: finalSteps };
           }),
+          updatedAt: Date.now(),
         };
         saveConversation(finalC);
         return finalC;
@@ -1210,6 +1403,8 @@ export default function App() {
           parameters={parameters}
           onUpdateParameters={handleUpdateParameters}
           onOpenParameters={() => setIsParametersOpen(true)}
+          webAccessEnabled={webAccessEnabled}
+          onToggleWebAccess={handleToggleWebAccess}
         />
       </div>
 
