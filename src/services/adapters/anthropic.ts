@@ -39,10 +39,10 @@ export class AnthropicAdapter implements BaseAdapter {
             contentParts.push({ type: 'text', text: textWithExtracted });
           }
 
-          // Images
+          // Images stay as native vision parts. Non-image files use local
+          // text extraction here until a provider-native document upload is available.
           for (const att of msg.attachments || []) {
             if (att.type.startsWith('image/') && att.dataUrl) {
-              // extract base64 from dataUrl
               const matches = att.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
               if (matches) {
                 contentParts.push({
@@ -54,6 +54,11 @@ export class AnthropicAdapter implements BaseAdapter {
                   },
                 });
               }
+            } else if (att.base64Data) {
+              contentParts.push({
+                type: 'text',
+                text: `[附件文本: ${att.name}]\n${extractAttachmentText(att)}`,
+              });
             }
           }
 
