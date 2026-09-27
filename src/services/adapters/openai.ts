@@ -282,11 +282,7 @@ export class OpenAIAdapter implements BaseAdapter {
         headers['Authorization'] = `Bearer ${apiKeyConfig.apiKey.trim()}`;
       }
 
-      if (apiKeyConfig.providerId === 'openrouter') {
-        headers['HTTP-Referer'] = window.location.origin;
-        headers['X-Title'] = 'OmniChat Local AI';
-      }
-
+      // Keep the connection probe to OpenRouter's standard headers only.
       const res = await executeFetch(endpoint, {
         method: 'POST',
         headers,
