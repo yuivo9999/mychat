@@ -215,7 +215,7 @@ export default function App() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       modelId: selectedModelId,
-      providerId: currentModel?.providerId || 'google',
+      providerId: currentModel?.providerId || DEFAULT_SETTINGS.defaultProviderId,
       apiKeyId: selectedApiKeyId,
       parameters: parameters,
       messages: [],
@@ -355,9 +355,9 @@ export default function App() {
       messages: updatedMessages,
     };
 
-    // Update state & persist
+    // Persist the initial streaming state before starting the request.
     setConversations(prev => prev.map(c => c.id === updatedConv.id ? updatedConv : c));
-    saveConversation(updatedConv);
+    await saveConversation(updatedConv);
 
     setIsGenerating(true);
     setConnectionStatus('requesting');
