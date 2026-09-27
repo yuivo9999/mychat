@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Conversation, 
   Message, 
@@ -11,14 +11,24 @@ import {
   ModelParameters,
   WebSearchResultItem,
   ThinkingStep,
+  Workspace,
   WorkspaceFile,
-  ProjectMemoryItem,
+  ChatContext,
   ToolCallExecution
 } from './types';
 import { 
-  DEFAULT_PROJECT_MEMORIES, 
-  exportAndDownloadWorkspaceZip 
-} from './services/workspace';
+  getWorkspaces,
+  saveWorkspace,
+  deleteWorkspace,
+  createEmptyWorkspace,
+  createWorkspaceSnapshot,
+  packageWorkspaceToZip,
+  getModifiedFilesAgainstOriginal
+} from './services/workspaceService';
+import { 
+  updateChatContext, 
+  prepareChatHistoryWithLocalCompaction 
+} from './services/chatContextService';
 import { 
   buildAgentSystemPrompt, 
   extractToolCallsFromResponse, 
@@ -106,9 +116,9 @@ export default function App() {
   // Web Access State (访问网络, 默认关闭 false)
   const [webAccessEnabled, setWebAccessEnabled] = useState(false);
 
-  // AI Workspace & Project Memory State
-  const [workspaceFiles, setWorkspaceFiles] = useState<WorkspaceFile[]>([]);
-  const [projectMemories, setProjectMemories] = useState<ProjectMemoryItem[]>(DEFAULT_PROJECT_MEMORIES);
+  // AI Workspace State (Strictly decoupled from Chat Memory)
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | undefined>(undefined);
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [agentMode, setAgentMode] = useState(true);
 
@@ -151,13 +161,14 @@ export default function App() {
   useEffect(() => {
     async function init() {
       try {
-        const [settingsResult, providersResult, modelsResult, keysResult, conversationsResult] =
+        const [settingsResult, providersResult, modelsResult, keysResult, conversationsResult, workspacesResult] =
           await Promise.allSettled([
             getUserSettings(),
             getProviders(),
             getModels(),
             getApiKeys(),
             getConversations(),
+            getWorkspaces(),
           ]);
 
         const loadedSettings = settingsResult.status === 'fulfilled' ? settingsResult.value : DEFAULT_SETTINGS;
@@ -165,18 +176,22 @@ export default function App() {
         const loadedModels = modelsResult.status === 'fulfilled' ? modelsResult.value : [];
         const loadedKeys = keysResult.status === 'fulfilled' ? keysResult.value : [];
         const loadedConversations = conversationsResult.status === 'fulfilled' ? conversationsResult.value : [];
+        let loadedWorkspaces: Workspace[] = workspacesResult.status === 'fulfilled' ? (workspacesResult.value as Workspace[]) : [];
 
-        if (settingsResult.status === 'rejected') console.error('Failed to load settings:', settingsResult.reason);
-        if (providersResult.status === 'rejected') console.error('Failed to load providers:', providersResult.reason);
-        if (modelsResult.status === 'rejected') console.error('Failed to load models:', modelsResult.reason);
-        if (keysResult.status === 'rejected') console.error('Failed to load API keys:', keysResult.reason);
-        if (conversationsResult.status === 'rejected') console.error('Failed to load conversations:', conversationsResult.reason);
+        // If no workspace exists yet, create an initial clean project workspace
+        if (loadedWorkspaces.length === 0) {
+          const initialWs = createEmptyWorkspace('我的工作区');
+          await saveWorkspace(initialWs);
+          loadedWorkspaces = [initialWs];
+        }
 
         setSettings(loadedSettings);
         setProviders(loadedProviders);
         setModels(loadedModels);
         setApiKeys(loadedKeys);
         setConversations(loadedConversations);
+        setWorkspaces(loadedWorkspaces);
+        setActiveWorkspaceId(loadedWorkspaces[0]?.id);
 
         const initialModel =
           loadedModels.find(m => m.id === loadedSettings.defaultModelId) || loadedModels[0];
@@ -215,7 +230,26 @@ export default function App() {
   const currentModel = models.find(m => m.id === selectedModelId) || models[0];
   const currentApiKey = apiKeys.find(k => k.id === selectedApiKeyId);
 
-  // Sync parameters, web access, workspace and memory with current conversation
+  // Resolved active workspace for current chat or selection
+  const currentWorkspace: Workspace | null = useMemo(() => {
+    if (currentConversation?.workspaceId) {
+      const matched = workspaces.find(w => w.id === currentConversation.workspaceId);
+      if (matched) return matched;
+    }
+    if (activeWorkspaceId) {
+      const matched = workspaces.find(w => w.id === activeWorkspaceId);
+      if (matched) return matched;
+    }
+    return workspaces[0] || null;
+  }, [workspaces, currentConversation?.workspaceId, activeWorkspaceId]);
+
+  // Count modified files against original baseline
+  const modifiedFilesCountAgainstOriginal = useMemo(() => {
+    if (!currentWorkspace) return 0;
+    return getModifiedFilesAgainstOriginal(currentWorkspace).length;
+  }, [currentWorkspace]);
+
+  // Sync parameters, web access, and workspace binding when active conversation switches
   useEffect(() => {
     if (currentConversation?.parameters) {
       setParameters({ ...DEFAULT_PARAMETERS, ...currentConversation.parameters });
@@ -232,59 +266,69 @@ export default function App() {
     } else {
       setAgentMode(true);
     }
-    if (currentConversation?.workspaceFiles) {
-      setWorkspaceFiles(currentConversation.workspaceFiles);
-    }
-    if (currentConversation?.projectMemory && currentConversation.projectMemory.length > 0) {
-      setProjectMemories(currentConversation.projectMemory);
+    if (currentConversation?.workspaceId) {
+      setActiveWorkspaceId(currentConversation.workspaceId);
     }
   }, [activeConversationId]);
 
-  const handleUpdateWorkspaceFiles = (newFiles: WorkspaceFile[]) => {
-    setWorkspaceFiles(newFiles);
+  // Workspace CRUD handlers
+  const handleSaveWorkspaceState = async (updatedWs: Workspace) => {
+    await saveWorkspace(updatedWs);
+    setWorkspaces(prev => {
+      const idx = prev.findIndex(w => w.id === updatedWs.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = updatedWs;
+        return copy;
+      }
+      return [updatedWs, ...prev];
+    });
+  };
+
+  const handleSelectWorkspaceForCurrentChat = async (workspaceId: string) => {
+    setActiveWorkspaceId(workspaceId);
     if (currentConversation) {
-      const updated = {
+      const updatedConv = {
         ...currentConversation,
-        workspaceFiles: newFiles,
+        workspaceId,
         updatedAt: Date.now(),
       };
-      saveConversation(updated);
-      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+      await saveConversation(updatedConv);
+      setConversations(prev => prev.map(c => c.id === updatedConv.id ? updatedConv : c));
     }
   };
 
-  const handleUpdateProjectMemories = (newMemories: ProjectMemoryItem[]) => {
-    setProjectMemories(newMemories);
-    if (currentConversation) {
-      const updated = {
-        ...currentConversation,
-        projectMemory: newMemories,
-        updatedAt: Date.now(),
-      };
-      saveConversation(updated);
-      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+  const handleDeleteWorkspaceSafe = async (workspaceId: string) => {
+    if (confirm('确认删除此工作区？注意：删除工作区仅移除该项目文件，绝不会影响任何聊天记录。')) {
+      await deleteWorkspace(workspaceId);
+      const remaining = workspaces.filter(w => w.id !== workspaceId);
+      setWorkspaces(remaining);
+      setActiveWorkspaceId(remaining[0]?.id);
+    }
+  };
+
+  const handleDownloadWorkspaceZipAction = async () => {
+    if (!currentWorkspace || Object.keys(currentWorkspace.files).length === 0) {
+      alert('当前工作区没有可下载的文件');
+      return;
+    }
+    try {
+      const blob = await packageWorkspaceToZip(currentWorkspace);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentWorkspace.name}-v${currentWorkspace.currentVersion}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(`打包下载失败: ${err.message || '未知错误'}`);
     }
   };
 
   const handleToggleAgentMode = (enabled: boolean) => {
     setAgentMode(enabled);
-    if (currentConversation) {
-      const updated = {
-        ...currentConversation,
-        agentMode: enabled,
-        updatedAt: Date.now(),
-      };
-      saveConversation(updated);
-      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
-    }
-  };
-
-  const handleDownloadWorkspaceZip = async () => {
-    if (workspaceFiles.length === 0) {
-      alert('当前工作区没有文件，请先上传文件或让 AI 创建文件。');
-      return;
-    }
-    await exportAndDownloadWorkspaceZip(workspaceFiles);
   };
 
   const handleUpdateParameters = (newParams: ModelParameters) => {
@@ -575,24 +619,40 @@ export default function App() {
         ? (baseSystemPrompt ? `${baseSystemPrompt}\n\n${webContext}` : webContext)
         : baseSystemPrompt;
 
-      // If Agent Mode is enabled, inject workspace tools protocol and project memory
-      if (agentMode) {
+      let wsToOperate: Workspace | null = currentWorkspace ? JSON.parse(JSON.stringify(currentWorkspace)) : null;
+
+      // If Agent Mode is enabled, inject workspace tools protocol and THIS chat's isolated context
+      if (agentMode && wsToOperate) {
         effectiveSystemPrompt = buildAgentSystemPrompt(
-          workspaceFiles,
-          projectMemories,
+          wsToOperate,
+          targetConv.chatContext,
           effectiveSystemPrompt
         );
       }
 
       setStatusMessage(agentMode ? 'Agent 正在分析任务与工作区...' : 'AI 正在组织回答...');
 
-      let currentWorkspace = [...workspaceFiles];
-      let currentMem = [...projectMemories];
       const executedToolCalls: ToolCallExecution[] = [];
       const modifiedPaths = new Set<string>();
-      let currentHistoryMessages = [...targetConv.messages, userMessage];
+
+      // Prepare local compaction for THIS single chat (Chat A never shares history with Chat B)
+      const { compactedSummary, effectiveMessages } = prepareChatHistoryWithLocalCompaction(targetConv.messages);
+      let currentHistoryMessages = [...effectiveMessages, userMessage];
+
+      if (compactedSummary) {
+        currentHistoryMessages = [
+          {
+            id: `msg_compact_${Date.now()}`,
+            role: 'system' as any,
+            content: compactedSummary,
+            timestamp: Date.now(),
+          },
+          ...currentHistoryMessages,
+        ];
+      }
+
       let turn = 0;
-      const maxAgentTurns = agentMode ? 6 : 1;
+      const maxAgentTurns = agentMode && wsToOperate ? 6 : 1;
       let finalFullText = '';
 
       while (turn < maxAgentTurns) {
@@ -653,20 +713,18 @@ export default function App() {
         finalFullText = turnAccumulatedText;
 
         // Check if response contains tool calls
-        if (agentMode) {
+        if (agentMode && wsToOperate) {
           const detectedToolCalls = extractToolCallsFromResponse(turnAccumulatedText);
 
           if (detectedToolCalls.length > 0) {
-            // Execute each detected tool
             const toolResultsForPrompt: string[] = [];
 
             for (const tc of detectedToolCalls) {
               const execId = `tool_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
               setStatusMessage(`Agent 正在执行: ${tc.tool}...`);
 
-              const outcome = await executeWorkspaceTool(tc.tool, tc.args, currentWorkspace, currentMem);
-              currentWorkspace = outcome.updatedFiles;
-              currentMem = outcome.updatedMemories;
+              const outcome = await executeWorkspaceTool(tc.tool, tc.args, wsToOperate);
+              wsToOperate = outcome.updatedWorkspace;
 
               if (outcome.diff?.path) {
                 modifiedPaths.add(outcome.diff.path);
@@ -683,7 +741,7 @@ export default function App() {
                 timestamp: Date.now(),
               });
 
-              // Add a ThinkingStep to UI log (如同用户图片中的执行条目)
+              // Add a ThinkingStep to UI log
               currentThinkingSteps.push({
                 id: `step_exec_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
                 icon: outcome.stepIcon || 'github',
@@ -696,9 +754,8 @@ export default function App() {
               );
             }
 
-            // Sync updated workspace and memory to state and conversation
-            handleUpdateWorkspaceFiles(currentWorkspace);
-            handleUpdateProjectMemories(currentMem);
+            // Sync updated workspace to state
+            await handleSaveWorkspaceState(wsToOperate);
 
             // Append assistant response and tool feedback to conversation history for next turn
             currentHistoryMessages.push({
@@ -711,7 +768,7 @@ export default function App() {
             currentHistoryMessages.push({
               id: `msg_tool_feedback_${turn}_${Date.now()}`,
               role: 'user',
-              content: `[工具执行结果反馈]\n${toolResultsForPrompt.join('\n\n')}\n\n请审查执行结果。若还需修改其他文件、验证代码或记录项目记忆，请继续输出工具调用；若任务全部完成，请给出清晰的中文总结与改动说明。`,
+              content: `[工作区工具执行结果反馈]\n${toolResultsForPrompt.join('\n\n')}\n\n请审查执行结果。若还需查看其他文件、修改代码或对比 diff，请继续输出工具调用；若全部任务已完成，请给出结构化的中文总结，列出本次修改了哪些文件与改动内容。注意：你无法运行代码，提醒用户自行在本地运行测试。`,
               timestamp: Date.now(),
             });
 
@@ -725,11 +782,29 @@ export default function App() {
         break;
       }
 
-      // Generation successful
+      // If files were modified in workspace, create a version snapshot (v2, v3...)
+      if (wsToOperate && modifiedPaths.size > 0) {
+        wsToOperate = createWorkspaceSnapshot(
+          wsToOperate,
+          `AI修改: ${text.slice(0, 24) || '批量代码修改'}`,
+          'agent'
+        );
+        await handleSaveWorkspaceState(wsToOperate);
+      }
+
+      // Clean final answer
       let cleanedFinalAnswer = cleanResponseText(finalFullText);
       if (modifiedPaths.size > 0) {
-        cleanedFinalAnswer += `\n\n> 📦 **项目工作区已更新**：Agent 已修改文件 \`${Array.from(modifiedPaths).join('`, `')}\`。您可以点击右上角「工作区」或下方按钮查看代码差异并重新打包下载 (.zip)。`;
+        cleanedFinalAnswer += `\n\n> 📦 **项目工作区已更新**：AI 已修改文件 \`${Array.from(modifiedPaths).join('`, `')}\`。\n> ⚠️ **运行与测试提示**：AI 仅负责分析与修改代码，未在云端运行任何代码或执行测试。请您在本地运行并测试代码；若遇到报错，请将错误信息贴回本聊天中，AI 将继续为您排查修复。`;
       }
+
+      // Update THIS chat's isolated private context memory
+      const updatedChatContext = updateChatContext(
+        targetConv.chatContext,
+        text,
+        cleanedFinalAnswer,
+        Array.from(modifiedPaths)
+      );
 
       const finalCompletedSteps = currentThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
       setConversations(prev => prev.map(c => {
@@ -753,9 +828,9 @@ export default function App() {
         });
         const finalConv = { 
           ...c, 
-          messages: finalMessages, 
-          workspaceFiles: currentWorkspace,
-          projectMemory: currentMem,
+          messages: finalMessages,
+          workspaceId: wsToOperate?.id || c.workspaceId,
+          chatContext: updatedChatContext,
           updatedAt: Date.now() 
         };
         saveConversation(finalConv);
@@ -1559,7 +1634,9 @@ export default function App() {
           onCopyAllChat={handleCopyAllChat}
           onOpenParameters={() => setIsParametersOpen(true)}
           isReasoningEnabled={parameters.enableReasoning}
-          workspaceFilesCount={workspaceFiles.length}
+          workspaceFilesCount={currentWorkspace ? Object.keys(currentWorkspace.files).length : 0}
+          workspaceName={currentWorkspace?.name}
+          modifiedFilesCount={modifiedFilesCountAgainstOriginal}
           onOpenWorkspace={() => setIsWorkspaceOpen(true)}
           agentMode={agentMode}
           onToggleAgentMode={handleToggleAgentMode}
@@ -1578,7 +1655,7 @@ export default function App() {
           onQuote={(q) => setQuotedText(q)}
           onSwitchVersion={handleSwitchVersion}
           onSelectPrompt={(p) => handleSendMessage(p, [])}
-          onDownloadWorkspaceZip={handleDownloadWorkspaceZip}
+          onDownloadWorkspaceZip={handleDownloadWorkspaceZipAction}
         />
 
         {/* Large AI Composer Input Area */}
@@ -1693,10 +1770,11 @@ export default function App() {
       <WorkspaceDrawer
         isOpen={isWorkspaceOpen}
         onClose={() => setIsWorkspaceOpen(false)}
-        files={workspaceFiles}
-        memories={projectMemories}
-        onUpdateFiles={handleUpdateWorkspaceFiles}
-        onUpdateMemories={handleUpdateProjectMemories}
+        workspaces={workspaces}
+        activeWorkspaceId={currentWorkspace?.id}
+        onSelectWorkspace={handleSelectWorkspaceForCurrentChat}
+        onSaveWorkspace={handleSaveWorkspaceState}
+        onDeleteWorkspace={handleDeleteWorkspaceSafe}
       />
     </div>
   );

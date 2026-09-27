@@ -7,7 +7,7 @@ import {
 } from '../types';
 
 const DB_NAME = 'OmniChatLocalDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
   {
@@ -467,8 +467,53 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('settings')) {
         db.createObjectStore('settings');
       }
+      if (!db.objectStoreNames.contains('workspaces')) {
+        const store = db.createObjectStore('workspaces', { keyPath: 'id' });
+        store.createIndex('updatedAt', 'updatedAt', { unique: false });
+      }
     };
     request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Workspace Operations
+export async function getWorkspaces(): Promise<any[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('workspaces', 'readonly').objectStore('workspaces').getAll();
+    request.onsuccess = () => {
+      const list = (request.result as any[]) || [];
+      list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      resolve(list);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getWorkspace(id: string): Promise<any | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('workspaces', 'readonly').objectStore('workspaces').get(id);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function saveWorkspace(workspace: any): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('workspaces', 'readwrite').objectStore('workspaces').put(workspace);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function deleteWorkspace(id: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('workspaces', 'readwrite').objectStore('workspaces').delete(id);
+    request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
   });
 }

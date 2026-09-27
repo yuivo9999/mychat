@@ -66,7 +66,7 @@ export interface MessageVersion {
 }
 
 export * from './workspace';
-import { WorkspaceFile, ProjectMemoryItem, ToolCallExecution } from './workspace';
+import { WorkspaceFile, Workspace, WorkspaceSnapshot, FileDiffItem, ChatContext, ToolCallExecution } from './workspace';
 
 export interface WebSearchResultItem {
   title: string;
@@ -125,9 +125,9 @@ export interface Conversation {
   systemPrompt?: string;
   parameters?: ModelParameters;
   webAccessEnabled?: boolean;
-  agentMode?: boolean; // 启用 Agent 自动化模式
-  workspaceFiles?: WorkspaceFile[];
-  projectMemory?: ProjectMemoryItem[];
+  agentMode?: boolean; // 启用 Agent 自动化工作区模式
+  workspaceId?: string; // 关联绑定的工作区 ID (Chat A 和 Chat B 可绑定同一工作区，但聊天记忆严格隔离)
+  chatContext?: ChatContext; // 当前 Chat 独占的会话上下文记忆（工作笔记、任务状态、需求，不与其它 Chat 共享）
   messages: Message[];
 }
 

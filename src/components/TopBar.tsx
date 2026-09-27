@@ -47,6 +47,8 @@ interface TopBarProps {
   onOpenParameters?: () => void;
   isReasoningEnabled?: boolean;
   workspaceFilesCount?: number;
+  workspaceName?: string;
+  modifiedFilesCount?: number;
   onOpenWorkspace?: () => void;
   agentMode?: boolean;
   onToggleAgentMode?: (enabled: boolean) => void;
@@ -75,6 +77,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenParameters,
   isReasoningEnabled,
   workspaceFilesCount = 0,
+  workspaceName,
+  modifiedFilesCount = 0,
   onOpenWorkspace,
   agentMode = true,
   onToggleAgentMode,
@@ -406,13 +410,20 @@ export const TopBar: React.FC<TopBarProps> = ({
             type="button"
             onClick={onOpenWorkspace}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/80 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-medium transition cursor-pointer shadow-2xs"
-            title="打开 AI 工作区与项目记忆面板"
+            title="打开工作区面板（管理文件、查看改动 Diff、打包下载 ZIP）"
           >
             <Folder className="w-3.5 h-3.5 text-indigo-500" />
-            <span>工作区</span>
+            <span className="truncate max-w-[120px]">
+              {workspaceName || '工作区'}
+            </span>
             {workspaceFilesCount > 0 && (
               <span className="px-1.5 py-0.2 rounded-full bg-indigo-600 text-white text-[10px] font-bold">
                 {workspaceFilesCount}
+              </span>
+            )}
+            {modifiedFilesCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px] font-bold" title={`${modifiedFilesCount} 个文件已修改`}>
+                {modifiedFilesCount}改
               </span>
             )}
           </button>
