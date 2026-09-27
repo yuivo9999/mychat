@@ -10,87 +10,55 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-  // JSON Body parser with high limit for image & doc attachments
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-  // Universal API Proxy endpoint to bypass browser CORS for LLM providers
+  // Same-origin server proxy. This is required when the browser cannot call an
+  // external provider directly because of CORS. Provider keys can be supplied
+  // by the UI or, preferably in a hosted deployment, by environment variables.
   app.post('/api/proxy', async (req, res) => {
     const { url, method = 'POST', headers = {}, body } = req.body;
-    if (!url) {
+    if (!url || typeof url !== 'string') {
       return res.status(400).json({ error: { message: 'Missing target URL' } });
     }
 
     try {
-      let targetUrl = url;
-      const envGeminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+      const parsed = new URL(url);
+      const targetHost = parsed.hostname.toLowerCase();
+      const forwardedHeaders: Record<string, string> = { ...headers };
 
-      // Smart fallback for Google Gemini endpoints with default/test/env keys
-      if (targetUrl.includes('generativelanguage.googleapis.com') && envGeminiKey) {
-        try {
-          const parsed = new URL(targetUrl);
-          const currentKey = (parsed.searchParams.get('key') || '').trim();
-          const isDummyOrTestKey = 
-            !currentKey ||
-            currentKey.toLowerCase().includes('test') ||
-            currentKey.toLowerCase().includes('mock') ||
-            currentKey.toLowerCase().includes('default') ||
-            currentKey.toLowerCase().includes('google') ||
-            currentKey.includes('AIzaSy_') ||
-            currentKey === 'undefined' ||
-            currentKey.length < 35;
+      // Never leak a query-string Gemini key into logs, browser history, or
+      // intermediary URLs. Gemini accepts x-goog-api-key as a request header.
+      if (targetHost === 'generativelanguage.googleapis.com') {
+        const envGeminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+        const queryKey = parsed.searchParams.get('key') || '';
+        const headerKey = forwardedHeaders['x-goog-api-key'] || forwardedHeaders['X-Goog-Api-Key'] || '';
+        const key = envGeminiKey || headerKey || queryKey;
+        parsed.searchParams.delete('key');
+        delete forwardedHeaders['x-goog-api-key'];
+        delete forwardedHeaders['X-Goog-Api-Key'];
+        if (key) forwardedHeaders['x-goog-api-key'] = key;
+      }
 
-          if (isDummyOrTestKey) {
-            parsed.searchParams.set('key', envGeminiKey);
-          }
-
-          // Map deprecated/legacy model names in URL to supported models
-          let pathname = parsed.pathname;
-          if (pathname.includes('/models/gemini-1.5-flash') || pathname.includes('/models/gemini-2.5-flash') || pathname.includes('/models/gemini-2.0-flash')) {
-            pathname = pathname.replace(/\/models\/gemini-[12]\.[05]-flash(-8b)?/, '/models/gemini-3.8-flash');
-          } else if (pathname.includes('/models/gemini-1.5-pro') || pathname.includes('/models/gemini-2.5-pro')) {
-            pathname = pathname.replace(/\/models\/gemini-[12]\.[05]-pro/, '/models/gemini-3.8-flash');
-          }
-          parsed.pathname = pathname;
-          targetUrl = parsed.toString();
-        } catch {
-          // Ignore URL parsing failure
+      // NVIDIA uses the OpenAI-compatible Bearer authorization header. If the
+      // deployment provides NVIDIA_API_KEY, use it only when the client did
+      // not already supply Authorization.
+      if (targetHost === 'integrate.api.nvidia.com') {
+        const envNvidiaKey = process.env.NVIDIA_API_KEY;
+        const hasAuthorization = Object.keys(forwardedHeaders).some(k => k.toLowerCase() === 'authorization');
+        if (envNvidiaKey && !hasAuthorization) {
+          forwardedHeaders.Authorization = `Bearer ${envNvidiaKey}`;
         }
       }
 
-      // Forward request from backend
-      let response = await fetch(targetUrl, {
+      const targetUrl = parsed.toString();
+      const response = await fetch(targetUrl, {
         method,
-        headers: {
-          ...headers,
-        },
+        headers: forwardedHeaders,
         body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
       });
 
-      // If failed on a Gemini endpoint and envKey is available, retry with healthy models
-      if (!response.ok && envGeminiKey && targetUrl.includes('generativelanguage.googleapis.com')) {
-        for (const candidate of ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.8-flash']) {
-          try {
-            const parsed = new URL(targetUrl);
-            parsed.searchParams.set('key', envGeminiKey);
-            if (parsed.pathname.includes('/models/')) {
-              parsed.pathname = parsed.pathname.replace(/\/models\/[^:]+/, `/models/${candidate}`);
-            }
-            const retryResponse = await fetch(parsed.toString(), {
-              method,
-              headers: { ...headers },
-              body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
-            });
-            if (retryResponse.ok) {
-              response = retryResponse;
-              break;
-            }
-          } catch {}
-        }
-      }
-
       res.status(response.status);
-
       const contentType = response.headers.get('content-type') || '';
       const isEventStream = contentType.includes('text/event-stream') || contentType.includes('stream');
 
@@ -99,7 +67,6 @@ async function startServer() {
         res.setHeader('Cache-Control', 'no-cache, no-transform');
         res.setHeader('Connection', 'keep-alive');
         res.setHeader('X-Accel-Buffering', 'no');
-
         const reader = response.body.getReader();
         while (true) {
           const { done, value } = await reader.read();
@@ -117,21 +84,19 @@ async function startServer() {
         }
       }
     } catch (err: any) {
-      console.error('Server proxy error for URL:', url, err);
+      console.error('Server proxy error:', err?.message || err);
       res.status(502).json({
         error: {
-          message: err.message || 'Server proxy failed to connect to the target endpoint',
+          message: err?.message || 'Server proxy failed to connect to the target endpoint',
         },
       });
     }
   });
 
-  // Health check endpoint
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: Date.now() });
   });
 
-  // In development, mount Vite middleware
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -139,7 +104,6 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    // In production, serve built dist
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('*', (req, res) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
