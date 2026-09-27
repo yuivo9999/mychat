@@ -21,7 +21,7 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
   {
     id: 'google',
     name: 'Google Gemini',
-    description: 'Gemini 2.5 Flash, Gemini 1.5 Pro 高性价比多模态模型',
+    description: 'Google Gemini / Gemma 多模态模型',
     icon: 'Sparkles',
     defaultBaseUrl: 'https://generativelanguage.googleapis.com',
     enabled: true,
@@ -340,51 +340,16 @@ export const DEFAULT_MODELS: ModelItem[] = [
     contextWindow: 1048576,
     temperature: 0.7,
   },
-  {
-    id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash (自动升级 3.8)',
-    providerId: 'google',
-    description: '经典 1.5 Flash 代号，系统在后端自动平滑兼容至官方最新 3.8 Flash 引擎执行',
-    supportsVision: true,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 1048576,
-    temperature: 0.7,
-  },
-  {
-    id: 'gemini-1.5-pro',
-    name: 'Gemini 1.5 Pro (自动升级 3.8)',
-    providerId: 'google',
-    description: '经典 1.5 Pro 代号，系统在后端自动平滑兼容至官方最新引擎执行',
-    supportsVision: true,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 1048576,
-    temperature: 0.7,
-  },
-  {
-    id: 'gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash (自动升级 3.8)',
-    providerId: 'google',
-    description: '经典 2.5 Flash 代号，系统在后端自动平滑兼容至官方最新 3.8 Flash 引擎执行',
-    supportsVision: true,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 1048576,
-    temperature: 0.7,
-  },
 
-  // Google Gemma 4 models hosted by the Gemini API.
-  // Gemma 4 supports native image input; document/text attachments that are
-  // not explicitly supported by the hosted Gemma endpoint remain eligible
-  // for the adapter's explicit local-text fallback.
+  // Google Gemini and Gemma models share the Gemini API attachment transport.
+  // File routing is centralized in googleFileSupport.ts, not duplicated per model.
   {
     id: 'gemma-4-31b-it',
     name: 'Gemma 4 31B IT',
     providerId: 'google',
-    description: 'Google Gemma 4 31B IT，支持原生图像输入。',
+    description: 'Google Gemma 4 31B IT，支持原生图像与 PDF/文本文件输入。',
     supportsVision: true,
-    supportsFiles: false,
+    supportsFiles: true,
     supportsStreaming: true,
     contextWindow: 262144,
     temperature: 0.7,
@@ -393,9 +358,9 @@ export const DEFAULT_MODELS: ModelItem[] = [
     id: 'gemma-4-26b-a4b-it',
     name: 'Gemma 4 26B A4B IT',
     providerId: 'google',
-    description: 'Google Gemma 4 26B A4B IT，支持原生图像输入。',
+    description: 'Google Gemma 4 26B A4B IT，支持原生图像与 PDF/文本文件输入。',
     supportsVision: true,
-    supportsFiles: false,
+    supportsFiles: true,
     supportsStreaming: true,
     contextWindow: 262144,
     temperature: 0.7,
