@@ -181,7 +181,7 @@ export const DEFAULT_MODELS: ModelItem[] = [
 
   // NVIDIA current Free Endpoints (verified against NVIDIA Build)
   {
-    id: 'z-ai/glm-5-3',
+    id: 'z-ai/glm-5.3',
     name: 'GLM 5.3 (NVIDIA Free)',
     providerId: 'nvidia',
     description: 'NVIDIA Free Endpoint：Z.ai GLM 5.3',
@@ -192,7 +192,7 @@ export const DEFAULT_MODELS: ModelItem[] = [
     temperature: 0.7,
   },
   {
-    id: 'z-ai/glm-5-3-flash',
+    id: 'z-ai/glm-5.3-flash',
     name: 'GLM 5.3 Flash (NVIDIA Free)',
     providerId: 'nvidia',
     description: 'NVIDIA Free Endpoint：Z.ai GLM 5.3 Flash，多模态',
