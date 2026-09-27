@@ -1,11 +1,128 @@
 from pathlib import Path
+import subprocess
 
 path = Path('src/services/db.ts')
 text = path.read_text(encoding='utf-8')
 
+# The catalog migration previously damaged the tail of db.ts. Restore the
+# complete stable database implementation from the known-good commit while
+# preserving the current provider/model catalog above the implementation.
+good_ref = '5fe90ad70f5d86f863f216e16dd18b1b336765fa'
+good = subprocess.check_output(
+    ['git', 'show', f'{good_ref}:src/services/db.ts'], text=True
+)
+marker = '// API Key Operations'
+good_pos = good.find(marker)
+current_pos = text.find(marker)
+if good_pos == -1 or current_pos == -1:
+    raise SystemExit('db.ts database implementation marker not found')
+text = text[:current_pos] + good[good_pos:]
+
+# Keep the current catalog's provider/model definitions, but ensure the
+# built-in provider set is exactly the intended one.
+def remove_provider(text: str, provider_id: str) -> str:
+    import re
+    pattern = r"\n  \{\n    id: '" + re.escape(provider_id) + r"',[\s\S]*?\n  \},"
+    return re.sub(pattern, '', text, count=1)
+
+for provider_id in ['anthropic', 'moonshot', 'qwen', 'siliconflow', 'cerebras', 'ollama']:
+    # These are removed default groups; OpenRouter's own Qwen/Anthropic models
+    # are separate and remain untouched because they use providerId=openrouter.
+    text = remove_provider(text, provider_id)
+
+# Remove obsolete default-model blocks by providerId, but preserve any models
+# from those vendors routed through OpenRouter/NVIDIA/Groq.
+def remove_models_for_provider(text: str, provider_id: str) -> str:
+    import re
+    pattern = r"\n  \{\n    id: '[^']+',\n    name: '[^']*',\n    providerId: '" + re.escape(provider_id) + r"',[\s\S]*?\n  \},"
+    return re.sub(pattern, '', text)
+
+for provider_id in ['anthropic', 'moonshot', 'qwen', 'siliconflow', 'cerebras', 'ollama']:
+    text = remove_models_for_provider(text, provider_id)
+
+# Remove the old Groq entries and rebuild them with the stable IDs used by the
+# current runtime. NVIDIA's identical GPT-OSS IDs are deliberately left alone
+# in its own catalog; IndexedDB migration handles stale collisions by model id.
+for model_id in [
+    'groq/openai/gpt-oss-120b',
+    'groq/openai/gpt-oss-20b',
+    'groq/openai/gpt-oss-safeguard-20b',
+    'groq/qwen/qwen3.8-27b',
+    'cerebras/gpt-oss-120b',
+    'cerebras/llama3.1-8b',
+]:
+    import re
+    text = re.sub(
+        r"\n  \{\n    id: '" + re.escape(model_id) + r"',[\s\S]*?\n  \},",
+        '', text, count=1
+    )
+
+# Normalize the provider slot to Groq.com.
+text = text.replace("id: 'ollama',\n    name: 'Ollama (本地私有大模型)',\n    description: '无需联网，在本地电脑运行 Llama 3, DeepSeek, Qwen',\n    icon: 'HardDrive',\n    defaultBaseUrl: 'http://localhost:11434',",
+                    "id: 'groq',\n    name: 'groq.com',\n    description: 'Groq.com 免费层高速推理（OpenAI 兼容 API）',\n    icon: 'Zap',\n    defaultBaseUrl: 'https://api.groq.com/openai/v1',")
+text = text.replace("name: 'Groq (免费高速推理)'", "name: 'groq.com'")
+text = text.replace("name: 'Cerebras (免费高速推理)'", "name: 'cerebras.ai'")
+
+# Remove Cerebras from the provider catalog if an old copy survived.
+text = remove_provider(text, 'cerebras')
+
 nvidia_marker = "  // Google Gemini Models (免费层与最新前沿模型)"
 openrouter_marker = "  // OpenAI"
 
+groq_models = r'''  // Groq.com Free Plan models.
+  {
+    id: 'openai/gpt-oss-120b',
+    name: 'GPT-OSS 120B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层 GPT-OSS 120B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'openai/gpt-oss-20b',
+    name: 'GPT-OSS 20B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层 GPT-OSS 20B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'openai/gpt-oss-safeguard-20b',
+    name: 'GPT-OSS Safeguard 20B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层 GPT-OSS Safeguard 20B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'qwen/qwen3.8-27b',
+    name: 'Qwen 3.8 27B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层 Qwen 3.8 27B，多模态',
+    supportsVision: true,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+'''
+
+# Remove any current Groq model block and insert exactly one authoritative set.
+text = remove_models_for_provider(text, 'groq')
+if nvidia_marker not in text:
+    raise SystemExit('NVIDIA/Gemini catalog marker not found')
+text = text.replace(nvidia_marker, groq_models + nvidia_marker, 1)
+
+# Keep the existing NVIDIA/OpenRouter free catalog integration logic below.
 nvidia_models = r'''  // NVIDIA current Free Endpoints (verified against NVIDIA Build)
   {
     id: 'z-ai/glm-5-3',
@@ -51,29 +168,11 @@ nvidia_models = r'''  // NVIDIA current Free Endpoints (verified against NVIDIA 
     contextWindow: 1048576,
     temperature: 1,
   },
-  {
-    id: 'openai/gpt-oss-20b',
-    name: 'GPT-OSS 20B (NVIDIA Free)',
-    providerId: 'nvidia',
-    description: 'NVIDIA Free Endpoint：OpenAI GPT-OSS 20B。',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 1,
-  },
-  {
-    id: 'openai/gpt-oss-120b',
-    name: 'GPT-OSS 120B (NVIDIA Free)',
-    providerId: 'nvidia',
-    description: 'NVIDIA Free Endpoint：OpenAI GPT-OSS 120B。',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 1,
-  },
 '''
+if "id: 'z-ai/glm-5-3'" not in text:
+    if nvidia_marker not in text:
+        raise SystemExit('NVIDIA insertion marker not found')
+    text = text.replace(nvidia_marker, nvidia_models + nvidia_marker, 1)
 
 openrouter_models = r'''  // OpenRouter current free models
   {
@@ -88,17 +187,6 @@ openrouter_models = r'''  // OpenRouter current free models
     temperature: 0.7,
   },
   {
-    id: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-    name: 'Nemotron 3 Ultra (OpenRouter Free)',
-    providerId: 'openrouter',
-    description: 'OpenRouter 当前 $0 免费模型：NVIDIA Nemotron 3 Ultra',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 1000000,
-    temperature: 0.7,
-  },
-  {
     id: 'nvidia/nemotron-3.5-lightning:free',
     name: 'Nemotron 3.5 Lightning (OpenRouter Free)',
     providerId: 'openrouter',
@@ -109,61 +197,11 @@ openrouter_models = r'''  // OpenRouter current free models
     contextWindow: 1000000,
     temperature: 0.7,
   },
-  {
-    id: 'nvidia/nemotron-3-super:free',
-    name: 'Nemotron 3 Super (OpenRouter Free)',
-    providerId: 'openrouter',
-    description: 'OpenRouter 当前 $0 免费模型：NVIDIA Nemotron 3 Super',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 262144,
-    temperature: 1,
-  },
 '''
-
-changed = False
-
-if "id: 'z-ai/glm-5-3'" not in text:
-    if nvidia_marker not in text:
-        raise SystemExit('NVIDIA insertion marker not found')
-    text = text.replace(nvidia_marker, nvidia_models + nvidia_marker, 1)
-    changed = True
-else:
-    # Add any later NVIDIA entries that were not present in the first integration pass.
-    anchor = nvidia_marker
-    additions = []
-    if "id: 'nvidia/nemotron-3-super-120b-a12b'" not in text:
-        additions.append(nvidia_models.split("  {\n    id: 'nvidia/nemotron-3.5-lightning-30b-a3b'")[1] if False else '''  {\n    id: 'nvidia/nemotron-3-super-120b-a12b',\n    name: 'Nemotron 3 Super 120B A12B (NVIDIA Free)',\n    providerId: 'nvidia',\n    description: 'NVIDIA Free Endpoint：Nemotron 3 Super，1M 上下文。',\n    supportsVision: false,\n    supportsFiles: false,\n    supportsStreaming: true,\n    contextWindow: 1048576,\n    temperature: 1,\n  },\n''')
-    if "id: 'openai/gpt-oss-20b'" not in text:
-        additions.append('''  {\n    id: 'openai/gpt-oss-20b',\n    name: 'GPT-OSS 20B (NVIDIA Free)',\n    providerId: 'nvidia',\n    description: 'NVIDIA Free Endpoint：OpenAI GPT-OSS 20B。',\n    supportsVision: false,\n    supportsFiles: false,\n    supportsStreaming: true,\n    contextWindow: 131072,\n    temperature: 1,\n  },\n''')
-    if "id: 'openai/gpt-oss-120b'" not in text:
-        additions.append('''  {\n    id: 'openai/gpt-oss-120b',\n    name: 'GPT-OSS 120B (NVIDIA Free)',\n    providerId: 'nvidia',\n    description: 'NVIDIA Free Endpoint：OpenAI GPT-OSS 120B。',\n    supportsVision: false,\n    supportsFiles: false,\n    supportsStreaming: true,\n    contextWindow: 131072,\n    temperature: 1,\n  },\n''')
-    if additions:
-        text = text.replace(anchor, ''.join(additions) + anchor, 1)
-        changed = True
-
 if "id: 'openrouter/free'" not in text:
     if openrouter_marker not in text:
         raise SystemExit('OpenRouter insertion marker not found')
     text = text.replace(openrouter_marker, openrouter_models + openrouter_marker, 1)
-    changed = True
-else:
-    additions = []
-    if "id: 'nvidia/nemotron-3-super:free'" not in text:
-        additions.append('''  {\n    id: 'nvidia/nemotron-3-super:free',\n    name: 'Nemotron 3 Super (OpenRouter Free)',\n    providerId: 'openrouter',\n    description: 'OpenRouter 当前 $0 免费模型：NVIDIA Nemotron 3 Super',\n    supportsVision: false,\n    supportsFiles: false,\n    supportsStreaming: true,\n    contextWindow: 262144,\n    temperature: 1,\n  },\n''')
-    if additions:
-        text = text.replace(openrouter_marker, ''.join(additions) + openrouter_marker, 1)
-        changed = True
 
-# Correct the OpenRouter Lightning slug if an earlier pass used the NVIDIA NIM slug.
-text = text.replace(
-    "nvidia/nemotron-3.5-lightning-30b-a3b:free",
-    "nvidia/nemotron-3.5-lightning:free",
-)
-
-if changed:
-    path.write_text(text, encoding='utf-8')
-    print('Updated src/services/db.ts')
-else:
-    print('No changes needed; free models already present')
+path.write_text(text, encoding='utf-8')
+print('Database implementation restored and Groq catalog normalized')
