@@ -40,8 +40,10 @@ jobs:
       - name: Build project
         run: npm run build
 
-      - name: Create 404.html fallback for SPA routing
-        run: cp dist/index.html dist/404.html
+      - name: Create 404.html and .nojekyll fallback for SPA routing
+        run: |
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
