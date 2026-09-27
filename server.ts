@@ -22,14 +22,49 @@ async function startServer() {
     }
 
     try {
+      let targetUrl = url;
+      const envGeminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+
+      // Smart fallback for Google Gemini endpoints with default/test/env keys
+      if (targetUrl.includes('generativelanguage.googleapis.com') && envGeminiKey) {
+        try {
+          const parsed = new URL(targetUrl);
+          const currentKey = parsed.searchParams.get('key');
+          if (!currentKey || currentKey.includes('AIzaSy_Default') || currentKey.includes('test') || currentKey.includes('mock') || currentKey === 'undefined') {
+            parsed.searchParams.set('key', envGeminiKey);
+            targetUrl = parsed.toString();
+          }
+        } catch {
+          // Ignore URL parsing failure
+        }
+      }
+
       // Forward request from backend
-      const response = await fetch(url, {
+      let response = await fetch(targetUrl, {
         method,
         headers: {
           ...headers,
         },
         body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
       });
+
+      // If failed due to 400/401/403 and envKey is available on a Gemini endpoint, retry once with env key
+      if (!response.ok && (response.status === 400 || response.status === 401 || response.status === 403) && envGeminiKey && targetUrl.includes('generativelanguage.googleapis.com')) {
+        try {
+          const parsed = new URL(targetUrl);
+          if (parsed.searchParams.get('key') !== envGeminiKey) {
+            parsed.searchParams.set('key', envGeminiKey);
+            const retryResponse = await fetch(parsed.toString(), {
+              method,
+              headers: { ...headers },
+              body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+            });
+            if (retryResponse.ok) {
+              response = retryResponse;
+            }
+          }
+        } catch {}
+      }
 
       res.status(response.status);
 

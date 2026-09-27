@@ -25,6 +25,7 @@ import {
   getProviders,
   saveProvider,
   deleteProvider,
+  restoreDefaultProviders,
   getUserSettings,
   saveUserSettings,
   resetAllData,
@@ -896,6 +897,21 @@ export default function App() {
     setProviders(updated);
   };
 
+  const handleRestoreDefaultProviders = async () => {
+    await restoreDefaultProviders();
+    const [loadedProviders, loadedModels, loadedKeys] = await Promise.all([
+      getProviders(),
+      getModels(),
+      getApiKeys(),
+    ]);
+    setProviders(loadedProviders);
+    setModels(loadedModels);
+    setApiKeys(loadedKeys);
+    if (!selectedModelId || !loadedModels.some(m => m.id === selectedModelId)) {
+      setSelectedModelId('deepseek-ai/deepseek-v4.1-flash');
+    }
+  };
+
   const handleSaveSettingsObj = async (newSettings: UserSettings) => {
     await saveUserSettings(newSettings);
     setSettings(newSettings);
@@ -1051,6 +1067,7 @@ export default function App() {
         providers={providers}
         onSaveProvider={handleSaveProviderDef}
         onDeleteProvider={handleDeleteProviderDef}
+        onRestoreDefaultProviders={handleRestoreDefaultProviders}
         apiKeys={apiKeys}
         onSaveApiKey={handleSaveApiKeyConfig}
         onDeleteApiKey={handleDeleteApiKeyConfig}

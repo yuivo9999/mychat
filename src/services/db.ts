@@ -179,12 +179,45 @@ export const DEFAULT_MODELS: ModelItem[] = [
     temperature: 0.7,
   },
 
-  // Google Gemini
+  // Google Gemini Models (1.5 Flash, 1.5 Flash-8B, 1.5 Pro, 2.5 Flash, 2.0 Flash)
+  {
+    id: 'gemini-1.5-flash',
+    name: 'Gemini 1.5 Flash (基础低延迟测试)',
+    providerId: 'google',
+    description: '谷歌轻量级高速度多模态模型，响应极快，非常适合连通性测试与日常交流',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
+  {
+    id: 'gemini-1.5-flash-8b',
+    name: 'Gemini 1.5 Flash-8B (极小轻量测试)',
+    providerId: 'google',
+    description: '极小参数量轻量模型，超低延迟与极高吞吐，快速测试专用',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
   {
     id: 'gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
+    name: 'Gemini 2.5 Flash (快速全模态/新版)',
     providerId: 'google',
-    description: '快速、智能的多模态体验与思维链推理能力',
+    description: '谷歌 2.5 代高性能快速多模态模型，具备深度推理分析能力',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
+  {
+    id: 'gemini-2.0-flash',
+    name: 'Gemini 2.0 Flash (新一代多模态)',
+    providerId: 'google',
+    description: '谷歌 2.0 代高性价比敏捷模型，兼顾速度与多模态感知能力',
     supportsVision: true,
     supportsFiles: true,
     supportsStreaming: true,
@@ -193,9 +226,9 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
   {
     id: 'gemini-1.5-pro',
-    name: 'Gemini 1.5 Pro',
+    name: 'Gemini 1.5 Pro (百万上下文旗舰)',
     providerId: 'google',
-    description: '超长百万上下文窗口与复杂逻辑分析',
+    description: '超长百万级上下文窗口与复杂深度逻辑分析模型',
     supportsVision: true,
     supportsFiles: true,
     supportsStreaming: true,
@@ -516,15 +549,48 @@ export async function clearAllConversations(): Promise<void> {
   });
 }
 
+export const DEFAULT_API_KEYS: ApiKeyConfig[] = [
+  {
+    id: 'key_google_default_ready',
+    providerId: 'google',
+    label: 'Google Gemini (内置快速测试 Key)',
+    apiKey: 'AIzaSy_Google_Gemini_Fast_Testing_Key',
+    baseUrl: 'https://generativelanguage.googleapis.com',
+    createdAt: Date.now(),
+    isDefault: true,
+  },
+];
+
 // API Key Operations
 export async function getApiKeys(): Promise<ApiKeyConfig[]> {
   const db = await openDB();
+  const isInitialized = localStorage.getItem('omnichat_keys_initialized') === 'true';
+
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction('api_keys', 'readonly');
+    const transaction = db.transaction('api_keys', 'readwrite');
     const store = transaction.objectStore('api_keys');
     const request = store.getAll();
 
-    request.onsuccess = () => resolve(request.result || []);
+    request.onsuccess = async () => {
+      const results = (request.result as ApiKeyConfig[]) || [];
+      if (!isInitialized && results.length === 0) {
+        localStorage.setItem('omnichat_keys_initialized', 'true');
+        for (const k of DEFAULT_API_KEYS) {
+          store.put(k);
+        }
+        resolve(DEFAULT_API_KEYS);
+        return;
+      }
+      // If Google group has no key but user hasn't explicitly cleared all keys
+      const hasGoogleKey = results.some(k => k.providerId === 'google');
+      if (!hasGoogleKey && !isInitialized) {
+        for (const k of DEFAULT_API_KEYS) {
+          store.put(k);
+          results.push(k);
+        }
+      }
+      resolve(results);
+    };
     request.onerror = () => reject(request.error);
   });
 }
@@ -568,6 +634,8 @@ export async function clearAllApiKeys(): Promise<void> {
 // Models Operations
 export async function getModels(): Promise<ModelItem[]> {
   const db = await openDB();
+  const isInitialized = localStorage.getItem('omnichat_db_initialized') === 'true';
+
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('models', 'readonly');
     const store = transaction.objectStore('models');
@@ -575,27 +643,19 @@ export async function getModels(): Promise<ModelItem[]> {
 
     request.onsuccess = async () => {
       const results = (request.result as ModelItem[]) || [];
-      if (results.length === 0) {
-        // Seed default models
+      if (!isInitialized && results.length === 0) {
+        localStorage.setItem('omnichat_db_initialized', 'true');
         await seedDefaultModels();
         resolve(DEFAULT_MODELS);
-      } else {
-        // Check if NVIDIA NIM models are present
-        const hasNvidiaDefault = results.some(m => m.id === 'deepseek-ai/deepseek-v4.1-flash');
-        if (!hasNvidiaDefault) {
-          await seedDefaultModels();
-          const missingDefaults = DEFAULT_MODELS.filter(dm => !results.some(r => r.id === dm.id));
-          resolve([...missingDefaults, ...results]);
-        } else {
-          resolve(results);
-        }
+        return;
       }
+      resolve(results);
     };
     request.onerror = () => reject(request.error);
   });
 }
 
-async function seedDefaultModels(): Promise<void> {
+export async function seedDefaultModels(): Promise<void> {
   const db = await openDB();
   const transaction = db.transaction('models', 'readwrite');
   const store = transaction.objectStore('models');
@@ -631,6 +691,8 @@ export async function deleteModel(id: string): Promise<void> {
 // Providers Operations
 export async function getProviders(): Promise<ProviderDefinition[]> {
   const db = await openDB();
+  const isInitialized = localStorage.getItem('omnichat_db_initialized') === 'true';
+
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('providers', 'readonly');
     const store = transaction.objectStore('providers');
@@ -638,39 +700,61 @@ export async function getProviders(): Promise<ProviderDefinition[]> {
 
     request.onsuccess = async () => {
       const results = (request.result as ProviderDefinition[]) || [];
-      if (results.length === 0) {
+      if (!isInitialized && results.length === 0) {
+        localStorage.setItem('omnichat_db_initialized', 'true');
         await seedDefaultProviders();
+        await seedDefaultModels();
         resolve(DEFAULT_PROVIDERS);
-      } else {
-        const hasNvidia = results.some(p => p.id === 'nvidia');
-        if (!hasNvidia) {
-          await seedDefaultProviders();
-          resolve(DEFAULT_PROVIDERS);
-        } else {
-          // Keep NVIDIA as first provider order
-          const providerOrder = DEFAULT_PROVIDERS.map(p => p.id);
-          results.sort((a, b) => {
-            const idxA = providerOrder.indexOf(a.id);
-            const idxB = providerOrder.indexOf(b.id);
-            if (idxA === -1) return 1;
-            if (idxB === -1) return -1;
-            return idxA - idxB;
-          });
-          resolve(results);
-        }
+        return;
       }
+
+      // Keep NVIDIA as first provider order
+      const providerOrder = DEFAULT_PROVIDERS.map(p => p.id);
+      results.sort((a, b) => {
+        const idxA = providerOrder.indexOf(a.id);
+        const idxB = providerOrder.indexOf(b.id);
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+      });
+      resolve(results);
     };
     request.onerror = () => reject(request.error);
   });
 }
 
-async function seedDefaultProviders(): Promise<void> {
+export async function seedDefaultProviders(): Promise<void> {
   const db = await openDB();
   const transaction = db.transaction('providers', 'readwrite');
   const store = transaction.objectStore('providers');
   for (const p of DEFAULT_PROVIDERS) {
     store.put(p);
   }
+}
+
+export async function restoreDefaultProviders(): Promise<ProviderDefinition[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(['providers', 'models', 'api_keys'], 'readwrite');
+    const provStore = transaction.objectStore('providers');
+    const modelStore = transaction.objectStore('models');
+    const keyStore = transaction.objectStore('api_keys');
+    
+    for (const p of DEFAULT_PROVIDERS) {
+      provStore.put(p);
+    }
+    for (const m of DEFAULT_MODELS) {
+      modelStore.put(m);
+    }
+    for (const k of DEFAULT_API_KEYS) {
+      keyStore.put(k);
+    }
+
+    transaction.oncomplete = () => {
+      resolve(DEFAULT_PROVIDERS);
+    };
+    transaction.onerror = () => reject(transaction.error);
+  });
 }
 
 export async function saveProvider(provider: ProviderDefinition): Promise<void> {

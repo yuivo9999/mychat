@@ -17,7 +17,8 @@ import {
   Eye,
   EyeOff,
   Edit2,
-  Copy
+  Copy,
+  RotateCcw
 } from 'lucide-react';
 import { 
   ProviderDefinition, 
@@ -33,6 +34,7 @@ interface AiModelConfigModalProps {
   providers: ProviderDefinition[];
   onSaveProvider: (p: ProviderDefinition) => void;
   onDeleteProvider: (id: string) => void;
+  onRestoreDefaultProviders?: () => void;
   apiKeys: ApiKeyConfig[];
   onSaveApiKey: (k: ApiKeyConfig) => void;
   onDeleteApiKey: (id: string) => void;
@@ -53,6 +55,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
   providers,
   onSaveProvider,
   onDeleteProvider,
+  onRestoreDefaultProviders,
   apiKeys,
   onSaveApiKey,
   onDeleteApiKey,
@@ -354,9 +357,24 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
           
           {/* 1. 服务商 / 账号组 */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="text-xs font-semibold text-neutral-400">服务商 / 账号组 ({providers.length})</span>
+                {onRestoreDefaultProviders && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm('确定要恢复默认预设的服务商组（NVIDIA, Google Gemini, OpenAI, DeepSeek, Anthropic, Qwen 等）和预设模型吗？')) {
+                        onRestoreDefaultProviders();
+                      }
+                    }}
+                    className="text-[11px] text-orange-400 hover:text-orange-300 transition inline-flex items-center gap-1 hover:underline cursor-pointer"
+                    title="一键恢复所有内置预设服务商及模型"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>恢复默认组</span>
+                  </button>
+                )}
                 {providers.length > 0 && (
                   <button
                     type="button"
@@ -367,7 +385,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                         setGroupBaseUrl('');
                       }
                     }}
-                    className="text-[11px] text-neutral-500 hover:text-red-400 transition"
+                    className="text-[11px] text-neutral-500 hover:text-red-400 transition cursor-pointer"
                   >
                     清空所有组
                   </button>
@@ -376,7 +394,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
               <button
                 type="button"
                 onClick={() => setIsAddingGroup(true)}
-                className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-neutral-800/80 hover:bg-neutral-700/80 text-neutral-200 border border-neutral-700/60 transition active:scale-95"
+                className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-neutral-800/80 hover:bg-neutral-700/80 text-neutral-200 border border-neutral-700/60 transition active:scale-95 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5 text-orange-400" />
                 <span>新增组</span>
@@ -385,16 +403,28 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
 
             {/* Group List Cards */}
             {providers.length === 0 ? (
-              <div className="p-4 rounded-xl bg-[#181c26]/60 border border-dashed border-neutral-800 text-center space-y-2">
+              <div className="p-5 rounded-xl bg-[#181c26]/60 border border-dashed border-neutral-800 text-center space-y-3">
                 <p className="text-xs text-neutral-400">暂无服务商分组，已全部删空</p>
-                <button
-                  type="button"
-                  onClick={() => setIsAddingGroup(true)}
-                  className="px-3 py-1.5 text-xs rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-medium inline-flex items-center gap-1.5 transition"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>添加第一个服务组</span>
-                </button>
+                <div className="flex items-center justify-center gap-2.5 flex-wrap">
+                  {onRestoreDefaultProviders && (
+                    <button
+                      type="button"
+                      onClick={() => onRestoreDefaultProviders()}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-medium inline-flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>恢复默认服务商组</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingGroup(true)}
+                    className="px-3 py-1.5 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 font-medium inline-flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-orange-400" />
+                    <span>添加自定义组</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-1.5">
