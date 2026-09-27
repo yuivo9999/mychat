@@ -37,6 +37,22 @@ export class GeminiAdapter implements BaseAdapter {
     };
   }
 
+  private supportsInlineFileMime(mimeType?: string): boolean {
+    const mime = (mimeType || '').toLowerCase().split(';', 1)[0].trim();
+    return [
+      'text/plain',
+      'text/markdown',
+      'text/html',
+      'text/css',
+      'text/xml',
+      'text/csv',
+      'text/rtf',
+      'text/javascript',
+      'application/json',
+      'application/pdf',
+    ].includes(mime);
+  }
+
   async sendMessage(options: AdapterOptions, callbacks?: StreamCallbacks): Promise<string> {
     const { model, apiKeyConfig, messages, systemPrompt, temperature, maxTokens, topP, parameters, abortSignal, timeoutSeconds } = options;
     const stream = (parameters?.stream !== undefined ? parameters.stream : model.supportsStreaming !== false) && callbacks != null;
@@ -54,10 +70,11 @@ export class GeminiAdapter implements BaseAdapter {
           if (att.type.startsWith('image/') && model.supportsVision && att.dataUrl) {
             const matches = att.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
             if (matches) parts.push({ inlineData: { mimeType: matches[1], data: matches[2] } });
-          } else if (model.supportsFiles && att.base64Data) {
-            // Native file input: the attachment remains a separate file part;
-            // its bytes are not copied into the user prompt.
-            parts.push({ inlineData: { mimeType: att.type || 'application/octet-stream', data: att.base64Data } });
+          } else if (model.supportsFiles && att.base64Data && this.supportsInlineFileMime(att.type)) {
+            // Native inline file input only for MIME types documented by Gemini.
+            // Unsupported formats (for example DOCX) must use the explicit
+            // local-text fallback instead of sending an invalid binary part.
+            parts.push({ inlineData: { mimeType: att.type, data: att.base64Data } });
           } else if (att.base64Data) {
             // Only unsupported file inputs reach the local text fallback.
             parts.push({ text: `[附件文本: ${att.name}]\n${extractAttachmentText(att)}` });
