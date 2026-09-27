@@ -389,7 +389,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm('确定要恢复默认预设的服务商组（NVIDIA, Google Gemini, OpenAI, DeepSeek, Anthropic, Qwen 等）和预设模型吗？')) {
+                      if (confirm('确定要恢复默认预设的服务商组（NVIDIA, Google Gemini, OpenAI, DeepSeek, Qwen 等）和预设模型吗？')) {
                         onRestoreDefaultProviders();
                       }
                     }}
