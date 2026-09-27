@@ -25,9 +25,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Restore known-good database service for build
-        run: git checkout 5fe90ad70f5d86f863f216e16dd18b1b336765fa -- src/services/db.ts
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
