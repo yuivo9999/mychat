@@ -38,13 +38,17 @@ export class OpenAIAdapter implements BaseAdapter {
   }
 
   async sendMessage(options: AdapterOptions, callbacks?: StreamCallbacks): Promise<string> {
-    const { model, apiKeyConfig, messages, systemPrompt, temperature, maxTokens, topP, abortSignal, timeoutSeconds } = options;
+    const { model, apiKeyConfig, messages, systemPrompt, temperature, maxTokens, topP, parameters, abortSignal, timeoutSeconds } = options;
     const endpoint = this.resolveEndpoint(apiKeyConfig);
 
     const formattedMessages: any[] = [];
 
     // System message
-    const sys = systemPrompt || model.systemPrompt;
+    let sys = systemPrompt || model.systemPrompt;
+    if (parameters?.enableReasoning) {
+      const reasoningInstruction = '【深度推理模式开启】请在最终回答前，进行严密、深刻且步骤详尽的逻辑推导与思考分析。';
+      sys = sys ? `${sys}\n\n${reasoningInstruction}` : reasoningInstruction;
+    }
     if (sys && sys.trim()) {
       formattedMessages.push({
         role: 'system',
@@ -118,7 +122,7 @@ export class OpenAIAdapter implements BaseAdapter {
       headers['X-Title'] = 'OmniChat Local AI';
     }
 
-    const stream = model.supportsStreaming !== false && callbacks != null;
+    const stream = (parameters?.stream !== undefined ? parameters.stream : model.supportsStreaming !== false) && callbacks != null;
 
     const bodyPayload: any = {
       model: model.id,
@@ -126,9 +130,29 @@ export class OpenAIAdapter implements BaseAdapter {
       stream,
     };
 
-    if (typeof temperature === 'number') bodyPayload.temperature = temperature;
-    if (typeof maxTokens === 'number' && maxTokens > 0) bodyPayload.max_tokens = maxTokens;
-    if (typeof topP === 'number') bodyPayload.top_p = topP;
+    const effectiveTemp = parameters?.temperature ?? temperature ?? model.temperature;
+    const effectiveMaxTokens = parameters?.maxTokens ?? maxTokens ?? model.maxTokens;
+    const effectiveTopP = parameters?.topP ?? topP ?? model.topP;
+
+    if (typeof effectiveTemp === 'number') bodyPayload.temperature = effectiveTemp;
+    if (typeof effectiveMaxTokens === 'number' && effectiveMaxTokens > 0) bodyPayload.max_tokens = effectiveMaxTokens;
+    if (typeof effectiveTopP === 'number') bodyPayload.top_p = effectiveTopP;
+
+    if (typeof parameters?.frequencyPenalty === 'number' && parameters.frequencyPenalty !== 0) {
+      bodyPayload.frequency_penalty = parameters.frequencyPenalty;
+    }
+    if (typeof parameters?.presencePenalty === 'number' && parameters.presencePenalty !== 0) {
+      bodyPayload.presence_penalty = parameters.presencePenalty;
+    }
+    if (parameters?.stop && parameters.stop.trim()) {
+      bodyPayload.stop = [parameters.stop.trim()];
+    }
+    if (typeof parameters?.seed === 'number' && !isNaN(parameters.seed)) {
+      bodyPayload.seed = parameters.seed;
+    }
+    if (parameters?.enableReasoning) {
+      bodyPayload.reasoning_effort = 'medium';
+    }
 
     // Timeout controller
     const controller = new AbortController();

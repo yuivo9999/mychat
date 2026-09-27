@@ -12,7 +12,7 @@ import {
   FileCode,
   AlertCircle
 } from 'lucide-react';
-import { Attachment, ModelItem, ApiKeyConfig, UserSettings } from '../types';
+import { Attachment, ModelItem, ApiKeyConfig, UserSettings, ModelParameters } from '../types';
 import { parseFileToAttachment, formatFileSize } from '../services/fileParser';
 
 interface ChatComposerProps {
@@ -25,6 +25,9 @@ interface ChatComposerProps {
   onOpenSettings: (tab?: string) => void;
   quotedText?: string | null;
   onClearQuote?: () => void;
+  parameters: ModelParameters;
+  onUpdateParameters: (params: ModelParameters) => void;
+  onOpenParameters: () => void;
 }
 
 export const ChatComposer: React.FC<ChatComposerProps> = ({
@@ -37,6 +40,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   onOpenSettings,
   quotedText,
   onClearQuote,
+  parameters,
+  onUpdateParameters,
+  onOpenParameters,
 }) => {
   const [content, setContent] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -217,6 +223,44 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           </div>
         )}
 
+        {/* Quick Reasoning & Parameters Header (matches user screenshot) */}
+        <div className="flex items-center justify-between px-3.5 py-1.5 border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/70 dark:bg-neutral-900/60 rounded-t-2xl">
+          {/* Reasoning Toggle: [ OFF | ON ] Reasoning */}
+          <div className="flex items-center gap-2">
+            <div 
+              onClick={() => onUpdateParameters({ ...parameters, enableReasoning: !parameters.enableReasoning })}
+              className="flex items-center bg-neutral-200 dark:bg-neutral-800 p-0.5 rounded-full cursor-pointer select-none text-[10px] font-bold transition border border-neutral-300/80 dark:border-neutral-700/80"
+              title="开启/关闭 深度推理思维链模式"
+            >
+              <span className={`px-2 py-0.5 rounded-full transition-all ${!parameters.enableReasoning ? 'bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white shadow-xs' : 'text-neutral-400'}`}>
+                OFF
+              </span>
+              <span className={`px-2 py-0.5 rounded-full transition-all ${parameters.enableReasoning ? 'bg-[#84cc16] text-black shadow-xs' : 'text-neutral-400'}`}>
+                ON
+              </span>
+            </div>
+            <div 
+              className="flex items-center gap-1.5 cursor-pointer" 
+              onClick={() => onUpdateParameters({ ...parameters, enableReasoning: !parameters.enableReasoning })}
+            >
+              <span className="font-semibold text-xs text-neutral-800 dark:text-neutral-200">深度推理</span>
+              <span className="text-[11px] text-neutral-400 font-mono">Reasoning</span>
+            </div>
+          </div>
+
+          {/* Parameters Button: [ 🎛️ Parameters ] */}
+          <button
+            type="button"
+            onClick={onOpenParameters}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-neutral-300 dark:border-neutral-700 hover:border-[#84cc16] dark:hover:border-[#84cc16] bg-white dark:bg-neutral-800/90 text-neutral-800 dark:text-neutral-200 text-xs font-medium hover:text-[#84cc16] dark:hover:text-[#84cc16] transition cursor-pointer shadow-2xs"
+            title="打开模型参数调整面板 (Parameters)"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-[#84cc16]" />
+            <span className="font-semibold">参数设置</span>
+            <span className="text-[10px] text-neutral-400 font-mono hidden sm:inline">Parameters</span>
+          </button>
+        </div>
+
         {/* Attachments Preview Tray */}
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 p-3 pb-1 border-b border-neutral-100 dark:border-neutral-800/80">
@@ -316,9 +360,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
             <button
               type="button"
-              onClick={() => onOpenSettings('models')}
-              className="p-2 rounded-xl text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              title="调整当前模型高级参数"
+              onClick={onOpenParameters}
+              className="p-2 rounded-xl text-neutral-500 hover:text-[#84cc16] dark:text-neutral-400 dark:hover:text-[#84cc16] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+              title="调整当前模型运行参数 (Parameters: Stream, Max Tokens, Temperature, Top P, Penalties, Stop, Seed)"
             >
               <SlidersHorizontal className="w-4 h-4" />
             </button>

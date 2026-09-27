@@ -1,4 +1,4 @@
-import { Message, ModelItem, ApiKeyConfig } from '../../types';
+import { Message, ModelItem, ApiKeyConfig, ModelParameters } from '../../types';
 
 export interface StreamCallbacks {
   onChunk: (chunk: string) => void;
@@ -14,6 +14,7 @@ export interface AdapterOptions {
   temperature?: number;
   maxTokens?: number;
   topP?: number;
+  parameters?: ModelParameters;
   abortSignal?: AbortSignal;
   timeoutSeconds?: number;
 }

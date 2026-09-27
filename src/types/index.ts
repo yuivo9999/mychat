@@ -81,6 +81,18 @@ export interface Message {
   currentVersionIndex?: number;
 }
 
+export interface ModelParameters {
+  enableReasoning?: boolean; // 深度推理 (Reasoning)
+  stream?: boolean; // 流式传输 (Stream)
+  maxTokens?: number; // 最大 Token 数 (Max Tokens)
+  temperature?: number; // 温度 / 随机性 (Temperature)
+  topP?: number; // 核采样 (Top P)
+  frequencyPenalty?: number; // 频率惩罚 (Frequency Penalty)
+  presencePenalty?: number; // 存在惩罚 (Presence Penalty)
+  stop?: string; // 停止词 (Stop)
+  seed?: number; // 随机种子 (Seed)
+}
+
 export interface Conversation {
   id: string;
   title: string;
@@ -92,6 +104,7 @@ export interface Conversation {
   isFavorite?: boolean;
   category?: string;
   systemPrompt?: string;
+  parameters?: ModelParameters;
   messages: Message[];
 }
 

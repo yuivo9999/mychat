@@ -7,7 +7,8 @@ import {
   ProviderDefinition, 
   ApiKeyConfig, 
   UserSettings, 
-  ConnectionStatus 
+  ConnectionStatus,
+  ModelParameters
 } from './types';
 import { 
   getConversations, 
@@ -38,6 +39,19 @@ import { SettingsModal } from './components/SettingsModal';
 import { SearchModal } from './components/SearchModal';
 import { ExportModal } from './components/ExportModal';
 import { BatchManageModal } from './components/BatchManageModal';
+import { ParametersModal } from './components/ParametersModal';
+
+const DEFAULT_PARAMETERS: ModelParameters = {
+  enableReasoning: false,
+  stream: true,
+  maxTokens: 1024,
+  temperature: 0.5,
+  topP: 1,
+  frequencyPenalty: 0,
+  presencePenalty: 0,
+  stop: '',
+  seed: 0,
+};
 
 export default function App() {
   // Core Entities State
@@ -64,6 +78,10 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
+  const [isParametersOpen, setIsParametersOpen] = useState(false);
+
+  // Model Parameters State (Reasoning, Stream, Max Tokens, Temp, Top P, Penalties, Stop, Seed)
+  const [parameters, setParameters] = useState<ModelParameters>(DEFAULT_PARAMETERS);
 
   // Layout & Responsive
   const [isMobile, setIsMobile] = useState(false);
@@ -156,6 +174,24 @@ export default function App() {
   const currentModel = models.find(m => m.id === selectedModelId) || models[0];
   const currentApiKey = apiKeys.find(k => k.id === selectedApiKeyId);
 
+  // Sync parameters with current conversation
+  useEffect(() => {
+    if (currentConversation?.parameters) {
+      setParameters({ ...DEFAULT_PARAMETERS, ...currentConversation.parameters });
+    } else {
+      setParameters(DEFAULT_PARAMETERS);
+    }
+  }, [activeConversationId]);
+
+  const handleUpdateParameters = (newParams: ModelParameters) => {
+    setParameters(newParams);
+    if (currentConversation) {
+      const updated = { ...currentConversation, parameters: newParams, updatedAt: Date.now() };
+      saveConversation(updated);
+      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+    }
+  };
+
   // New Chat Action
   const handleNewChat = useCallback(() => {
     const newConv: Conversation = {
@@ -166,6 +202,7 @@ export default function App() {
       modelId: selectedModelId,
       providerId: currentModel?.providerId || 'google',
       apiKeyId: selectedApiKeyId,
+      parameters: parameters,
       messages: [],
     };
 
@@ -283,6 +320,7 @@ export default function App() {
     let accumulatedText = '';
 
     try {
+      const activeParams = targetConv.parameters || parameters;
       await adapter.sendMessage(
         {
           model: currentModel,
@@ -292,6 +330,7 @@ export default function App() {
           temperature: currentModel.temperature,
           maxTokens: currentModel.maxTokens,
           topP: currentModel.topP,
+          parameters: activeParams,
           abortSignal: abortController.signal,
           timeoutSeconds: settings.requestTimeout,
         },
@@ -424,6 +463,7 @@ export default function App() {
     }));
 
     try {
+      const activeParams = currentConversation.parameters || parameters;
       await adapter.sendMessage(
         {
           model: currentModel,
@@ -433,6 +473,7 @@ export default function App() {
           temperature: currentModel.temperature,
           maxTokens: currentModel.maxTokens,
           topP: currentModel.topP,
+          parameters: activeParams,
           abortSignal: abortController.signal,
           timeoutSeconds: settings.requestTimeout,
         },
@@ -594,12 +635,14 @@ export default function App() {
     }));
 
     try {
+      const activeParams = currentConversation.parameters || parameters;
       await adapter.sendMessage(
         {
           model: currentModel,
           apiKeyConfig: currentApiKey,
           messages: prevMessages,
           systemPrompt: currentConversation.systemPrompt || settings.defaultSystemPrompt,
+          parameters: activeParams,
           abortSignal: abortController.signal,
         },
         {
@@ -955,6 +998,8 @@ export default function App() {
             if (currentConversation) handleRenameConversation(currentConversation.id, newTitle);
           }}
           onCopyAllChat={handleCopyAllChat}
+          onOpenParameters={() => setIsParametersOpen(true)}
+          isReasoningEnabled={parameters.enableReasoning}
         />
 
         {/* Message Stream Central Area */}
@@ -986,8 +1031,20 @@ export default function App() {
           }}
           quotedText={quotedText}
           onClearQuote={() => setQuotedText(null)}
+          parameters={parameters}
+          onUpdateParameters={handleUpdateParameters}
+          onOpenParameters={() => setIsParametersOpen(true)}
         />
       </div>
+
+      {/* Parameters Settings Modal (Matches user screenshot) */}
+      <ParametersModal
+        isOpen={isParametersOpen}
+        onClose={() => setIsParametersOpen(false)}
+        parameters={parameters}
+        onChangeParameters={handleUpdateParameters}
+        modelName={currentModel?.name}
+      />
 
       {/* Settings Modal (8 Tabs) */}
       <SettingsModal

@@ -17,8 +17,8 @@ export class GeminiAdapter implements BaseAdapter {
   }
 
   async sendMessage(options: AdapterOptions, callbacks?: StreamCallbacks): Promise<string> {
-    const { model, apiKeyConfig, messages, systemPrompt, temperature, maxTokens, topP, abortSignal, timeoutSeconds } = options;
-    const stream = model.supportsStreaming !== false && callbacks != null;
+    const { model, apiKeyConfig, messages, systemPrompt, temperature, maxTokens, topP, parameters, abortSignal, timeoutSeconds } = options;
+    const stream = (parameters?.stream !== undefined ? parameters.stream : model.supportsStreaming !== false) && callbacks != null;
     const endpoint = this.resolveEndpoint(apiKeyConfig, model.id, stream);
 
     const contents: any[] = [];
@@ -66,16 +66,38 @@ export class GeminiAdapter implements BaseAdapter {
       generationConfig: {},
     };
 
-    const sys = systemPrompt || model.systemPrompt;
+    let sys = systemPrompt || model.systemPrompt;
+    if (parameters?.enableReasoning) {
+      const reasoningInstruction = '【深度推理模式开启】请在最终回答前，进行严密、深刻且步骤详尽的逻辑推导与思考分析。';
+      sys = sys ? `${sys}\n\n${reasoningInstruction}` : reasoningInstruction;
+    }
+
     if (sys && sys.trim()) {
       bodyPayload.systemInstruction = {
         parts: [{ text: sys.trim() }],
       };
     }
 
-    if (typeof temperature === 'number') bodyPayload.generationConfig.temperature = temperature;
-    if (typeof maxTokens === 'number' && maxTokens > 0) bodyPayload.generationConfig.maxOutputTokens = maxTokens;
-    if (typeof topP === 'number') bodyPayload.generationConfig.topP = topP;
+    const effectiveTemp = parameters?.temperature ?? temperature ?? model.temperature;
+    const effectiveMaxTokens = parameters?.maxTokens ?? maxTokens ?? model.maxTokens;
+    const effectiveTopP = parameters?.topP ?? topP ?? model.topP;
+
+    if (typeof effectiveTemp === 'number') bodyPayload.generationConfig.temperature = effectiveTemp;
+    if (typeof effectiveMaxTokens === 'number' && effectiveMaxTokens > 0) bodyPayload.generationConfig.maxOutputTokens = effectiveMaxTokens;
+    if (typeof effectiveTopP === 'number') bodyPayload.generationConfig.topP = effectiveTopP;
+
+    if (typeof parameters?.presencePenalty === 'number' && parameters.presencePenalty !== 0) {
+      bodyPayload.generationConfig.presencePenalty = parameters.presencePenalty;
+    }
+    if (typeof parameters?.frequencyPenalty === 'number' && parameters.frequencyPenalty !== 0) {
+      bodyPayload.generationConfig.frequencyPenalty = parameters.frequencyPenalty;
+    }
+    if (parameters?.stop && parameters.stop.trim()) {
+      bodyPayload.generationConfig.stopSequences = [parameters.stop.trim()];
+    }
+    if (parameters?.enableReasoning) {
+      bodyPayload.generationConfig.thinkingConfig = { thinkingBudget: 2048 };
+    }
 
     const controller = new AbortController();
     const timeout = (timeoutSeconds || 60) * 1000;

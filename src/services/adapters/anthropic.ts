@@ -11,11 +11,15 @@ export class AnthropicAdapter implements BaseAdapter {
   }
 
   async sendMessage(options: AdapterOptions, callbacks?: StreamCallbacks): Promise<string> {
-    const { model, apiKeyConfig, messages, systemPrompt, temperature, maxTokens, topP, abortSignal, timeoutSeconds } = options;
+    const { model, apiKeyConfig, messages, systemPrompt, temperature, maxTokens, topP, parameters, abortSignal, timeoutSeconds } = options;
     const endpoint = this.resolveEndpoint(apiKeyConfig);
 
     const formattedMessages: any[] = [];
-    const sys = systemPrompt || model.systemPrompt || '';
+    let sys = systemPrompt || model.systemPrompt || '';
+    if (parameters?.enableReasoning) {
+      const reasoningInstruction = '【深度推理模式开启】请在最终回答前，进行严密、深刻且步骤详尽的逻辑推导与思考分析。';
+      sys = sys ? `${sys}\n\n${reasoningInstruction}` : reasoningInstruction;
+    }
 
     for (const msg of messages) {
       if (msg.role === 'user') {
@@ -83,20 +87,27 @@ export class AnthropicAdapter implements BaseAdapter {
       ...model.customHeaders,
     };
 
-    const stream = model.supportsStreaming !== false && callbacks != null;
+    const stream = (parameters?.stream !== undefined ? parameters.stream : model.supportsStreaming !== false) && callbacks != null;
+
+    const effectiveMaxTokens = parameters?.maxTokens ?? maxTokens ?? 4096;
+    const effectiveTemp = parameters?.temperature ?? temperature;
+    const effectiveTopP = parameters?.topP ?? topP;
 
     const bodyPayload: any = {
       model: model.id,
       messages: formattedMessages,
-      max_tokens: maxTokens && maxTokens > 0 ? maxTokens : 4096,
+      max_tokens: effectiveMaxTokens > 0 ? effectiveMaxTokens : 4096,
       stream,
     };
 
     if (sys.trim()) {
       bodyPayload.system = sys.trim();
     }
-    if (typeof temperature === 'number') bodyPayload.temperature = temperature;
-    if (typeof topP === 'number') bodyPayload.top_p = topP;
+    if (typeof effectiveTemp === 'number') bodyPayload.temperature = effectiveTemp;
+    if (typeof effectiveTopP === 'number') bodyPayload.top_p = effectiveTopP;
+    if (parameters?.stop && parameters.stop.trim()) {
+      bodyPayload.stop_sequences = [parameters.stop.trim()];
+    }
 
     const controller = new AbortController();
     const timeout = (timeoutSeconds || 60) * 1000;
