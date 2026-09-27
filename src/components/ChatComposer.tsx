@@ -10,7 +10,8 @@ import {
   Sparkles, 
   SlidersHorizontal,
   FileCode,
-  AlertCircle
+  AlertCircle,
+  Server
 } from 'lucide-react';
 import { Attachment, ModelItem, ApiKeyConfig, UserSettings, ModelParameters } from '../types';
 import { parseFileToAttachment, formatFileSize } from '../services/fileParser';
@@ -23,6 +24,7 @@ interface ChatComposerProps {
   currentApiKey: ApiKeyConfig | undefined;
   settings: UserSettings;
   onOpenSettings: (tab?: string) => void;
+  onOpenModelConfig?: () => void;
   quotedText?: string | null;
   onClearQuote?: () => void;
   parameters: ModelParameters;
@@ -38,6 +40,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   currentApiKey,
   settings,
   onOpenSettings,
+  onOpenModelConfig,
   quotedText,
   onClearQuote,
   parameters,
@@ -193,14 +196,14 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
       {/* Missing Key Warning Prompt */}
       {!hasApiKey && (
         <div 
-          onClick={() => onOpenSettings('keys')}
+          onClick={() => (onOpenModelConfig ? onOpenModelConfig() : onOpenSettings('keys'))}
           className="mb-2 p-2 px-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 flex items-center justify-between cursor-pointer hover:bg-amber-500/15 transition"
         >
           <div className="flex items-center gap-2">
             <Key className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             <span>尚未配置 <strong>{currentModel?.providerId.toUpperCase() || '当前模型'}</strong> 的 API Key，将无法发送请求。</span>
           </div>
-          <span className="font-semibold underline shrink-0">点击立即配置 →</span>
+          <span className="font-semibold underline shrink-0 text-orange-600 dark:text-orange-400">点击进入 AI 模型配置 →</span>
         </div>
       )}
 
@@ -248,17 +251,31 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             </div>
           </div>
 
-          {/* Parameters Button: [ 🎛️ Parameters ] */}
-          <button
-            type="button"
-            onClick={onOpenParameters}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-neutral-300 dark:border-neutral-700 hover:border-[#84cc16] dark:hover:border-[#84cc16] bg-white dark:bg-neutral-800/90 text-neutral-800 dark:text-neutral-200 text-xs font-medium hover:text-[#84cc16] dark:hover:text-[#84cc16] transition cursor-pointer shadow-2xs"
-            title="打开模型参数调整面板 (Parameters)"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-[#84cc16]" />
-            <span className="font-semibold">参数设置</span>
-            <span className="text-[10px] text-neutral-400 font-mono hidden sm:inline">Parameters</span>
-          </button>
+          {/* Parameters & Model Config Buttons */}
+          <div className="flex items-center gap-1.5">
+            {onOpenModelConfig && (
+              <button
+                type="button"
+                onClick={onOpenModelConfig}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-orange-500/30 hover:border-orange-500/60 bg-orange-500/10 hover:bg-orange-500/15 text-orange-600 dark:text-orange-400 text-xs font-medium transition cursor-pointer shadow-2xs"
+                title="打开独立 AI 模型与服务商配置面板"
+              >
+                <Server className="w-3.5 h-3.5 text-orange-500" />
+                <span className="font-semibold">模型配置</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onOpenParameters}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-neutral-300 dark:border-neutral-700 hover:border-[#84cc16] dark:hover:border-[#84cc16] bg-white dark:bg-neutral-800/90 text-neutral-800 dark:text-neutral-200 text-xs font-medium hover:text-[#84cc16] dark:hover:text-[#84cc16] transition cursor-pointer shadow-2xs"
+              title="打开模型参数调整面板 (Parameters)"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#84cc16]" />
+              <span className="font-semibold">参数设置</span>
+              <span className="text-[10px] text-neutral-400 font-mono hidden sm:inline">Parameters</span>
+            </button>
+          </div>
         </div>
 
         {/* Attachments Preview Tray */}

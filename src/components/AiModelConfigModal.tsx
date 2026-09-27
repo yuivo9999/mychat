@@ -1,0 +1,776 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  X, 
+  Plus, 
+  Trash2, 
+  Activity, 
+  CheckCircle2, 
+  AlertCircle, 
+  Key, 
+  Server, 
+  Sparkles,
+  ChevronDown,
+  Check,
+  Zap,
+  Globe,
+  RefreshCw
+} from 'lucide-react';
+import { 
+  ProviderDefinition, 
+  ApiKeyConfig, 
+  ModelItem, 
+  UserSettings 
+} from '../types';
+import { getAdapterForProvider } from '../services/adapters';
+
+interface AiModelConfigModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  providers: ProviderDefinition[];
+  onSaveProvider: (p: ProviderDefinition) => void;
+  onDeleteProvider: (id: string) => void;
+  apiKeys: ApiKeyConfig[];
+  onSaveApiKey: (k: ApiKeyConfig) => void;
+  onDeleteApiKey: (id: string) => void;
+  models: ModelItem[];
+  onSaveModel: (m: ModelItem) => void;
+  onDeleteModel: (id: string) => void;
+  settings: UserSettings;
+  onSaveSettings: (s: UserSettings) => void;
+  currentModelId: string;
+  onSelectModel: (id: string) => void;
+  selectedApiKeyId?: string;
+  onSelectApiKey: (id?: string) => void;
+}
+
+export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
+  isOpen,
+  onClose,
+  providers,
+  onSaveProvider,
+  onDeleteProvider,
+  apiKeys,
+  onSaveApiKey,
+  onDeleteApiKey,
+  models,
+  onSaveModel,
+  onDeleteModel,
+  settings,
+  onSaveSettings,
+  currentModelId,
+  onSelectModel,
+  selectedApiKeyId,
+  onSelectApiKey,
+}) => {
+  // Selected Provider Group for editing in top section
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(
+    providers[0]?.id || 'nvidia'
+  );
+
+  // Group Details editable Base URL
+  const [groupBaseUrl, setGroupBaseUrl] = useState<string>('');
+
+  // Default Model Service Selection (Bottom Section)
+  const [defaultServiceGroupId, setDefaultServiceGroupId] = useState<string>(
+    settings.defaultProviderId || providers[0]?.id || 'nvidia'
+  );
+  const [defaultKeyId, setDefaultKeyId] = useState<string>(selectedApiKeyId || '');
+  const [defaultModelId, setDefaultModelId] = useState<string>(
+    currentModelId || settings.defaultModelId || 'deepseek-ai/deepseek-v4.1-flash'
+  );
+
+  // Add Group Modal/Form state
+  const [isAddingGroup, setIsAddingGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupId, setNewGroupId] = useState('');
+  const [newGroupUrl, setNewGroupUrl] = useState('');
+
+  // Add Key Modal/Form state
+  const [isAddingKey, setIsAddingKey] = useState(false);
+  const [newKeyLabel, setNewKeyLabel] = useState('');
+  const [newKeyValue, setNewKeyValue] = useState('');
+
+  // Add Model Modal/Form state
+  const [isAddingModel, setIsAddingModel] = useState(false);
+  const [newModelId, setNewModelId] = useState('');
+  const [newModelName, setNewModelName] = useState('');
+
+  // Testing connection state
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+    latencyMs?: number;
+  } | null>(null);
+
+  // Saved feedback notice
+  const [showSavedToast, setShowSavedToast] = useState(false);
+
+  // Initialize and sync when modal opens or provider changes
+  useEffect(() => {
+    if (isOpen) {
+      const activeP = providers.find(p => p.id === selectedGroupId) || providers[0];
+      if (activeP) {
+        setSelectedGroupId(activeP.id);
+        setGroupBaseUrl(activeP.defaultBaseUrl || '');
+      }
+      setDefaultServiceGroupId(settings.defaultProviderId || providers[0]?.id || 'nvidia');
+      setDefaultModelId(currentModelId || settings.defaultModelId || 'deepseek-ai/deepseek-v4.1-flash');
+      setDefaultKeyId(selectedApiKeyId || '');
+      setTestResult(null);
+    }
+  }, [isOpen, providers]);
+
+  // Sync baseUrl when selecting a different group
+  const handleSelectGroup = (pId: string) => {
+    setSelectedGroupId(pId);
+    const p = providers.find(item => item.id === pId);
+    if (p) {
+      setGroupBaseUrl(p.defaultBaseUrl || '');
+    }
+    setTestResult(null);
+    setIsAddingKey(false);
+    setIsAddingModel(false);
+  };
+
+  if (!isOpen) return null;
+
+  const currentGroup = providers.find(p => p.id === selectedGroupId) || providers[0];
+  const groupModels = models.filter(m => m.providerId === selectedGroupId);
+  const groupKeys = apiKeys.filter(k => k.providerId === selectedGroupId);
+
+  // Models for Default Service dropdown
+  const defaultServiceModels = models.filter(m => m.providerId === defaultServiceGroupId);
+  const defaultServiceKeys = apiKeys.filter(k => k.providerId === defaultServiceGroupId);
+
+  // Handle Save Base URL for current group
+  const handleSaveGroupUrl = () => {
+    if (!currentGroup) return;
+    const updated: ProviderDefinition = {
+      ...currentGroup,
+      defaultBaseUrl: groupBaseUrl.trim(),
+    };
+    onSaveProvider(updated);
+  };
+
+  // Handle Create New Group
+  const handleCreateGroup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGroupName.trim()) return;
+    const generatedId = newGroupId.trim() || `custom_${Date.now()}`;
+    const newProvider: ProviderDefinition = {
+      id: generatedId,
+      name: newGroupName.trim(),
+      description: '自定义 OpenAI 兼容 API 服务组',
+      icon: 'Server',
+      defaultBaseUrl: newGroupUrl.trim() || 'https://api.openai.com/v1',
+      enabled: true,
+    };
+    onSaveProvider(newProvider);
+    setSelectedGroupId(generatedId);
+    setGroupBaseUrl(newProvider.defaultBaseUrl);
+    setIsAddingGroup(false);
+    setNewGroupName('');
+    setNewGroupId('');
+    setNewGroupUrl('');
+  };
+
+  // Handle Delete Current Group
+  const handleDeleteCurrentGroup = () => {
+    if (!currentGroup) return;
+    if (providers.length <= 1) {
+      alert('至少需要保留一个服务组。');
+      return;
+    }
+    if (confirm(`确定要删除服务商分组「${currentGroup.name}」及其关联设置吗？`)) {
+      onDeleteProvider(currentGroup.id);
+      const remaining = providers.filter(p => p.id !== currentGroup.id);
+      if (remaining.length > 0) {
+        setSelectedGroupId(remaining[0].id);
+        setGroupBaseUrl(remaining[0].defaultBaseUrl || '');
+      }
+    }
+  };
+
+  // Handle Add API Key
+  const handleAddKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newKeyValue.trim() || !currentGroup) return;
+    const keyConfig: ApiKeyConfig = {
+      id: `key_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      providerId: currentGroup.id,
+      label: newKeyLabel.trim() || `${currentGroup.name} Key`,
+      apiKey: newKeyValue.trim(),
+      baseUrl: groupBaseUrl.trim() || currentGroup.defaultBaseUrl,
+      createdAt: Date.now(),
+      isDefault: groupKeys.length === 0,
+    };
+    onSaveApiKey(keyConfig);
+    setIsAddingKey(false);
+    setNewKeyLabel('');
+    setNewKeyValue('');
+  };
+
+  // Handle Add Model
+  const handleAddModel = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newModelId.trim() || !currentGroup) return;
+    const newModelItem: ModelItem = {
+      id: newModelId.trim(),
+      name: newModelName.trim() || newModelId.trim(),
+      providerId: currentGroup.id,
+      supportsVision: false,
+      supportsFiles: true,
+      supportsStreaming: true,
+      contextWindow: 131072,
+      temperature: 0.7,
+      topP: 0.95,
+    };
+    onSaveModel(newModelItem);
+    setIsAddingModel(false);
+    setNewModelId('');
+    setNewModelName('');
+  };
+
+  // Test Connection
+  const handleTestConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+
+    const targetGroup = providers.find(p => p.id === defaultServiceGroupId) || currentGroup;
+    if (!targetGroup) {
+      setIsTesting(false);
+      setTestResult({ success: false, message: '未选择有效服务组' });
+      return;
+    }
+
+    const targetKey = apiKeys.find(k => k.id === defaultKeyId) || defaultServiceKeys[0] || groupKeys[0];
+    if (!targetKey || !targetKey.apiKey) {
+      setIsTesting(false);
+      setTestResult({
+        success: false,
+        message: `请先为「${targetGroup.name}」添加并配置 API Key 账号。`,
+      });
+      return;
+    }
+
+    const targetModel = defaultModelId || defaultServiceModels[0]?.id || 'deepseek-ai/deepseek-v4.1-flash';
+    const adapter = getAdapterForProvider(targetGroup.id);
+
+    const startTime = performance.now();
+    try {
+      const res = await adapter.testConnection(
+        {
+          ...targetKey,
+          baseUrl: groupBaseUrl.trim() || targetKey.baseUrl || targetGroup.defaultBaseUrl,
+        },
+        targetModel
+      );
+      const elapsed = Math.round(performance.now() - startTime);
+      setTestResult({
+        success: res.success,
+        message: res.message,
+        latencyMs: elapsed,
+      });
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        message: err.message || '网络连接失败，请检查 Base URL 与 API Key 是否有效。',
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  // Save Everything & Apply
+  const handleSaveAll = () => {
+    // 1. Save Base URL if current group changed
+    if (currentGroup && groupBaseUrl.trim() !== currentGroup.defaultBaseUrl) {
+      onSaveProvider({
+        ...currentGroup,
+        defaultBaseUrl: groupBaseUrl.trim(),
+      });
+    }
+
+    // 2. Save settings default provider & model
+    const newSettings: UserSettings = {
+      ...settings,
+      defaultProviderId: defaultServiceGroupId,
+      defaultModelId: defaultModelId,
+    };
+    onSaveSettings(newSettings);
+
+    // 3. Immediately select model & key in current chat
+    if (defaultModelId) {
+      onSelectModel(defaultModelId);
+    }
+    if (defaultKeyId) {
+      onSelectApiKey(defaultKeyId);
+    }
+
+    // Show toast and close
+    setShowSavedToast(true);
+    setTimeout(() => {
+      setShowSavedToast(false);
+      onClose();
+    }, 600);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+      <div 
+        className="relative w-full max-w-xl bg-[#12141a] text-neutral-100 rounded-2xl shadow-2xl border border-neutral-800 flex flex-col max-h-[92vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800/80 bg-[#151821]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
+              <Server className="w-4 h-4" />
+            </div>
+            <h2 className="text-lg font-bold text-white tracking-wide">AI 模型配置</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800/80 transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-sm scrollbar-thin scrollbar-thumb-neutral-700">
+          
+          {/* 1. 服务商 / 账号组 */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-neutral-400">服务商 / 账号组</span>
+              <button
+                type="button"
+                onClick={() => setIsAddingGroup(true)}
+                className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-neutral-800/80 hover:bg-neutral-700/80 text-neutral-200 border border-neutral-700/60 transition active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5 text-orange-400" />
+                <span>新增组</span>
+              </button>
+            </div>
+
+            {/* Group List Cards */}
+            <div className="space-y-1.5">
+              {providers.map((p) => {
+                const isSelected = p.id === selectedGroupId;
+                const pKeys = apiKeys.filter(k => k.providerId === p.id);
+                const pModels = models.filter(m => m.providerId === p.id);
+
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleSelectGroup(p.id)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition text-left ${
+                      isSelected
+                        ? 'bg-[#221c1f] border-orange-500/60 shadow-xs shadow-orange-950/20'
+                        : 'bg-[#181c26]/80 hover:bg-[#1f2430] border-neutral-800/90 text-neutral-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className={`font-semibold ${isSelected ? 'text-orange-200' : 'text-neutral-200'}`}>
+                        {p.name}
+                      </span>
+                      {p.id === 'nvidia' && (
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          推荐
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-neutral-400">
+                      {pKeys.length} 账号 · {pModels.length} 模型
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Add Group Inline Modal/Card */}
+            {isAddingGroup && (
+              <form onSubmit={handleCreateGroup} className="p-3 bg-[#1c212e] rounded-xl border border-orange-500/30 space-y-2.5 mt-2 animate-in fade-in">
+                <div className="text-xs font-bold text-orange-300 flex items-center justify-between">
+                  <span>新建服务商分组</span>
+                  <button type="button" onClick={() => setIsAddingGroup(false)} className="text-neutral-400 hover:text-white">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  <input
+                    type="text"
+                    placeholder="服务商名称 (如: 智谱 GLM, 零一万物, Local LLM)"
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-[#13161f] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="接口地址 Base URL (如: https://api.example.com/v1)"
+                    value={newGroupUrl}
+                    onChange={(e) => setNewGroupUrl(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-[#13161f] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingGroup(false)}
+                    className="px-2.5 py-1 text-xs rounded-lg text-neutral-400 hover:text-white"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-3 py-1 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white"
+                  >
+                    确认创建
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* 2. 服务商详情卡片 */}
+          {currentGroup && (
+            <div className="bg-[#181c26] border border-neutral-800 rounded-xl p-4 space-y-3.5">
+              {/* Card Header with +账号, +模型, 删组 */}
+              <div className="flex items-center justify-between pb-2 border-b border-neutral-800/80">
+                <div className="font-semibold text-neutral-200">
+                  {currentGroup.name} · 详情
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingKey(true)}
+                    className="px-2.5 py-1 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700/60 flex items-center gap-1 transition active:scale-95"
+                  >
+                    <Plus className="w-3 h-3 text-orange-400" />
+                    <span>账号</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingModel(true)}
+                    className="px-2.5 py-1 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700/60 flex items-center gap-1 transition active:scale-95"
+                  >
+                    <Plus className="w-3 h-3 text-orange-400" />
+                    <span>模型</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteCurrentGroup}
+                    className="px-2.5 py-1 text-xs rounded-lg bg-neutral-800/80 hover:bg-red-950/60 text-red-400 border border-neutral-700/60 transition active:scale-95"
+                  >
+                    删组
+                  </button>
+                </div>
+              </div>
+
+              {/* 接口地址 (OpenAI 兼容协议) */}
+              <div className="space-y-1.5">
+                <div className="text-xs text-neutral-400 flex items-center justify-between">
+                  <span>接口地址（OpenAI 兼容协议）</span>
+                  {groupBaseUrl.trim() !== currentGroup.defaultBaseUrl && (
+                    <span className="text-[10px] text-amber-400">已修改，保存生效</span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={groupBaseUrl}
+                    onChange={(e) => setGroupBaseUrl(e.target.value)}
+                    onBlur={handleSaveGroupUrl}
+                    placeholder="https://integrate.api.nvidia.com/v1"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 transition"
+                  />
+                </div>
+              </div>
+
+              {/* Add Key In-place Form */}
+              {isAddingKey && (
+                <form onSubmit={handleAddKey} className="p-3 bg-[#131620] rounded-xl border border-orange-500/40 space-y-2 animate-in fade-in">
+                  <div className="text-xs font-bold text-orange-300 flex items-center justify-between">
+                    <span>添加 {currentGroup.name} API Key</span>
+                    <button type="button" onClick={() => setIsAddingKey(false)} className="text-neutral-400 hover:text-white">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="账号备注 (如: 主账号, 免费测试Key)"
+                    value={newKeyLabel}
+                    onChange={(e) => setNewKeyLabel(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                  />
+                  <input
+                    type="password"
+                    placeholder="输入 API Key (如 nvapi-... 或 sk-...)"
+                    value={newKeyValue}
+                    onChange={(e) => setNewKeyValue(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs font-mono rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                    required
+                  />
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button type="button" onClick={() => setIsAddingKey(false)} className="px-2 py-1 text-xs text-neutral-400">
+                      取消
+                    </button>
+                    <button type="submit" className="px-3 py-1 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white">
+                      保存账号
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* 账号清单 (API Keys) */}
+              {groupKeys.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-xs text-neutral-400">已配置账号清单</div>
+                  <div className="space-y-1">
+                    {groupKeys.map((k) => (
+                      <div
+                        key={k.id}
+                        className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#12141c] border border-neutral-800/80 text-xs"
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <Key className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                          <span className="font-medium text-neutral-200 truncate">{k.label}</span>
+                          <span className="text-[10px] text-neutral-500 font-mono">
+                            ({k.apiKey.slice(0, 6)}...{k.apiKey.slice(-4)})
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteApiKey(k.id)}
+                          className="px-2 py-0.5 text-xs text-neutral-400 hover:text-red-400 rounded-md hover:bg-red-950/40 transition"
+                        >
+                          删
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add Model In-place Form */}
+              {isAddingModel && (
+                <form onSubmit={handleAddModel} className="p-3 bg-[#131620] rounded-xl border border-orange-500/40 space-y-2 animate-in fade-in">
+                  <div className="text-xs font-bold text-orange-300 flex items-center justify-between">
+                    <span>添加模型至 {currentGroup.name}</span>
+                    <button type="button" onClick={() => setIsAddingModel(false)} className="text-neutral-400 hover:text-white">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="模型 ID (如 deepseek-ai/deepseek-v4.1-flash, gpt-4o)"
+                    value={newModelId}
+                    onChange={(e) => setNewModelId(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs font-mono rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                    required
+                  />
+                  <input
+                    type="text"
+                    placeholder="模型展示名称 (选填)"
+                    value={newModelName}
+                    onChange={(e) => setNewModelName(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                  />
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button type="button" onClick={() => setIsAddingModel(false)} className="px-2 py-1 text-xs text-neutral-400">
+                      取消
+                    </button>
+                    <button type="submit" className="px-3 py-1 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white">
+                      添加模型
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* 模型清单 */}
+              <div className="space-y-1.5">
+                <div className="text-xs text-neutral-400">模型清单</div>
+                <div className="space-y-1 max-h-44 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-neutral-700">
+                  {groupModels.length === 0 ? (
+                    <div className="text-xs text-neutral-500 py-2 text-center">
+                      暂无模型，点击右上角「+ 模型」添加
+                    </div>
+                  ) : (
+                    groupModels.map((m) => (
+                      <div
+                        key={m.id}
+                        className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#12141c] border border-neutral-800/80 text-xs group"
+                      >
+                        <span className="font-mono text-neutral-300 truncate max-w-[80%]">
+                          {m.id}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onDeleteModel(m.id)}
+                          className="px-2 py-0.5 text-xs text-neutral-400 hover:text-red-400 rounded-md hover:bg-red-950/40 transition"
+                          title="删除此模型"
+                        >
+                          删
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3. 默认模型服务 */}
+          <div className="bg-[#181c26] border border-neutral-800 rounded-xl p-4 space-y-3">
+            <div className="font-semibold text-neutral-200">默认模型服务</div>
+            
+            {/* 服务组 */}
+            <div className="space-y-1">
+              <label className="text-xs text-neutral-400">服务组</label>
+              <div className="relative">
+                <select
+                  value={defaultServiceGroupId}
+                  onChange={(e) => {
+                    const newGId = e.target.value;
+                    setDefaultServiceGroupId(newGId);
+                    const matchingModels = models.filter(m => m.providerId === newGId);
+                    if (matchingModels.length > 0) {
+                      setDefaultModelId(matchingModels[0].id);
+                    }
+                    const matchingKeys = apiKeys.filter(k => k.providerId === newGId);
+                    if (matchingKeys.length > 0) {
+                      setDefaultKeyId(matchingKeys[0].id);
+                    } else {
+                      setDefaultKeyId('');
+                    }
+                  }}
+                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
+                >
+                  {providers.map((p) => (
+                    <option key={p.id} value={p.id} className="bg-[#181c26] text-white">
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* 账号 (API Key) */}
+            <div className="space-y-1">
+              <label className="text-xs text-neutral-400">账号（API Key）</label>
+              <div className="relative">
+                <select
+                  value={defaultKeyId}
+                  onChange={(e) => setDefaultKeyId(e.target.value)}
+                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
+                >
+                  <option value="" className="bg-[#181c26] text-neutral-400">
+                    {defaultServiceKeys.length === 0 ? '（尚未配置 API Key）' : '（使用服务商默认 Key）'}
+                  </option>
+                  {defaultServiceKeys.map((k) => (
+                    <option key={k.id} value={k.id} className="bg-[#181c26] text-white">
+                      {k.label} ({k.apiKey.slice(0, 4)}...{k.apiKey.slice(-4)})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* 模型 */}
+            <div className="space-y-1">
+              <label className="text-xs text-neutral-400">模型</label>
+              <div className="relative">
+                <select
+                  value={defaultModelId}
+                  onChange={(e) => setDefaultModelId(e.target.value)}
+                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
+                >
+                  {defaultServiceModels.map((m) => (
+                    <option key={m.id} value={m.id} className="bg-[#181c26] text-white">
+                      {m.name || m.id} {m.id === currentModelId ? '· (现用)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Test Result Message Box */}
+          {testResult && (
+            <div
+              className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in ${
+                testResult.success
+                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                  : 'bg-red-950/40 border-red-500/40 text-red-300'
+              }`}
+            >
+              {testResult.success ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1 space-y-0.5">
+                <div className="font-semibold flex items-center justify-between">
+                  <span>{testResult.success ? '连通性测试通过' : '测试失败'}</span>
+                  {testResult.latencyMs !== undefined && (
+                    <span className="font-mono text-[11px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      延迟 {testResult.latencyMs}ms
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] opacity-90 leading-relaxed">{testResult.message}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Action Footer (Matches Image 3) */}
+        <div className="px-5 py-3.5 border-t border-neutral-800/80 bg-[#151821] flex items-center justify-between gap-3">
+          {/* 测试连接 Button */}
+          <button
+            type="button"
+            onClick={handleTestConnection}
+            disabled={isTesting}
+            className="flex-1 py-2.5 px-4 rounded-xl bg-[#1e2330] hover:bg-[#262c3d] text-neutral-200 border border-neutral-700/80 font-medium text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isTesting ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin text-orange-400" />
+                <span>正在测试...</span>
+              </>
+            ) : (
+              <>
+                <Activity className="w-4 h-4 text-neutral-400" />
+                <span>测试连接</span>
+              </>
+            )}
+          </button>
+
+          {/* 保存 Button (Glowing Coral/Orange) */}
+          <button
+            type="button"
+            onClick={handleSaveAll}
+            className="flex-1 py-2.5 px-4 rounded-xl bg-linear-to-r from-[#f97316] to-[#ea580c] hover:from-[#fb923c] hover:to-[#f97316] text-white font-semibold text-sm shadow-lg shadow-orange-600/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            {showSavedToast ? (
+              <>
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>已保存生效！</span>
+              </>
+            ) : (
+              <span>保存</span>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

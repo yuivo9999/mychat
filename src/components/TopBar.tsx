@@ -17,7 +17,8 @@ import {
   Clock,
   HelpCircle,
   Copy,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Server
 } from 'lucide-react';
 import { Conversation, ModelItem, ProviderDefinition, ApiKeyConfig, ConnectionStatus } from '../types';
 
@@ -38,6 +39,7 @@ interface TopBarProps {
   onExportChat: () => void;
   onClearChat: () => void;
   onOpenSettings: (initialTab?: string) => void;
+  onOpenModelConfig?: () => void;
   onRenameChat: (newTitle: string) => void;
   onCopyAllChat: () => void;
   onOpenParameters?: () => void;
@@ -61,6 +63,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onExportChat,
   onClearChat,
   onOpenSettings,
+  onOpenModelConfig,
   onRenameChat,
   onCopyAllChat,
   onOpenParameters,
@@ -87,13 +90,18 @@ export const TopBar: React.FC<TopBarProps> = ({
     );
   });
 
-  // Group models by provider
+  // Group models by provider strictly respecting provider order
   const modelsByProvider: Record<string, ModelItem[]> = {};
+  for (const p of providers) {
+    const pModels = filteredModels.filter(m => m.providerId === p.id);
+    if (pModels.length > 0) {
+      modelsByProvider[p.id] = pModels;
+    }
+  }
   for (const m of filteredModels) {
     if (!modelsByProvider[m.providerId]) {
-      modelsByProvider[m.providerId] = [];
+      modelsByProvider[m.providerId] = [m];
     }
-    modelsByProvider[m.providerId].push(m);
   }
 
   // Get keys for current provider
@@ -276,17 +284,31 @@ export const TopBar: React.FC<TopBarProps> = ({
 
               {/* Bottom quick action */}
               <div className="p-2 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50 flex items-center justify-between text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setModelDropdownOpen(false);
-                    onOpenSettings('models');
-                  }}
-                  className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 text-[11px]"
-                >
-                  <Settings className="w-3 h-3" />
-                  <span>管理自定义模型</span>
-                </button>
+                {onOpenModelConfig ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModelDropdownOpen(false);
+                      onOpenModelConfig();
+                    }}
+                    className="text-orange-600 dark:text-orange-400 hover:underline flex items-center gap-1 text-[11px] font-medium"
+                  >
+                    <Server className="w-3 h-3" />
+                    <span>AI 模型与服务商配置</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModelDropdownOpen(false);
+                      onOpenSettings('models');
+                    }}
+                    className="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 text-[11px]"
+                  >
+                    <Settings className="w-3 h-3" />
+                    <span>管理自定义模型</span>
+                  </button>
+                )}
               </div>
             </div>
           </>
@@ -439,6 +461,17 @@ export const TopBar: React.FC<TopBarProps> = ({
                   <Trash2 className="w-4 h-4" /> 清空当前消息
                 </button>
                 <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+                {onOpenModelConfig && (
+                  <button
+                    onClick={() => {
+                      setMoreMenuOpen(false);
+                      onOpenModelConfig();
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-orange-600 dark:text-orange-400 font-medium"
+                  >
+                    <Server className="w-4 h-4" /> AI 模型配置
+                  </button>
+                )}
                 {onOpenParameters && (
                   <button
                     onClick={() => {
@@ -457,7 +490,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                   }}
                   className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
                 >
-                  <Settings className="w-4 h-4" /> 聊天与模型设置
+                  <Settings className="w-4 h-4" /> 通用与外观设置
                 </button>
               </div>
             </>

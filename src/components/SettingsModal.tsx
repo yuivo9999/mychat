@@ -35,6 +35,7 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialTab?: string;
+  onOpenModelConfig?: () => void;
   providers: ProviderDefinition[];
   onSaveProvider: (p: ProviderDefinition) => Promise<void>;
   onDeleteProvider: (id: string) => Promise<void>;
@@ -57,6 +58,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
   initialTab = 'providers',
+  onOpenModelConfig,
   providers,
   onSaveProvider,
   onDeleteProvider,
@@ -78,7 +80,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   // API Key Form State
   const [editingKeyId, setEditingKeyId] = useState<string | null>(null);
-  const [keyProviderId, setKeyProviderId] = useState(providers[0]?.id || 'google');
+  const [keyProviderId, setKeyProviderId] = useState(providers[0]?.id || 'nvidia');
   const [keyLabel, setKeyLabel] = useState('');
   const [keyValue, setKeyValue] = useState('');
   const [keyBaseUrl, setKeyBaseUrl] = useState('');
@@ -90,7 +92,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [editingModelId, setEditingModelId] = useState<string | null>(null);
   const [modelFormId, setModelFormId] = useState('');
   const [modelFormName, setModelFormName] = useState('');
-  const [modelFormProviderId, setModelFormProviderId] = useState(providers[0]?.id || 'openai');
+  const [modelFormProviderId, setModelFormProviderId] = useState(providers[0]?.id || 'nvidia');
   const [modelFormVision, setModelFormVision] = useState(false);
   const [modelFormStreaming, setModelFormStreaming] = useState(true);
   const [modelFormTemp, setModelFormTemp] = useState<number>(0.7);
@@ -302,6 +304,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
           {/* Navigation Sidebar */}
           <nav className="w-full md:w-52 border-b md:border-b-0 md:border-r border-neutral-200 dark:border-neutral-800 p-2 md:p-3 flex md:flex-col gap-1 overflow-x-auto md:overflow-y-auto shrink-0 bg-neutral-50/30 dark:bg-neutral-950/20">
+            {onOpenModelConfig && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenModelConfig();
+                }}
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 transition mb-1 text-left shrink-0"
+              >
+                <span>⚡ 打开 AI 模型独立配置</span>
+                <span className="text-[10px]">→</span>
+              </button>
+            )}
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;

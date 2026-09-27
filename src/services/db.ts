@@ -11,6 +11,14 @@ const DB_VERSION = 2;
 
 export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
   {
+    id: 'nvidia',
+    name: 'NVIDIA NIM API',
+    description: 'NVIDIA 云端高性能模型接入 (如 deepseek-ai/deepseek-v4.1-flash 等)',
+    icon: 'Terminal',
+    defaultBaseUrl: 'https://integrate.api.nvidia.com/v1',
+    enabled: true,
+  },
+  {
     id: 'google',
     name: 'Google Gemini',
     description: 'Gemini 2.5 Flash, Gemini 1.5 Pro 高性价比多模态模型',
@@ -27,19 +35,19 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
     enabled: true,
   },
   {
-    id: 'anthropic',
-    name: 'Anthropic',
-    description: 'Claude 3.5 Sonnet, Claude 3.5 Haiku 高度拟人与编码模型',
-    icon: 'Cpu',
-    defaultBaseUrl: 'https://api.anthropic.com/v1',
-    enabled: true,
-  },
-  {
     id: 'deepseek',
     name: 'DeepSeek (深度求索)',
     description: 'DeepSeek-V3, DeepSeek-R1 满血版极致推理与代码模型',
     icon: 'Zap',
     defaultBaseUrl: 'https://api.deepseek.com',
+    enabled: true,
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    description: 'Claude 3.5 Sonnet, Claude 3.5 Haiku 高度拟人与编码模型',
+    icon: 'Cpu',
+    defaultBaseUrl: 'https://api.anthropic.com/v1',
     enabled: true,
   },
   {
@@ -83,14 +91,6 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
     enabled: true,
   },
   {
-    id: 'nvidia',
-    name: 'NVIDIA NIM',
-    description: 'NVIDIA 云端优化的企业级高性能推理 API',
-    icon: 'Terminal',
-    defaultBaseUrl: 'https://integrate.api.nvidia.com/v1',
-    enabled: true,
-  },
-  {
     id: 'ollama',
     name: 'Ollama (本地私有大模型)',
     description: '无需联网，在本地电脑运行 Llama 3, DeepSeek, Qwen',
@@ -110,6 +110,75 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
 ];
 
 export const DEFAULT_MODELS: ModelItem[] = [
+  // NVIDIA NIM Models (默认首个核心分组)
+  {
+    id: 'deepseek-ai/deepseek-v4.1-flash',
+    name: 'deepseek-ai/deepseek-v4.1-flash (NVIDIA)',
+    providerId: 'nvidia',
+    description: 'NVIDIA NIM 极速高性能 DeepSeek V4.1 Flash 模型',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+    topP: 0.95,
+  },
+  {
+    id: 'deepseek-ai/deepseek-r1',
+    name: 'deepseek-ai/deepseek-r1 (NVIDIA)',
+    providerId: 'nvidia',
+    description: 'NVIDIA NIM 满血版 671B 思维链推理大模型',
+    supportsVision: false,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.6,
+  },
+  {
+    id: 'meta/llama-3.3-70b-instruct',
+    name: 'meta/llama-3.3-70b-instruct (NVIDIA)',
+    providerId: 'nvidia',
+    description: 'NVIDIA NIM Meta Llama 3.3 70B 旗舰指令模型',
+    supportsVision: false,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'nvidia/llama-3.1-nemotron-70b-instruct',
+    name: 'nvidia/llama-3.1-nemotron-70b-instruct',
+    providerId: 'nvidia',
+    description: 'NVIDIA 官方 Nemotron 70B 高智力推理对齐模型',
+    supportsVision: false,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'meta/llama-3.1-405b-instruct',
+    name: 'meta/llama-3.1-405b-instruct (NVIDIA)',
+    providerId: 'nvidia',
+    description: 'NVIDIA NIM 405B 超大规模前沿开源巨型模型',
+    supportsVision: false,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'qwen/qwen2.5-72b-instruct',
+    name: 'qwen/qwen2.5-72b-instruct (NVIDIA)',
+    providerId: 'nvidia',
+    description: 'NVIDIA NIM 通义千问 2.5 72B 强大全能模型',
+    supportsVision: false,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+
   // Google Gemini
   {
     id: 'gemini-2.5-flash',
@@ -336,8 +405,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   enableStreaming: true,
   enableMarkdown: true,
   enableCodeHighlight: true,
-  defaultProviderId: 'google',
-  defaultModelId: 'gemini-2.5-flash',
+  defaultProviderId: 'nvidia',
+  defaultModelId: 'deepseek-ai/deepseek-v4.1-flash',
   defaultSystemPrompt: '你是一个知识渊博、表达严谨、思维敏捷的专业 AI 助手。请用清晰、结构化并得体的语言回答用户的问题。在提供代码时，请提供完整可执行的高质量代码，并附有必要解释。',
   requestTimeout: 60,
   sidebarOpen: true,
@@ -504,13 +573,22 @@ export async function getModels(): Promise<ModelItem[]> {
     const store = transaction.objectStore('models');
     const request = store.getAll();
 
-    request.onsuccess = () => {
-      const results = request.result || [];
+    request.onsuccess = async () => {
+      const results = (request.result as ModelItem[]) || [];
       if (results.length === 0) {
         // Seed default models
-        seedDefaultModels().then(() => resolve(DEFAULT_MODELS));
+        await seedDefaultModels();
+        resolve(DEFAULT_MODELS);
       } else {
-        resolve(results);
+        // Check if NVIDIA NIM models are present
+        const hasNvidiaDefault = results.some(m => m.id === 'deepseek-ai/deepseek-v4.1-flash');
+        if (!hasNvidiaDefault) {
+          await seedDefaultModels();
+          const missingDefaults = DEFAULT_MODELS.filter(dm => !results.some(r => r.id === dm.id));
+          resolve([...missingDefaults, ...results]);
+        } else {
+          resolve(results);
+        }
       }
     };
     request.onerror = () => reject(request.error);
@@ -558,12 +636,28 @@ export async function getProviders(): Promise<ProviderDefinition[]> {
     const store = transaction.objectStore('providers');
     const request = store.getAll();
 
-    request.onsuccess = () => {
-      const results = request.result || [];
+    request.onsuccess = async () => {
+      const results = (request.result as ProviderDefinition[]) || [];
       if (results.length === 0) {
-        seedDefaultProviders().then(() => resolve(DEFAULT_PROVIDERS));
+        await seedDefaultProviders();
+        resolve(DEFAULT_PROVIDERS);
       } else {
-        resolve(results);
+        const hasNvidia = results.some(p => p.id === 'nvidia');
+        if (!hasNvidia) {
+          await seedDefaultProviders();
+          resolve(DEFAULT_PROVIDERS);
+        } else {
+          // Keep NVIDIA as first provider order
+          const providerOrder = DEFAULT_PROVIDERS.map(p => p.id);
+          results.sort((a, b) => {
+            const idxA = providerOrder.indexOf(a.id);
+            const idxB = providerOrder.indexOf(b.id);
+            if (idxA === -1) return 1;
+            if (idxB === -1) return -1;
+            return idxA - idxB;
+          });
+          resolve(results);
+        }
       }
     };
     request.onerror = () => reject(request.error);

@@ -13,7 +13,8 @@ import {
   MoreVertical, 
   CheckSquare, 
   ShieldCheck,
-  FolderOpen
+  FolderOpen,
+  Server
 } from 'lucide-react';
 import { Conversation, ModelItem } from '../types';
 
@@ -29,6 +30,7 @@ interface SidebarProps {
   onRenameConversation: (id: string, newTitle: string) => void;
   onExportConversation: (conv: Conversation) => void;
   onOpenSettings: () => void;
+  onOpenModelConfig?: () => void;
   onOpenSearch: () => void;
   onOpenBatchManage: () => void;
   models: ModelItem[];
@@ -47,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onRenameConversation,
   onExportConversation,
   onOpenSettings,
+  onOpenModelConfig,
   onOpenSearch,
   onOpenBatchManage,
   models,
@@ -357,13 +360,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-[10px] text-neutral-400/80">IndexedDB</span>
           </div>
 
+          {/* Dedicated AI Model Configuration Button */}
+          {onOpenModelConfig && (
+            <button
+              type="button"
+              onClick={onOpenModelConfig}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/25 transition active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-2">
+                <Server className="w-4 h-4" />
+                <span>AI 模型配置</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-orange-500/20 text-orange-500 dark:text-orange-300 font-mono">
+                服务商/Key
+              </span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onOpenSettings}
             className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition"
           >
             <Settings className="w-4 h-4 text-neutral-500" />
-            <span>设置与 API 管理</span>
+            <span>通用与外观设置</span>
           </button>
         </div>
       </aside>

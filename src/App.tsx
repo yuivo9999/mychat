@@ -40,6 +40,7 @@ import { SearchModal } from './components/SearchModal';
 import { ExportModal } from './components/ExportModal';
 import { BatchManageModal } from './components/BatchManageModal';
 import { ParametersModal } from './components/ParametersModal';
+import { AiModelConfigModal } from './components/AiModelConfigModal';
 
 const DEFAULT_PARAMETERS: ModelParameters = {
   enableReasoning: false,
@@ -63,7 +64,7 @@ export default function App() {
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
 
   // Active Selections
-  const [selectedModelId, setSelectedModelId] = useState<string>('gemini-2.5-flash');
+  const [selectedModelId, setSelectedModelId] = useState<string>('deepseek-ai/deepseek-v4.1-flash');
   const [selectedApiKeyId, setSelectedApiKeyId] = useState<string | undefined>();
 
   // Runtime State
@@ -79,6 +80,7 @@ export default function App() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
   const [isParametersOpen, setIsParametersOpen] = useState(false);
+  const [isModelConfigOpen, setIsModelConfigOpen] = useState(false);
 
   // Model Parameters State (Reasoning, Stream, Max Tokens, Temp, Top P, Penalties, Stop, Seed)
   const [parameters, setParameters] = useState<ModelParameters>(DEFAULT_PARAMETERS);
@@ -955,9 +957,10 @@ export default function App() {
         onRenameConversation={handleRenameConversation}
         onExportConversation={() => setIsExportOpen(true)}
         onOpenSettings={() => {
-          setSettingsTab('providers');
+          setSettingsTab('chat');
           setIsSettingsOpen(true);
         }}
+        onOpenModelConfig={() => setIsModelConfigOpen(true)}
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenBatchManage={() => setIsBatchOpen(true)}
         models={models}
@@ -994,6 +997,7 @@ export default function App() {
             if (tab) setSettingsTab(tab);
             setIsSettingsOpen(true);
           }}
+          onOpenModelConfig={() => setIsModelConfigOpen(true)}
           onRenameChat={(newTitle) => {
             if (currentConversation) handleRenameConversation(currentConversation.id, newTitle);
           }}
@@ -1029,6 +1033,7 @@ export default function App() {
             if (tab) setSettingsTab(tab);
             setIsSettingsOpen(true);
           }}
+          onOpenModelConfig={() => setIsModelConfigOpen(true)}
           quotedText={quotedText}
           onClearQuote={() => setQuotedText(null)}
           parameters={parameters}
@@ -1036,6 +1041,34 @@ export default function App() {
           onOpenParameters={() => setIsParametersOpen(true)}
         />
       </div>
+
+      {/* Dedicated AI Model Configuration Modal (Matches user screenshots) */}
+      <AiModelConfigModal
+        isOpen={isModelConfigOpen}
+        onClose={() => setIsModelConfigOpen(false)}
+        providers={providers}
+        onSaveProvider={handleSaveProviderDef}
+        onDeleteProvider={handleDeleteProviderDef}
+        apiKeys={apiKeys}
+        onSaveApiKey={handleSaveApiKeyConfig}
+        onDeleteApiKey={handleDeleteApiKeyConfig}
+        models={models}
+        onSaveModel={handleSaveModelItem}
+        onDeleteModel={handleDeleteModelItem}
+        settings={settings}
+        onSaveSettings={handleSaveSettingsObj}
+        currentModelId={selectedModelId}
+        onSelectModel={(id) => {
+          setSelectedModelId(id);
+          if (currentConversation) {
+            const updated = { ...currentConversation, modelId: id };
+            saveConversation(updated);
+            setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+          }
+        }}
+        selectedApiKeyId={selectedApiKeyId}
+        onSelectApiKey={(id) => setSelectedApiKeyId(id)}
+      />
 
       {/* Parameters Settings Modal (Matches user screenshot) */}
       <ParametersModal
@@ -1051,6 +1084,7 @@ export default function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         initialTab={settingsTab}
+        onOpenModelConfig={() => setIsModelConfigOpen(true)}
         providers={providers}
         onSaveProvider={handleSaveProviderDef}
         onDeleteProvider={handleDeleteProviderDef}
