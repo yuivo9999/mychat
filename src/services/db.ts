@@ -80,50 +80,6 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
 
 export const DEFAULT_MODELS: ModelItem[] = [
   // Groq.com Free Plan models. Groq documents these model IDs and free-plan rate limits.
-  {
-    id: 'openai/gpt-oss-120b',
-    name: 'GPT-OSS 120B (groq.com 免费)',
-    providerId: 'groq',
-    description: 'Groq.com 免费层 GPT-OSS 120B',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
-  {
-    id: 'openai/gpt-oss-20b',
-    name: 'GPT-OSS 20B (groq.com 免费)',
-    providerId: 'groq',
-    description: 'Groq.com 免费层 GPT-OSS 20B',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
-  {
-    id: 'openai/gpt-oss-safeguard-20b',
-    name: 'GPT-OSS Safeguard 20B (groq.com 免费)',
-    providerId: 'groq',
-    description: 'Groq.com 免费层 GPT-OSS Safeguard 20B',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
-  {
-    id: 'qwen/qwen3.8-27b',
-    name: 'Qwen 3.8 27B (groq.com 免费)',
-    providerId: 'groq',
-    description: 'Groq.com 免费层 Qwen 3.8 27B，多模态',
-    supportsVision: true,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
 
   // groq.com free-tier models (official free plan)
 
@@ -288,6 +244,51 @@ export const DEFAULT_MODELS: ModelItem[] = [
     supportsStreaming: true,
     contextWindow: 1048576,
     temperature: 1,
+  },
+  // Groq.com Free Plan models.
+  {
+    id: 'openai/gpt-oss-120b',
+    name: 'GPT-OSS 120B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层 GPT-OSS 120B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'openai/gpt-oss-20b',
+    name: 'GPT-OSS 20B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层 GPT-OSS 20B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'openai/gpt-oss-safeguard-20b',
+    name: 'GPT-OSS Safeguard 20B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层 GPT-OSS Safeguard 20B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'qwen/qwen3.8-27b',
+    name: 'Qwen 3.8 27B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层 Qwen 3.8 27B，多模态',
+    supportsVision: true,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
   },
   // Google Gemini Models (免费层与最新前沿模型)
   {
@@ -714,28 +715,6 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
 
   // Anthropic
-  {
-    id: 'claude-3-5-sonnet-20241022',
-    name: 'Claude 3.5 Sonnet',
-    providerId: 'anthropic',
-    description: '行业顶级代码编写、复杂推理与文风表达',
-    supportsVision: true,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 200000,
-    temperature: 0.7,
-  },
-  {
-    id: 'claude-3-5-haiku-20241022',
-    name: 'Claude 3.5 Haiku',
-    providerId: 'anthropic',
-    description: '极速响应的高性价比模型',
-    supportsVision: false,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 200000,
-    temperature: 0.7,
-  },
 
   // DeepSeek
   {
@@ -762,65 +741,10 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
 
   // Moonshot
-  {
-    id: 'moonshot-v1-32k',
-    name: 'Moonshot v1 32K',
-    providerId: 'moonshot',
-    description: 'Kimi 长文本理解与资料摘要',
-    supportsVision: false,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 32768,
-    temperature: 0.7,
-  },
 
   // Qwen
-  {
-    id: 'qwen-max',
-    name: 'Qwen Max (通义千问旗舰)',
-    providerId: 'qwen',
-    description: '阿里巴巴千亿级旗舰模型，全面能力出众',
-    supportsVision: true,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 32768,
-    temperature: 0.7,
-  },
-  {
-    id: 'qwen-plus',
-    name: 'Qwen Plus',
-    providerId: 'qwen',
-    description: '平衡性能与成本的高阶通用模型',
-    supportsVision: false,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
 
   // SiliconFlow
-  {
-    id: 'deepseek-ai/DeepSeek-R1',
-    name: 'SiliconFlow DeepSeek-R1',
-    providerId: 'siliconflow',
-    description: '高速满血 DeepSeek-R1 推理集群',
-    supportsVision: false,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 64000,
-    temperature: 0.6,
-  },
-  {
-    id: 'deepseek-ai/DeepSeek-V3',
-    name: 'SiliconFlow DeepSeek-V3',
-    providerId: 'siliconflow',
-    description: '高速满血 DeepSeek-V3 对话集群',
-    supportsVision: false,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 64000,
-    temperature: 0.7,
-  },
 
   // OpenRouter
   {
@@ -930,17 +854,6 @@ export async function getModels(): Promise<ModelItem[]> {
 
     request.onsuccess = async () => {
       let results = (request.result as ModelItem[]) || [];
-
-      // Purge models belonging to removed/reused provider slots.
-      const staleProviderIds = new Set(['cerebras', 'ollama', 'groq']);
-      const staleModels = results.filter(r => staleProviderIds.has(r.providerId));
-      for (const model of staleModels) {
-        store.delete(model.id);
-      }
-      if (staleModels.length > 0) {
-        results = results.filter(r => !staleProviderIds.has(r.providerId));
-      }
-
       if (results.length === 0) {
         for (const m of DEFAULT_MODELS) store.put(m);
         results = [...DEFAULT_MODELS];
@@ -1023,38 +936,13 @@ export async function getProviders(): Promise<ProviderDefinition[]> {
   const isInitialized = localStorage.getItem('omnichat_db_initialized') === 'true';
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction('providers', 'readwrite');
+    const transaction = db.transaction('providers', 'readonly');
     const store = transaction.objectStore('providers');
     const request = store.getAll();
 
     request.onsuccess = async () => {
-      let results = (request.result as ProviderDefinition[]) || [];
-
-      // Migrate the old Ollama slot into the Groq slot and remove Cerebras.
-      for (const staleId of ['groq', 'cerebras']) {
-        store.delete(staleId);
-        results = results.filter(p => p.id !== staleId);
-      }
-      const oldOllama = results.find(p => p.id === 'ollama');
-      if (oldOllama) {
-        store.delete('ollama');
-        results = results.filter(p => p.id !== 'ollama');
-      }
-      const groqProvider = DEFAULT_PROVIDERS.find(p => p.id === 'groq');
-      if (groqProvider) {
-        store.put(groqProvider);
-        results.push(groqProvider);
-      }
-      // Ensure every current built-in provider is present even for databases
-      // initialized by older releases.
-      for (const provider of DEFAULT_PROVIDERS) {
-        if (!results.some(p => p.id === provider.id)) {
-          store.put(provider);
-          results.push(provider);
-        }
-      }
-
-      if (results.length === 0) {
+      const results = (request.result as ProviderDefinition[]) || [];
+      if (!isInitialized && results.length === 0) {
         localStorage.setItem('omnichat_db_initialized', 'true');
         await seedDefaultProviders();
         await seedDefaultModels();
