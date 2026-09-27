@@ -1,5 +1,6 @@
 import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch } from './base';
 import { ApiKeyConfig } from '../../types';
+import { extractAttachmentText } from '../fileParser';
 
 export class OpenAIAdapter implements BaseAdapter {
   private getDefaultBaseUrl(providerId: string): string {
@@ -71,8 +72,8 @@ export class OpenAIAdapter implements BaseAdapter {
           // Add text first
           let textWithExtracted = msg.content;
           for (const att of msg.attachments || []) {
-            if (att.extractedText) {
-              textWithExtracted += `\n\n[附件: ${att.name}]\n${att.extractedText}`;
+            if (att.extractedText || att.base64Data) {
+              textWithExtracted += `\n\n[附件文本: ${att.name}]\n${extractAttachmentText(att)}`;
             }
           }
           contents.push({ type: 'text', text: textWithExtracted || '请分析以下内容' });
@@ -94,8 +95,8 @@ export class OpenAIAdapter implements BaseAdapter {
           let text = msg.content;
           if (hasAttachments) {
             for (const att of msg.attachments || []) {
-              if (att.extractedText) {
-                text += `\n\n[附件文本: ${att.name}]\n${att.extractedText}`;
+              if (att.extractedText || att.base64Data) {
+                text += `\n\n[附件文本: ${att.name}]\n${extractAttachmentText(att)}`;
               } else if (att.type.startsWith('image/')) {
                 text += `\n\n[图片附件: ${att.name}]`;
               }
