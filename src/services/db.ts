@@ -79,13 +79,6 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
 ];
 
 export const DEFAULT_MODELS: ModelItem[] = [
-  // Groq.com Free Plan models. Groq documents these model IDs and free-plan rate limits.
-
-  // groq.com free-tier models (official free plan)
-
-  // cerebras.ai free-tier model currently listed by Cerebras
-  // Groq free-tier models
-  // Cerebras free API models
   // NVIDIA NIM Models (默认首个核心分组)
   {
     id: 'deepseek-ai/deepseek-v4.1-flash',
@@ -169,51 +162,6 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
   {
     id: 'z-ai/glm-5.3-flash',
-    name: 'GLM 5.3 Flash (NVIDIA Free)',
-    providerId: 'nvidia',
-    description: 'NVIDIA Free Endpoint：Z.ai GLM 5.3 Flash，多模态',
-    supportsVision: true,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 202752,
-    temperature: 0.7,
-  },
-  {
-    id: 'nvidia/nemotron-3.5-lightning-30b-a3b',
-    name: 'Nemotron 3.5 Lightning 30B (NVIDIA Free)',
-    providerId: 'nvidia',
-    description: 'NVIDIA Free Endpoint：Nemotron 3.5 Lightning 30B A3B',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
-  {
-    id: 'nvidia/nemotron-3-super-120b-a12b',
-    name: 'Nemotron 3 Super 120B A12B (NVIDIA Free)',
-    providerId: 'nvidia',
-    description: 'NVIDIA Free Endpoint：Nemotron 3 Super，1M 上下文。',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 1048576,
-    temperature: 1,
-  },
-  // NVIDIA current Free Endpoints (verified against NVIDIA Build)
-  {
-    id: 'z-ai/glm-5-3',
-    name: 'GLM 5.3 (NVIDIA Free)',
-    providerId: 'nvidia',
-    description: 'NVIDIA Free Endpoint：Z.ai GLM 5.3',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 202752,
-    temperature: 0.7,
-  },
-  {
-    id: 'z-ai/glm-5-3-flash',
     name: 'GLM 5.3 Flash (NVIDIA Free)',
     providerId: 'nvidia',
     description: 'NVIDIA Free Endpoint：Z.ai GLM 5.3 Flash，多模态',
@@ -669,17 +617,6 @@ export const DEFAULT_MODELS: ModelItem[] = [
     contextWindow: 32768,
     temperature: 0.7,
   },
-  {
-    id: 'nvidia/nemotron-3-super:free',
-    name: 'Nemotron 3 Super (OpenRouter Free)',
-    providerId: 'openrouter',
-    description: 'OpenRouter 当前 $0 免费模型：NVIDIA Nemotron 3 Super',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 262144,
-    temperature: 1,
-  },
   // OpenAI
   {
     id: 'gpt-4o',
@@ -714,8 +651,6 @@ export const DEFAULT_MODELS: ModelItem[] = [
     contextWindow: 128000,
   },
 
-  // Anthropic
-
   // DeepSeek
   {
     id: 'deepseek-chat',
@@ -739,12 +674,6 @@ export const DEFAULT_MODELS: ModelItem[] = [
     contextWindow: 64000,
     temperature: 0.6,
   },
-
-  // Moonshot
-
-  // Qwen
-
-  // SiliconFlow
 
   // OpenRouter
   {
@@ -875,27 +804,12 @@ export async function clearAllConversations(): Promise<void> {
 // API Key Operations
 export async function getApiKeys(): Promise<ApiKeyConfig[]> {
   const db = await openDB();
-  const isInitialized = localStorage.getItem('omnichat_keys_initialized') === 'true';
-
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction('api_keys', 'readwrite');
-    const store = transaction.objectStore('api_keys');
-    const request = store.getAll();
+    const request = db.transaction('api_keys', 'readonly')
+      .objectStore('api_keys')
+      .getAll();
 
-    request.onsuccess = async () => {
-      const results = (request.result as ApiKeyConfig[]) || [];
-      if (!isInitialized && results.length === 0) {
-        localStorage.setItem('omnichat_keys_initialized', 'true');
-        resolve(results);
-        return;
-      }
-      // If Google group has no key but user hasn't explicitly cleared all keys
-      const hasGoogleKey = results.some(k => k.providerId === 'google');
-      if (!hasGoogleKey && !isInitialized) {
-        // No built-in credentials are seeded; users provide their own API keys.
-      }
-      resolve(results);
-    };
+    request.onsuccess = () => resolve((request.result as ApiKeyConfig[]) || []);
     request.onerror = () => reject(request.error);
   });
 }
@@ -944,59 +858,53 @@ export async function getModels(): Promise<ModelItem[]> {
     const transaction = db.transaction('models', 'readwrite');
     const store = transaction.objectStore('models');
     const request = store.getAll();
+    let results: ModelItem[] = [];
 
-    request.onsuccess = async () => {
-      let results = (request.result as ModelItem[]) || [];
+    request.onsuccess = () => {
+      results = (request.result as ModelItem[]) || [];
+
       if (results.length === 0) {
-        for (const m of DEFAULT_MODELS) store.put(m);
         results = [...DEFAULT_MODELS];
-      }
-
-      // Remove the obsolete OpenRouter free slug shipped by older builds.
-      const staleOpenRouterIds = ['nvidia/nemotron-3-super:free'];
-      for (const staleId of staleOpenRouterIds) {
-        if (results.some(r => r.id === staleId)) {
-          store.delete(staleId);
-          results = results.filter(r => r.id !== staleId);
+        for (const model of DEFAULT_MODELS) {
+          store.put(model);
         }
+      } else {
+        results = results.map(model => {
+          const defaultDef = DEFAULT_MODELS.find(dm => dm.id === model.id);
+          if (defaultDef && !model.isCustom &&
+              (model.name !== defaultDef.name || model.description !== defaultDef.description)) {
+            const updated = {
+              ...model,
+              name: defaultDef.name,
+              description: defaultDef.description,
+            };
+            store.put(updated);
+            return updated;
+          }
+          return model;
+        });
       }
-
-      // Ensure the fixed built-in model roster is present and keep user custom models.
-      const updatedResults = results.map(r => {
-        const defaultDef = DEFAULT_MODELS.find(dm => dm.id === r.id);
-        if (defaultDef && r.name !== defaultDef.name && !r.isCustom) {
-          const updated = { ...r, name: defaultDef.name, description: defaultDef.description };
-          store.put(updated);
-          return updated;
-        }
-        return r;
-      });
-
-      const missingDefaults = DEFAULT_MODELS.filter(dm => !updatedResults.some(r => r.id === dm.id));
-      if (missingDefaults.length > 0) {
-        for (const m of missingDefaults) {
-          store.put(m);
-          updatedResults.push(m);
-        }
-      }
-
-      // Return the actual catalog. The previous code referenced an undefined
-      // `withDefaults` variable here, leaving the IndexedDB success callback
-      // with an uncaught ReferenceError and causing the UI to wait forever for
-      // models/groups.
-      resolve(updatedResults);
     };
+
     request.onerror = () => reject(request.error);
+    transaction.oncomplete = () => resolve(results);
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error || new Error('Model transaction aborted'));
   });
 }
 
 export async function seedDefaultModels(): Promise<void> {
   const db = await openDB();
-  const transaction = db.transaction('models', 'readwrite');
-  const store = transaction.objectStore('models');
-  for (const m of DEFAULT_MODELS) {
-    store.put(m);
-  }
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction('models', 'readwrite');
+    const store = transaction.objectStore('models');
+    for (const model of DEFAULT_MODELS) {
+      store.put(model);
+    }
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error || new Error('Model transaction aborted'));
+  });
 }
 
 export async function saveModel(model: ModelItem): Promise<void> {
@@ -1026,25 +934,23 @@ export async function deleteModel(id: string): Promise<void> {
 // Providers Operations
 export async function getProviders(): Promise<ProviderDefinition[]> {
   const db = await openDB();
-  const isInitialized = localStorage.getItem('omnichat_db_initialized') === 'true';
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction('providers', 'readonly');
+    const transaction = db.transaction('providers', 'readwrite');
     const store = transaction.objectStore('providers');
     const request = store.getAll();
+    let results: ProviderDefinition[] = [];
 
-    request.onsuccess = async () => {
-      const results = (request.result as ProviderDefinition[]) || [];
-      if (!isInitialized && results.length === 0) {
-        localStorage.setItem('omnichat_db_initialized', 'true');
-        await seedDefaultProviders();
-        await seedDefaultModels();
-        resolve(DEFAULT_PROVIDERS);
-        return;
+    request.onsuccess = () => {
+      results = (request.result as ProviderDefinition[]) || [];
+      if (results.length === 0) {
+        results = [...DEFAULT_PROVIDERS];
+        for (const provider of DEFAULT_PROVIDERS) {
+          store.put(provider);
+        }
       }
 
-      // Keep NVIDIA as first provider order
-      const providerOrder = DEFAULT_PROVIDERS.map(p => p.id);
+      const providerOrder = DEFAULT_PROVIDERS.map(provider => provider.id);
       results.sort((a, b) => {
         const idxA = providerOrder.indexOf(a.id);
         const idxB = providerOrder.indexOf(b.id);
@@ -1052,19 +958,27 @@ export async function getProviders(): Promise<ProviderDefinition[]> {
         if (idxB === -1) return -1;
         return idxA - idxB;
       });
-      resolve(results);
     };
+
     request.onerror = () => reject(request.error);
+    transaction.oncomplete = () => resolve(results);
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error || new Error('Provider transaction aborted'));
   });
 }
 
 export async function seedDefaultProviders(): Promise<void> {
   const db = await openDB();
-  const transaction = db.transaction('providers', 'readwrite');
-  const store = transaction.objectStore('providers');
-  for (const p of DEFAULT_PROVIDERS) {
-    store.put(p);
-  }
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction('providers', 'readwrite');
+    const store = transaction.objectStore('providers');
+    for (const provider of DEFAULT_PROVIDERS) {
+      store.put(provider);
+    }
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error || new Error('Provider transaction aborted'));
+  });
 }
 
 export async function restoreDefaultProviders(): Promise<ProviderDefinition[]> {
@@ -1143,14 +1057,18 @@ export async function saveUserSettings(settings: UserSettings): Promise<void> {
 export async function resetAllData(): Promise<void> {
   await clearAllConversations();
   await clearAllApiKeys();
+
   const db = await openDB();
-  const tx = db.transaction(['models', 'providers', 'settings'], 'readwrite');
-  tx.objectStore('models').clear();
-  tx.objectStore('providers').clear();
-  tx.objectStore('settings').clear();
-  await new Promise<void>((res) => {
-    tx.oncomplete = () => res();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(['models', 'providers', 'settings'], 'readwrite');
+    tx.objectStore('models').clear();
+    tx.objectStore('providers').clear();
+    tx.objectStore('settings').clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('Reset transaction aborted'));
   });
+
   await seedDefaultProviders();
   await seedDefaultModels();
   await saveUserSettings(DEFAULT_SETTINGS);
