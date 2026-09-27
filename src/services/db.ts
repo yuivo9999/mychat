@@ -1086,7 +1086,7 @@ export async function getApiKeys(): Promise<ApiKeyConfig[]> {
 
     request.onsuccess = async () => {
       const results = (request.result as ApiKeyConfig[]) || [];
-      if (results.length === 0) {
+      if (!isInitialized && results.length === 0) {
         localStorage.setItem('omnichat_keys_initialized', 'true');
         for (const k of DEFAULT_API_KEYS) {
           store.put(k);
@@ -1264,7 +1264,7 @@ export async function getProviders(): Promise<ProviderDefinition[]> {
         results = results.filter(p => !REMOVED_DEFAULT_PROVIDER_IDS.has(p.id));
       }
 
-      if (!isInitialized && results.length === 0) {
+      if (results.length === 0) {
         localStorage.setItem('omnichat_db_initialized', 'true');
         await seedDefaultProviders();
         await seedDefaultModels();
