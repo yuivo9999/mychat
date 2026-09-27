@@ -698,8 +698,6 @@ export const DEFAULT_MODELS: ModelItem[] = [
     contextWindow: 131072,
     temperature: 0.7,
   },
-
-  // Ollama
 ];
 
 
