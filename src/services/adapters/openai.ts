@@ -16,6 +16,10 @@ export class OpenAIAdapter implements BaseAdapter {
         return 'https://api.siliconflow.cn/v1';
       case 'openrouter':
         return 'https://openrouter.ai/api/v1';
+      case 'groq':
+        return 'https://api.groq.com/openai/v1';
+      case 'cerebras':
+        return 'https://api.cerebras.ai/v1';
       case 'nvidia':
         return 'https://integrate.api.nvidia.com/v1';
       case 'ollama':
