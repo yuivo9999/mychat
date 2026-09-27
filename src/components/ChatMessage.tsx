@@ -22,6 +22,7 @@ import { Message, Attachment, UserSettings } from '../types';
 import { renderMarkdown, getFileExtensionForLang } from '../services/markdown';
 import { formatFileSize } from '../services/fileParser';
 import { ThinkingSteps } from './ThinkingSteps';
+import { AgentToolCallsViewer } from './AgentToolCallsViewer';
 
 interface ChatMessageProps {
   message: Message;
@@ -33,6 +34,7 @@ interface ChatMessageProps {
   onDelete: (messageId: string) => void;
   onQuote: (content: string) => void;
   onSwitchVersion: (messageId: string, versionIndex: number) => void;
+  onDownloadWorkspaceZip?: () => void;
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
@@ -45,6 +47,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onDelete,
   onQuote,
   onSwitchVersion,
+  onDownloadWorkspaceZip,
 }) => {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
@@ -326,6 +329,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               <span className="streaming-cursor" />
             )}
           </div>
+        )}
+
+        {/* Agent Tool Execution Logs & Diff Viewer */}
+        {!isUser && message.toolCalls && message.toolCalls.length > 0 && (
+          <AgentToolCallsViewer
+            toolCalls={message.toolCalls}
+            modifiedFiles={message.modifiedFiles}
+            onDownloadWorkspaceZip={onDownloadWorkspaceZip}
+          />
         )}
 
         {/* Error Banner */}

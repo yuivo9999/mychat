@@ -65,6 +65,9 @@ export interface MessageVersion {
   model?: string;
 }
 
+export * from './workspace';
+import { WorkspaceFile, ProjectMemoryItem, ToolCallExecution } from './workspace';
+
 export interface WebSearchResultItem {
   title: string;
   url: string;
@@ -93,6 +96,8 @@ export interface Message {
   currentVersionIndex?: number;
   webSearchResults?: WebSearchResultItem[];
   thinkingSteps?: ThinkingStep[];
+  toolCalls?: ToolCallExecution[];
+  modifiedFiles?: string[];
 }
 
 export interface ModelParameters {
@@ -120,6 +125,9 @@ export interface Conversation {
   systemPrompt?: string;
   parameters?: ModelParameters;
   webAccessEnabled?: boolean;
+  agentMode?: boolean; // 启用 Agent 自动化模式
+  workspaceFiles?: WorkspaceFile[];
+  projectMemory?: ProjectMemoryItem[];
   messages: Message[];
 }
 

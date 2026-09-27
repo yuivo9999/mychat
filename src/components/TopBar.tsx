@@ -18,7 +18,9 @@ import {
   HelpCircle,
   Copy,
   SlidersHorizontal,
-  Server
+  Server,
+  Folder,
+  Bot
 } from 'lucide-react';
 import { Conversation, ModelItem, ProviderDefinition, ApiKeyConfig, ConnectionStatus } from '../types';
 
@@ -44,6 +46,10 @@ interface TopBarProps {
   onCopyAllChat: () => void;
   onOpenParameters?: () => void;
   isReasoningEnabled?: boolean;
+  workspaceFilesCount?: number;
+  onOpenWorkspace?: () => void;
+  agentMode?: boolean;
+  onToggleAgentMode?: (enabled: boolean) => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -68,6 +74,10 @@ export const TopBar: React.FC<TopBarProps> = ({
   onCopyAllChat,
   onOpenParameters,
   isReasoningEnabled,
+  workspaceFilesCount = 0,
+  onOpenWorkspace,
+  agentMode = true,
+  onToggleAgentMode,
 }) => {
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
@@ -370,6 +380,42 @@ export const TopBar: React.FC<TopBarProps> = ({
               </>
             )}
           </div>
+        )}
+
+        {/* Agent Mode Switch Button */}
+        {onToggleAgentMode && (
+          <button
+            type="button"
+            onClick={() => onToggleAgentMode(!agentMode)}
+            className={`hidden md:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${
+              agentMode
+                ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 font-semibold'
+                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700'
+            }`}
+            title={agentMode ? '当前为 Agent 自动化模式：AI 会自主调用工具读写工作区' : '点击开启 Agent 自动化模式'}
+          >
+            <Bot className={`w-3.5 h-3.5 ${agentMode ? 'text-purple-500' : 'text-neutral-400'}`} />
+            <span>Agent 模式</span>
+            <span className={`w-1.5 h-1.5 rounded-full ${agentMode ? 'bg-purple-500 animate-pulse' : 'bg-neutral-400'}`} />
+          </button>
+        )}
+
+        {/* AI Workspace Button */}
+        {onOpenWorkspace && (
+          <button
+            type="button"
+            onClick={onOpenWorkspace}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/80 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-medium transition cursor-pointer shadow-2xs"
+            title="打开 AI 工作区与项目记忆面板"
+          >
+            <Folder className="w-3.5 h-3.5 text-indigo-500" />
+            <span>工作区</span>
+            {workspaceFilesCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-indigo-600 text-white text-[10px] font-bold">
+                {workspaceFilesCount}
+              </span>
+            )}
+          </button>
         )}
 
         {/* Open in new window button */}

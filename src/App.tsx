@@ -10,8 +10,22 @@ import {
   ConnectionStatus,
   ModelParameters,
   WebSearchResultItem,
-  ThinkingStep
+  ThinkingStep,
+  WorkspaceFile,
+  ProjectMemoryItem,
+  ToolCallExecution
 } from './types';
+import { 
+  DEFAULT_PROJECT_MEMORIES, 
+  exportAndDownloadWorkspaceZip 
+} from './services/workspace';
+import { 
+  buildAgentSystemPrompt, 
+  extractToolCallsFromResponse, 
+  executeWorkspaceTool, 
+  cleanResponseText 
+} from './services/agentEngine';
+import { WorkspaceDrawer } from './components/WorkspaceDrawer';
 import { 
   getConversations, 
   saveConversation, 
@@ -91,6 +105,12 @@ export default function App() {
 
   // Web Access State (访问网络, 默认关闭 false)
   const [webAccessEnabled, setWebAccessEnabled] = useState(false);
+
+  // AI Workspace & Project Memory State
+  const [workspaceFiles, setWorkspaceFiles] = useState<WorkspaceFile[]>([]);
+  const [projectMemories, setProjectMemories] = useState<ProjectMemoryItem[]>(DEFAULT_PROJECT_MEMORIES);
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+  const [agentMode, setAgentMode] = useState(true);
 
   // Layout & Responsive
   const [isMobile, setIsMobile] = useState(false);
@@ -195,7 +215,7 @@ export default function App() {
   const currentModel = models.find(m => m.id === selectedModelId) || models[0];
   const currentApiKey = apiKeys.find(k => k.id === selectedApiKeyId);
 
-  // Sync parameters and web access with current conversation
+  // Sync parameters, web access, workspace and memory with current conversation
   useEffect(() => {
     if (currentConversation?.parameters) {
       setParameters({ ...DEFAULT_PARAMETERS, ...currentConversation.parameters });
@@ -207,7 +227,65 @@ export default function App() {
     } else {
       setWebAccessEnabled(false);
     }
+    if (currentConversation?.agentMode !== undefined) {
+      setAgentMode(currentConversation.agentMode);
+    } else {
+      setAgentMode(true);
+    }
+    if (currentConversation?.workspaceFiles) {
+      setWorkspaceFiles(currentConversation.workspaceFiles);
+    }
+    if (currentConversation?.projectMemory && currentConversation.projectMemory.length > 0) {
+      setProjectMemories(currentConversation.projectMemory);
+    }
   }, [activeConversationId]);
+
+  const handleUpdateWorkspaceFiles = (newFiles: WorkspaceFile[]) => {
+    setWorkspaceFiles(newFiles);
+    if (currentConversation) {
+      const updated = {
+        ...currentConversation,
+        workspaceFiles: newFiles,
+        updatedAt: Date.now(),
+      };
+      saveConversation(updated);
+      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+    }
+  };
+
+  const handleUpdateProjectMemories = (newMemories: ProjectMemoryItem[]) => {
+    setProjectMemories(newMemories);
+    if (currentConversation) {
+      const updated = {
+        ...currentConversation,
+        projectMemory: newMemories,
+        updatedAt: Date.now(),
+      };
+      saveConversation(updated);
+      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+    }
+  };
+
+  const handleToggleAgentMode = (enabled: boolean) => {
+    setAgentMode(enabled);
+    if (currentConversation) {
+      const updated = {
+        ...currentConversation,
+        agentMode: enabled,
+        updatedAt: Date.now(),
+      };
+      saveConversation(updated);
+      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+    }
+  };
+
+  const handleDownloadWorkspaceZip = async () => {
+    if (workspaceFiles.length === 0) {
+      alert('当前工作区没有文件，请先上传文件或让 AI 创建文件。');
+      return;
+    }
+    await exportAndDownloadWorkspaceZip(workspaceFiles);
+  };
 
   const handleUpdateParameters = (newParams: ModelParameters) => {
     setParameters(newParams);
@@ -493,61 +571,166 @@ export default function App() {
     try {
       const activeParams = updatedConv.parameters || parameters;
       const baseSystemPrompt = targetConv.systemPrompt || settings.defaultSystemPrompt;
-      const effectiveSystemPrompt = webContext
+      let effectiveSystemPrompt = webContext
         ? (baseSystemPrompt ? `${baseSystemPrompt}\n\n${webContext}` : webContext)
         : baseSystemPrompt;
 
-      setStatusMessage('AI 正在组织回答...');
+      // If Agent Mode is enabled, inject workspace tools protocol and project memory
+      if (agentMode) {
+        effectiveSystemPrompt = buildAgentSystemPrompt(
+          workspaceFiles,
+          projectMemories,
+          effectiveSystemPrompt
+        );
+      }
 
-      await adapter.sendMessage(
-        {
-          model: currentModel,
-          apiKeyConfig: currentApiKey,
-          messages: [...targetConv.messages, userMessage],
-          systemPrompt: effectiveSystemPrompt,
-          temperature: currentModel.temperature,
-          maxTokens: currentModel.maxTokens,
-          topP: currentModel.topP,
-          parameters: activeParams,
-          abortSignal: abortController.signal,
-          timeoutSeconds: settings.requestTimeout,
-        },
-        settings.enableStreaming ? {
-          onChunk: (chunk: string) => {
-            accumulatedText += chunk;
-            const completedSteps = currentThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
-            setConversations(prev => prev.map(c => {
-              if (c.id !== updatedConv.id) return c;
-              return {
-                ...c,
-                messages: c.messages.map(m => {
-                  if (m.id !== assistantMsgId) return m;
-                  const versions = [...(m.versions || [])];
-                  if (versions.length > 0) {
-                    versions[versions.length - 1] = {
-                      ...versions[versions.length - 1],
-                      content: accumulatedText,
+      setStatusMessage(agentMode ? 'Agent 正在分析任务与工作区...' : 'AI 正在组织回答...');
+
+      let currentWorkspace = [...workspaceFiles];
+      let currentMem = [...projectMemories];
+      const executedToolCalls: ToolCallExecution[] = [];
+      const modifiedPaths = new Set<string>();
+      let currentHistoryMessages = [...targetConv.messages, userMessage];
+      let turn = 0;
+      const maxAgentTurns = agentMode ? 6 : 1;
+      let finalFullText = '';
+
+      while (turn < maxAgentTurns) {
+        let turnAccumulatedText = '';
+
+        await adapter.sendMessage(
+          {
+            model: currentModel,
+            apiKeyConfig: currentApiKey,
+            messages: currentHistoryMessages,
+            systemPrompt: effectiveSystemPrompt,
+            temperature: currentModel.temperature,
+            maxTokens: currentModel.maxTokens,
+            topP: currentModel.topP,
+            parameters: activeParams,
+            abortSignal: abortController.signal,
+            timeoutSeconds: settings.requestTimeout,
+          },
+          settings.enableStreaming ? {
+            onChunk: (chunk: string) => {
+              turnAccumulatedText += chunk;
+              const displayContent = cleanResponseText(turnAccumulatedText);
+              const completedSteps = currentThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
+
+              setConversations(prev => prev.map(c => {
+                if (c.id !== updatedConv.id) return c;
+                return {
+                  ...c,
+                  messages: c.messages.map(m => {
+                    if (m.id !== assistantMsgId) return m;
+                    const versions = [...(m.versions || [])];
+                    if (versions.length > 0) {
+                      versions[versions.length - 1] = {
+                        ...versions[versions.length - 1],
+                        content: displayContent,
+                      };
+                    }
+                    return {
+                      ...m,
+                      content: displayContent,
+                      status: 'streaming',
+                      versions,
+                      thinkingSteps: completedSteps,
+                      toolCalls: executedToolCalls.length > 0 ? [...executedToolCalls] : undefined,
+                      modifiedFiles: modifiedPaths.size > 0 ? Array.from(modifiedPaths) : undefined,
+                      webSearchResults: webResults.length > 0 ? webResults : undefined,
                     };
-                  }
-                  return {
-                    ...m,
-                    content: accumulatedText,
-                    status: 'streaming',
-                    versions,
-                    thinkingSteps: completedSteps,
-                    webSearchResults: webResults.length > 0 ? webResults : undefined,
-                  };
-                }),
-              };
-            }));
-          },
-          onFinish: (fullText: string) => {
-            accumulatedText = fullText;
-          },
-        } : undefined
-      );
+                  }),
+                };
+              }));
+            },
+            onFinish: (fullText: string) => {
+              turnAccumulatedText = fullText;
+            },
+          } : undefined
+        );
+
+        finalFullText = turnAccumulatedText;
+
+        // Check if response contains tool calls
+        if (agentMode) {
+          const detectedToolCalls = extractToolCallsFromResponse(turnAccumulatedText);
+
+          if (detectedToolCalls.length > 0) {
+            // Execute each detected tool
+            const toolResultsForPrompt: string[] = [];
+
+            for (const tc of detectedToolCalls) {
+              const execId = `tool_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+              setStatusMessage(`Agent 正在执行: ${tc.tool}...`);
+
+              const outcome = await executeWorkspaceTool(tc.tool, tc.args, currentWorkspace, currentMem);
+              currentWorkspace = outcome.updatedFiles;
+              currentMem = outcome.updatedMemories;
+
+              if (outcome.diff?.path) {
+                modifiedPaths.add(outcome.diff.path);
+              }
+
+              executedToolCalls.push({
+                id: execId,
+                toolName: tc.tool,
+                args: tc.args,
+                result: outcome.result,
+                status: outcome.errorMessage ? 'error' : 'success',
+                errorMessage: outcome.errorMessage,
+                diff: outcome.diff,
+                timestamp: Date.now(),
+              });
+
+              // Add a ThinkingStep to UI log (如同用户图片中的执行条目)
+              currentThinkingSteps.push({
+                id: `step_exec_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+                icon: outcome.stepIcon || 'github',
+                title: outcome.stepTitle,
+                status: 'completed',
+              });
+
+              toolResultsForPrompt.push(
+                `- 工具: ${tc.tool}\n  参数: ${JSON.stringify(tc.args)}\n  执行结果: ${JSON.stringify(outcome.result || outcome.errorMessage || '成功')}`
+              );
+            }
+
+            // Sync updated workspace and memory to state and conversation
+            handleUpdateWorkspaceFiles(currentWorkspace);
+            handleUpdateProjectMemories(currentMem);
+
+            // Append assistant response and tool feedback to conversation history for next turn
+            currentHistoryMessages.push({
+              id: `msg_agent_turn_${turn}_${Date.now()}`,
+              role: 'assistant',
+              content: turnAccumulatedText,
+              timestamp: Date.now(),
+            });
+
+            currentHistoryMessages.push({
+              id: `msg_tool_feedback_${turn}_${Date.now()}`,
+              role: 'user',
+              content: `[工具执行结果反馈]\n${toolResultsForPrompt.join('\n\n')}\n\n请审查执行结果。若还需修改其他文件、验证代码或记录项目记忆，请继续输出工具调用；若任务全部完成，请给出清晰的中文总结与改动说明。`,
+              timestamp: Date.now(),
+            });
+
+            turn++;
+            setStatusMessage(`Agent 正在进行第 ${turn + 1} 轮推理与验证...`);
+            continue; // Continue loop
+          }
+        }
+
+        // If no tool calls or agent mode disabled, break loop
+        break;
+      }
 
       // Generation successful
+      let cleanedFinalAnswer = cleanResponseText(finalFullText);
+      if (modifiedPaths.size > 0) {
+        cleanedFinalAnswer += `\n\n> 📦 **项目工作区已更新**：Agent 已修改文件 \`${Array.from(modifiedPaths).join('`, `')}\`。您可以点击右上角「工作区」或下方按钮查看代码差异并重新打包下载 (.zip)。`;
+      }
+
       const finalCompletedSteps = currentThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
       setConversations(prev => prev.map(c => {
         if (c.id !== updatedConv.id) return c;
@@ -555,18 +738,26 @@ export default function App() {
           if (m.id !== assistantMsgId) return m;
           const versions = [...(m.versions || [])];
           if (versions.length > 0) {
-            versions[versions.length - 1].content = accumulatedText;
+            versions[versions.length - 1].content = cleanedFinalAnswer;
           }
           return {
             ...m,
-            content: accumulatedText,
+            content: cleanedFinalAnswer,
             status: 'completed' as const,
             versions,
             thinkingSteps: finalCompletedSteps,
+            toolCalls: executedToolCalls.length > 0 ? executedToolCalls : undefined,
+            modifiedFiles: modifiedPaths.size > 0 ? Array.from(modifiedPaths) : undefined,
             webSearchResults: webResults.length > 0 ? webResults : m.webSearchResults,
           };
         });
-        const finalConv = { ...c, messages: finalMessages, updatedAt: Date.now() };
+        const finalConv = { 
+          ...c, 
+          messages: finalMessages, 
+          workspaceFiles: currentWorkspace,
+          projectMemory: currentMem,
+          updatedAt: Date.now() 
+        };
         saveConversation(finalConv);
         return finalConv;
       }));
@@ -1368,6 +1559,10 @@ export default function App() {
           onCopyAllChat={handleCopyAllChat}
           onOpenParameters={() => setIsParametersOpen(true)}
           isReasoningEnabled={parameters.enableReasoning}
+          workspaceFilesCount={workspaceFiles.length}
+          onOpenWorkspace={() => setIsWorkspaceOpen(true)}
+          agentMode={agentMode}
+          onToggleAgentMode={handleToggleAgentMode}
         />
 
         {/* Message Stream Central Area */}
@@ -1383,6 +1578,7 @@ export default function App() {
           onQuote={(q) => setQuotedText(q)}
           onSwitchVersion={handleSwitchVersion}
           onSelectPrompt={(p) => handleSendMessage(p, [])}
+          onDownloadWorkspaceZip={handleDownloadWorkspaceZip}
         />
 
         {/* Large AI Composer Input Area */}
@@ -1491,6 +1687,16 @@ export default function App() {
         onBatchDelete={handleBatchDelete}
         onBatchFavorite={handleBatchFavorite}
         models={models}
+      />
+
+      {/* AI Workspace and Project Memory Drawer */}
+      <WorkspaceDrawer
+        isOpen={isWorkspaceOpen}
+        onClose={() => setIsWorkspaceOpen(false)}
+        files={workspaceFiles}
+        memories={projectMemories}
+        onUpdateFiles={handleUpdateWorkspaceFiles}
+        onUpdateMemories={handleUpdateProjectMemories}
       />
     </div>
   );
