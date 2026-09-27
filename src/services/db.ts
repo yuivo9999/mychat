@@ -773,6 +773,105 @@ export const DEFAULT_MODELS: ModelItem[] = [
   // Ollama
 ];
 
+
+export const DEFAULT_SETTINGS: UserSettings = {
+  theme: 'system',
+  fontSize: 'standard',
+  enterToSend: true,
+  autoScroll: true,
+  showTimestamps: true,
+  showModelName: true,
+  enableStreaming: true,
+  enableMarkdown: true,
+  enableCodeHighlight: true,
+  defaultProviderId: 'nvidia',
+  defaultModelId: 'deepseek-ai/deepseek-v4.1-flash',
+  defaultSystemPrompt: '你是一个知识渊博、表达严谨、思维敏捷的专业 AI 助手。请用清晰、结构化并得体的语言回答用户的问题。在提供代码时，请提供完整可执行的高质量代码，并附有必要解释。',
+  requestTimeout: 60,
+  sidebarOpen: true,
+};
+
+// Open IndexedDB instance
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      if (!db.objectStoreNames.contains('conversations')) {
+        const store = db.createObjectStore('conversations', { keyPath: 'id' });
+        store.createIndex('updatedAt', 'updatedAt', { unique: false });
+        store.createIndex('isFavorite', 'isFavorite', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('api_keys')) {
+        const store = db.createObjectStore('api_keys', { keyPath: 'id' });
+        store.createIndex('providerId', 'providerId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('models')) {
+        const store = db.createObjectStore('models', { keyPath: 'id' });
+        store.createIndex('providerId', 'providerId', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('providers')) {
+        db.createObjectStore('providers', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('settings')) {
+        db.createObjectStore('settings');
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// Conversation Operations
+export async function getConversations(): Promise<Conversation[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('conversations', 'readonly').objectStore('conversations').getAll();
+    request.onsuccess = () => {
+      const list = (request.result as Conversation[]) || [];
+      list.sort((a, b) => b.updatedAt - a.updatedAt);
+      resolve(list);
+    };
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getConversation(id: string): Promise<Conversation | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('conversations', 'readonly').objectStore('conversations').get(id);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function saveConversation(conversation: Conversation): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('conversations', 'readwrite').objectStore('conversations').put(conversation);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function deleteConversation(id: string): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('conversations', 'readwrite').objectStore('conversations').delete(id);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function clearAllConversations(): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction('conversations', 'readwrite').objectStore('conversations').clear();
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+  });
+}
+
 // API Key Operations
 export async function getApiKeys(): Promise<ApiKeyConfig[]> {
   const db = await openDB();
@@ -787,19 +886,13 @@ export async function getApiKeys(): Promise<ApiKeyConfig[]> {
       const results = (request.result as ApiKeyConfig[]) || [];
       if (!isInitialized && results.length === 0) {
         localStorage.setItem('omnichat_keys_initialized', 'true');
-        for (const k of DEFAULT_API_KEYS) {
-          store.put(k);
-        }
-        resolve(DEFAULT_API_KEYS);
+        resolve(results);
         return;
       }
       // If Google group has no key but user hasn't explicitly cleared all keys
       const hasGoogleKey = results.some(k => k.providerId === 'google');
       if (!hasGoogleKey && !isInitialized) {
-        for (const k of DEFAULT_API_KEYS) {
-          store.put(k);
-          results.push(k);
-        }
+        // No built-in credentials are seeded; users provide their own API keys.
       }
       resolve(results);
     };
@@ -977,19 +1070,15 @@ export async function seedDefaultProviders(): Promise<void> {
 export async function restoreDefaultProviders(): Promise<ProviderDefinition[]> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['providers', 'models', 'api_keys'], 'readwrite');
+    const transaction = db.transaction(['providers', 'models'], 'readwrite');
     const provStore = transaction.objectStore('providers');
     const modelStore = transaction.objectStore('models');
-    const keyStore = transaction.objectStore('api_keys');
     
     for (const p of DEFAULT_PROVIDERS) {
       provStore.put(p);
     }
     for (const m of DEFAULT_MODELS) {
       modelStore.put(m);
-    }
-    for (const k of DEFAULT_API_KEYS) {
-      keyStore.put(k);
     }
 
     transaction.oncomplete = () => {
