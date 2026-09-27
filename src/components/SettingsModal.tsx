@@ -1177,7 +1177,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <ul className="text-[11px] text-neutral-500 dark:text-neutral-400 list-disc pl-4 space-y-1">
                       <li>使用开放了 CORS 的 API 网关 (如 OpenRouter, SiliconFlow, 智谱开放平台, DeepSeek 等)</li>
                       <li>在设置对应 API Key 时填入您自建的反向代理 Base URL (如 Cloudflare Worker 代理)</li>
-                      <li>本地部署的 Ollama 服务需配置环境变量 <code>OLLAMA_ORIGINS="*"</code> 允许跨域</li>
                     </ul>
                   </div>
                 </div>

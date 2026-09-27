@@ -25,9 +25,8 @@ def remove_provider(text: str, provider_id: str) -> str:
     pattern = r"\n  \{\n    id: '" + re.escape(provider_id) + r"',[\s\S]*?\n  \},"
     return re.sub(pattern, '', text, count=1)
 
-for provider_id in ['anthropic', 'moonshot', 'qwen', 'siliconflow', 'cerebras', 'ollama']:
-    # These are removed default groups; OpenRouter's own Qwen/Anthropic models
-    # are separate and remain untouched because they use providerId=openrouter.
+for provider_id in ['moonshot', 'qwen', 'siliconflow']:
+    # These are removed default groups.
     text = remove_provider(text, provider_id)
 
 # Remove obsolete default-model blocks by providerId, but preserve any models
@@ -37,7 +36,7 @@ def remove_models_for_provider(text: str, provider_id: str) -> str:
     pattern = r"\n  \{\n    id: '[^']+',\n    name: '[^']*',\n    providerId: '" + re.escape(provider_id) + r"',[\s\S]*?\n  \},"
     return re.sub(pattern, '', text)
 
-for provider_id in ['anthropic', 'moonshot', 'qwen', 'siliconflow', 'cerebras', 'ollama']:
+for provider_id in ['moonshot', 'qwen', 'siliconflow']:
     text = remove_models_for_provider(text, provider_id)
 
 # Remove the old Groq entries and rebuild them with the stable IDs used by the
@@ -48,8 +47,6 @@ for model_id in [
     'groq/openai/gpt-oss-20b',
     'groq/openai/gpt-oss-safeguard-20b',
     'groq/qwen/qwen3.8-27b',
-    'cerebras/gpt-oss-120b',
-    'cerebras/llama3.1-8b',
 ]:
     import re
     text = re.sub(
@@ -57,14 +54,8 @@ for model_id in [
         '', text, count=1
     )
 
-# Normalize the provider slot to Groq.com.
-text = text.replace("id: 'ollama',\n    name: 'Ollama (本地私有大模型)',\n    description: '无需联网，在本地电脑运行 Llama 3, DeepSeek, Qwen',\n    icon: 'HardDrive',\n    defaultBaseUrl: 'http://localhost:11434',",
-                    "id: 'groq',\n    name: 'groq.com',\n    description: 'Groq.com 免费层高速推理（OpenAI 兼容 API）',\n    icon: 'Zap',\n    defaultBaseUrl: 'https://api.groq.com/openai/v1',")
+# Normalize any legacy Groq naming.
 text = text.replace("name: 'Groq (免费高速推理)'", "name: 'groq.com'")
-text = text.replace("name: 'Cerebras (免费高速推理)'", "name: 'cerebras.ai'")
-
-# Remove Cerebras from the provider catalog if an old copy survived.
-text = remove_provider(text, 'cerebras')
 
 nvidia_marker = "  // Google Gemini Models (免费层与最新前沿模型)"
 openrouter_marker = "  // OpenAI"

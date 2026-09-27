@@ -2,7 +2,6 @@ export type Role = 'user' | 'assistant' | 'system';
 
 export type ProviderType = 
   | 'openai'
-  | 'anthropic'
   | 'gemini'
   | 'deepseek'
   | 'moonshot'
@@ -11,7 +10,6 @@ export type ProviderType =
   | 'siliconflow'
   | 'openrouter'
   | 'nvidia'
-  | 'ollama'
   | 'custom';
 
 export interface ProviderDefinition {

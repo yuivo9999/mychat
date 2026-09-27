@@ -677,17 +677,6 @@ export const DEFAULT_MODELS: ModelItem[] = [
 
   // OpenRouter
   {
-    id: 'anthropic/claude-3.5-sonnet',
-    name: 'OpenRouter / Claude 3.5 Sonnet',
-    providerId: 'openrouter',
-    description: '通过 OpenRouter 路由访问 Claude',
-    supportsVision: true,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 200000,
-    temperature: 0.7,
-  },
-  {
     id: 'meta-llama/llama-3.3-70b-instruct',
     name: 'OpenRouter / Llama 3.3 70B',
     providerId: 'openrouter',
@@ -698,8 +687,6 @@ export const DEFAULT_MODELS: ModelItem[] = [
     contextWindow: 131072,
     temperature: 0.7,
   },
-
-  // Ollama
 ];
 
 
