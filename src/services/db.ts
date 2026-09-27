@@ -1222,10 +1222,15 @@ export async function getModels(): Promise<ModelItem[]> {
       if (missingDefaults.length > 0) {
         for (const m of missingDefaults) {
           store.put(m);
+          updatedResults.push(m);
         }
       }
 
-      resolve(withDefaults);
+      // Return the actual catalog. The previous code referenced an undefined
+      // `withDefaults` variable here, leaving the IndexedDB success callback
+      // with an uncaught ReferenceError and causing the UI to wait forever for
+      // models/groups.
+      resolve(updatedResults);
     };
     request.onerror = () => reject(request.error);
   });
