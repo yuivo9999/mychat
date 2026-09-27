@@ -27,6 +27,22 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
     enabled: true,
   },
   {
+    id: 'groq',
+    name: 'Groq (免费高速推理)',
+    description: 'Groq 免费层：GPT-OSS、Qwen 等高速 OpenAI 兼容模型',
+    icon: 'Zap',
+    defaultBaseUrl: 'https://api.groq.com/openai/v1',
+    enabled: true,
+  },
+  {
+    id: 'cerebras',
+    name: 'Cerebras (免费高速推理)',
+    description: 'Cerebras 免费 API：超高速 GPT-OSS / Llama 推理',
+    icon: 'Cpu',
+    defaultBaseUrl: 'https://api.cerebras.ai/v1',
+    enabled: true,
+  },
+  {
     id: 'openai',
     name: 'OpenAI',
     description: 'GPT-4o, GPT-4o-mini, o1, o3-mini 系列强大通用模型',
@@ -313,6 +329,76 @@ export const DEFAULT_MODELS: ModelItem[] = [
     contextWindow: 131072,
     temperature: 1,
   },
+  // Groq free-plan models (officially published free rate limits)
+  {
+    id: 'openai/gpt-oss-120b',
+    name: 'GPT-OSS 120B (Groq Free)',
+    providerId: 'groq',
+    description: 'Groq 免费层 GPT-OSS 120B，高速推理',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'openai/gpt-oss-20b',
+    name: 'GPT-OSS 20B (Groq Free)',
+    providerId: 'groq',
+    description: 'Groq 免费层 GPT-OSS 20B，高速轻量推理',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'openai/gpt-oss-safeguard-20b',
+    name: 'GPT-OSS Safeguard 20B (Groq Free)',
+    providerId: 'groq',
+    description: 'Groq 免费层 GPT-OSS Safeguard 20B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'qwen/qwen3.8-27b',
+    name: 'Qwen3.8 27B (Groq Free)',
+    providerId: 'groq',
+    description: 'Groq 免费层 Qwen3.8 27B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+
+  // Cerebras free API models
+  {
+    id: 'gpt-oss-120b',
+    name: 'GPT-OSS 120B (Cerebras Free)',
+    providerId: 'cerebras',
+    description: 'Cerebras 免费 API GPT-OSS 120B，超高速推理',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'llama3.1-8b',
+    name: 'Llama 3.1 8B (Cerebras Free)',
+    providerId: 'cerebras',
+    description: 'Cerebras 免费 API Llama 3.1 8B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+
   // Google Gemini Models (免费层与最新前沿模型)
   {
     id: 'gemini-3.8-flash',
@@ -998,321 +1084,3 @@ export async function deleteConversation(id: string): Promise<void> {
     const transaction = db.transaction('conversations', 'readwrite');
     const store = transaction.objectStore('conversations');
     const request = store.delete(id);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function clearAllConversations(): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('conversations', 'readwrite');
-    const store = transaction.objectStore('conversations');
-    const request = store.clear();
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export const DEFAULT_API_KEYS: ApiKeyConfig[] = [
-  {
-    id: 'key_google_default_ready',
-    providerId: 'google',
-    label: 'Google Gemini (内置快速测试 Key)',
-    apiKey: 'AIzaSy_Google_Gemini_Fast_Testing_Key',
-    baseUrl: 'https://generativelanguage.googleapis.com',
-    createdAt: Date.now(),
-    isDefault: true,
-  },
-];
-
-// API Key Operations
-export async function getApiKeys(): Promise<ApiKeyConfig[]> {
-  const db = await openDB();
-  const isInitialized = localStorage.getItem('omnichat_keys_initialized') === 'true';
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('api_keys', 'readwrite');
-    const store = transaction.objectStore('api_keys');
-    const request = store.getAll();
-
-    request.onsuccess = async () => {
-      const results = (request.result as ApiKeyConfig[]) || [];
-      if (!isInitialized && results.length === 0) {
-        localStorage.setItem('omnichat_keys_initialized', 'true');
-        for (const k of DEFAULT_API_KEYS) {
-          store.put(k);
-        }
-        resolve(DEFAULT_API_KEYS);
-        return;
-      }
-      // If Google group has no key but user hasn't explicitly cleared all keys
-      const hasGoogleKey = results.some(k => k.providerId === 'google');
-      if (!hasGoogleKey && !isInitialized) {
-        for (const k of DEFAULT_API_KEYS) {
-          store.put(k);
-          results.push(k);
-        }
-      }
-      resolve(results);
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function saveApiKey(keyConfig: ApiKeyConfig): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('api_keys', 'readwrite');
-    const store = transaction.objectStore('api_keys');
-    const request = store.put(keyConfig);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function deleteApiKey(id: string): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('api_keys', 'readwrite');
-    const store = transaction.objectStore('api_keys');
-    const request = store.delete(id);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function clearAllApiKeys(): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('api_keys', 'readwrite');
-    const store = transaction.objectStore('api_keys');
-    const request = store.clear();
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Models Operations
-export async function getModels(): Promise<ModelItem[]> {
-  const db = await openDB();
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('models', 'readwrite');
-    const store = transaction.objectStore('models');
-    const request = store.getAll();
-
-    request.onsuccess = async () => {
-      let results = (request.result as ModelItem[]) || [];
-      if (results.length === 0) {
-        for (const m of DEFAULT_MODELS) store.put(m);
-        results = [...DEFAULT_MODELS];
-      }
-
-      // Remove the obsolete OpenRouter free slug shipped by older builds.
-      const staleOpenRouterIds = ['nvidia/nemotron-3-super:free'];
-      for (const staleId of staleOpenRouterIds) {
-        if (results.some(r => r.id === staleId)) {
-          store.delete(staleId);
-          results = results.filter(r => r.id !== staleId);
-        }
-      }
-
-      // Ensure the fixed built-in model roster is present and keep user custom models.
-      const updatedResults = results.map(r => {
-        const defaultDef = DEFAULT_MODELS.find(dm => dm.id === r.id);
-        if (defaultDef && r.name !== defaultDef.name && !r.isCustom) {
-          const updated = { ...r, name: defaultDef.name, description: defaultDef.description };
-          store.put(updated);
-          return updated;
-        }
-        return r;
-      });
-
-      const missingDefaults = DEFAULT_MODELS.filter(dm => !updatedResults.some(r => r.id === dm.id));
-      if (missingDefaults.length > 0) {
-        for (const m of missingDefaults) {
-          store.put(m);
-        }
-      }
-
-      resolve(withDefaults);
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function seedDefaultModels(): Promise<void> {
-  const db = await openDB();
-  const transaction = db.transaction('models', 'readwrite');
-  const store = transaction.objectStore('models');
-  for (const m of DEFAULT_MODELS) {
-    store.put(m);
-  }
-}
-
-export async function saveModel(model: ModelItem): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('models', 'readwrite');
-    const store = transaction.objectStore('models');
-    const request = store.put(model);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function deleteModel(id: string): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('models', 'readwrite');
-    const store = transaction.objectStore('models');
-    const request = store.delete(id);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Providers Operations
-export async function getProviders(): Promise<ProviderDefinition[]> {
-  const db = await openDB();
-  const isInitialized = localStorage.getItem('omnichat_db_initialized') === 'true';
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('providers', 'readonly');
-    const store = transaction.objectStore('providers');
-    const request = store.getAll();
-
-    request.onsuccess = async () => {
-      const results = (request.result as ProviderDefinition[]) || [];
-      if (!isInitialized && results.length === 0) {
-        localStorage.setItem('omnichat_db_initialized', 'true');
-        await seedDefaultProviders();
-        await seedDefaultModels();
-        resolve(DEFAULT_PROVIDERS);
-        return;
-      }
-
-      // Keep NVIDIA as first provider order
-      const providerOrder = DEFAULT_PROVIDERS.map(p => p.id);
-      results.sort((a, b) => {
-        const idxA = providerOrder.indexOf(a.id);
-        const idxB = providerOrder.indexOf(b.id);
-        if (idxA === -1) return 1;
-        if (idxB === -1) return -1;
-        return idxA - idxB;
-      });
-      resolve(results);
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function seedDefaultProviders(): Promise<void> {
-  const db = await openDB();
-  const transaction = db.transaction('providers', 'readwrite');
-  const store = transaction.objectStore('providers');
-  for (const p of DEFAULT_PROVIDERS) {
-    store.put(p);
-  }
-}
-
-export async function restoreDefaultProviders(): Promise<ProviderDefinition[]> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['providers', 'models', 'api_keys'], 'readwrite');
-    const provStore = transaction.objectStore('providers');
-    const modelStore = transaction.objectStore('models');
-    const keyStore = transaction.objectStore('api_keys');
-    
-    for (const p of DEFAULT_PROVIDERS) {
-      provStore.put(p);
-    }
-    for (const m of DEFAULT_MODELS) {
-      modelStore.put(m);
-    }
-    for (const k of DEFAULT_API_KEYS) {
-      keyStore.put(k);
-    }
-
-    transaction.oncomplete = () => {
-      resolve(DEFAULT_PROVIDERS);
-    };
-    transaction.onerror = () => reject(transaction.error);
-  });
-}
-
-export async function saveProvider(provider: ProviderDefinition): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('providers', 'readwrite');
-    const store = transaction.objectStore('providers');
-    const request = store.put(provider);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function deleteProvider(id: string): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('providers', 'readwrite');
-    const store = transaction.objectStore('providers');
-    const request = store.delete(id);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Settings Operations
-export async function getUserSettings(): Promise<UserSettings> {
-  const db = await openDB();
-  return new Promise((resolve) => {
-    const transaction = db.transaction('settings', 'readonly');
-    const store = transaction.objectStore('settings');
-    const request = store.get('user_settings');
-
-    request.onsuccess = () => {
-      resolve({ ...DEFAULT_SETTINGS, ...(request.result || {}) });
-    };
-    request.onerror = () => resolve(DEFAULT_SETTINGS);
-  });
-}
-
-export async function saveUserSettings(settings: UserSettings): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('settings', 'readwrite');
-    const store = transaction.objectStore('settings');
-    const request = store.put(settings, 'user_settings');
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Full Reset
-export async function resetAllData(): Promise<void> {
-  await clearAllConversations();
-  await clearAllApiKeys();
-  const db = await openDB();
-  const tx = db.transaction(['models', 'providers', 'settings'], 'readwrite');
-  tx.objectStore('models').clear();
-  tx.objectStore('providers').clear();
-  tx.objectStore('settings').clear();
-  await new Promise<void>((res) => {
-    tx.oncomplete = () => res();
-  });
-  await seedDefaultProviders();
-  await seedDefaultModels();
-  await saveUserSettings(DEFAULT_SETTINGS);
-}
