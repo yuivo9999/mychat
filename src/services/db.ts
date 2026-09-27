@@ -26,22 +26,7 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
     defaultBaseUrl: 'https://generativelanguage.googleapis.com',
     enabled: true,
   },
-    {
-    id: 'groq',
-    name: 'groq.com',
-    description: 'Groq.com 免费层模型（OpenAI 兼容 API）',
-    icon: 'Zap',
-    defaultBaseUrl: 'https://api.groq.com/openai/v1',
-    enabled: true,
-  },
-  {
-    id: 'cerebras',
-    name: 'cerebras.ai',
-    description: 'Cerebras.ai 免费层高速推理模型（OpenAI 兼容 API）',
-    icon: 'Cpu',
-    defaultBaseUrl: 'https://api.cerebras.ai/v1',
-    enabled: true,
-  },
+  
 {
     id: 'openai',
     name: 'OpenAI',
@@ -75,11 +60,11 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
     enabled: true,
   },
   {
-    id: 'ollama',
-    name: 'Ollama (本地私有大模型)',
-    description: '无需联网，在本地电脑运行 Llama 3, DeepSeek, Qwen',
-    icon: 'HardDrive',
-    defaultBaseUrl: 'http://localhost:11434',
+    id: 'groq',
+    name: 'groq.com',
+    description: 'Groq.com 免费层高速推理（OpenAI 兼容 API）',
+    icon: 'Zap',
+    defaultBaseUrl: 'https://api.groq.com/openai/v1',
     enabled: true,
   },
   {
@@ -94,7 +79,7 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
 ];
 
 export const DEFAULT_MODELS: ModelItem[] = [
-  // groq.com free-tier models (official free plan)
+  // Groq.com Free Plan models. Groq documents these model IDs and free-plan rate limits.
   {
     id: 'openai/gpt-oss-120b',
     name: 'GPT-OSS 120B (groq.com 免费)',
@@ -121,7 +106,7 @@ export const DEFAULT_MODELS: ModelItem[] = [
     id: 'openai/gpt-oss-safeguard-20b',
     name: 'GPT-OSS Safeguard 20B (groq.com 免费)',
     providerId: 'groq',
-    description: 'Groq.com 免费层安全对齐 GPT-OSS 20B',
+    description: 'Groq.com 免费层 GPT-OSS Safeguard 20B',
     supportsVision: false,
     supportsFiles: false,
     supportsStreaming: true,
@@ -140,18 +125,9 @@ export const DEFAULT_MODELS: ModelItem[] = [
     temperature: 0.7,
   },
 
+  // groq.com free-tier models (official free plan)
+
   // cerebras.ai free-tier model currently listed by Cerebras
-  {
-    id: 'gpt-oss-120b',
-    name: 'GPT-OSS 120B (cerebras.ai 免费)',
-    providerId: 'cerebras',
-    description: 'Cerebras.ai 免费层 GPT-OSS 120B',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
   // Groq free-tier models
   // Cerebras free API models
   // NVIDIA NIM Models (默认首个核心分组)
@@ -268,28 +244,6 @@ export const DEFAULT_MODELS: ModelItem[] = [
     contextWindow: 1048576,
     temperature: 1,
   },
-  {
-    id: 'openai/gpt-oss-20b',
-    name: 'GPT-OSS 20B (NVIDIA Free)',
-    providerId: 'nvidia',
-    description: 'NVIDIA Free Endpoint：OpenAI GPT-OSS 20B。',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 1,
-  },
-  {
-    id: 'openai/gpt-oss-120b',
-    name: 'GPT-OSS 120B (NVIDIA Free)',
-    providerId: 'nvidia',
-    description: 'NVIDIA Free Endpoint：OpenAI GPT-OSS 120B。',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 1,
-  },
   // NVIDIA current Free Endpoints (verified against NVIDIA Build)
   {
     id: 'z-ai/glm-5-3',
@@ -333,28 +287,6 @@ export const DEFAULT_MODELS: ModelItem[] = [
     supportsFiles: false,
     supportsStreaming: true,
     contextWindow: 1048576,
-    temperature: 1,
-  },
-  {
-    id: 'openai/gpt-oss-20b',
-    name: 'GPT-OSS 20B (NVIDIA Free)',
-    providerId: 'nvidia',
-    description: 'NVIDIA Free Endpoint：OpenAI GPT-OSS 20B。',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 1,
-  },
-  {
-    id: 'openai/gpt-oss-120b',
-    name: 'GPT-OSS 120B (NVIDIA Free)',
-    providerId: 'nvidia',
-    description: 'NVIDIA Free Endpoint：OpenAI GPT-OSS 120B。',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
     temperature: 1,
   },
   // Google Gemini Models (免费层与最新前沿模型)
@@ -915,163 +847,6 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
 
   // Ollama
-  {
-    id: 'llama3.2:latest',
-    name: 'Ollama / Llama 3.2',
-    providerId: 'ollama',
-    description: '本地运行的 Meta Llama 3.2 轻量模型',
-    supportsVision: true,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 8192,
-    temperature: 0.7,
-  },
-  {
-    id: 'deepseek-r1:latest',
-    name: 'Ollama / DeepSeek R1',
-    providerId: 'ollama',
-    description: '本地量化部署的 DeepSeek 推理模型',
-    supportsVision: false,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 8192,
-    temperature: 0.7,
-  }
-];
-
-const REMOVED_DEFAULT_PROVIDER_IDS = new Set(['anthropic', 'moonshot', 'qwen', 'siliconflow']);
-
-export const DEFAULT_SETTINGS: UserSettings = {
-  theme: 'system',
-  fontSize: 'standard',
-  enterToSend: true,
-  autoScroll: true,
-  showTimestamps: true,
-  showModelName: true,
-  enableStreaming: true,
-  enableMarkdown: true,
-  enableCodeHighlight: true,
-  defaultProviderId: 'nvidia',
-  defaultModelId: 'deepseek-ai/deepseek-v4.1-flash',
-  defaultSystemPrompt: '你是一个知识渊博、表达严谨、思维敏捷的专业 AI 助手。请用清晰、结构化并得体的语言回答用户的问题。在提供代码时，请提供完整可执行的高质量代码，并附有必要解释。',
-  requestTimeout: 60,
-  sidebarOpen: true,
-};
-
-// Open IndexedDB instance
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      
-      if (!db.objectStoreNames.contains('conversations')) {
-        const store = db.createObjectStore('conversations', { keyPath: 'id' });
-        store.createIndex('updatedAt', 'updatedAt', { unique: false });
-        store.createIndex('isFavorite', 'isFavorite', { unique: false });
-      }
-
-      if (!db.objectStoreNames.contains('api_keys')) {
-        const store = db.createObjectStore('api_keys', { keyPath: 'id' });
-        store.createIndex('providerId', 'providerId', { unique: false });
-      }
-
-      if (!db.objectStoreNames.contains('models')) {
-        const store = db.createObjectStore('models', { keyPath: 'id' });
-        store.createIndex('providerId', 'providerId', { unique: false });
-      }
-
-      if (!db.objectStoreNames.contains('providers')) {
-        db.createObjectStore('providers', { keyPath: 'id' });
-      }
-
-      if (!db.objectStoreNames.contains('settings')) {
-        db.createObjectStore('settings');
-      }
-    };
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// Conversation Operations
-export async function getConversations(): Promise<Conversation[]> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('conversations', 'readonly');
-    const store = transaction.objectStore('conversations');
-    const request = store.getAll();
-
-    request.onsuccess = () => {
-      const list = (request.result as Conversation[]) || [];
-      // Sort by updatedAt descending
-      list.sort((a, b) => b.updatedAt - a.updatedAt);
-      resolve(list);
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function getConversation(id: string): Promise<Conversation | null> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('conversations', 'readonly');
-    const store = transaction.objectStore('conversations');
-    const request = store.get(id);
-
-    request.onsuccess = () => resolve(request.result || null);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function saveConversation(conversation: Conversation): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('conversations', 'readwrite');
-    const store = transaction.objectStore('conversations');
-    const request = store.put(conversation);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function deleteConversation(id: string): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('conversations', 'readwrite');
-    const store = transaction.objectStore('conversations');
-    const request = store.delete(id);
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function clearAllConversations(): Promise<void> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction('conversations', 'readwrite');
-    const store = transaction.objectStore('conversations');
-    const request = store.clear();
-
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export const DEFAULT_API_KEYS: ApiKeyConfig[] = [
-  {
-    id: 'key_google_default_ready',
-    providerId: 'google',
-    label: 'Google Gemini (内置快速测试 Key)',
-    apiKey: 'AIzaSy_Google_Gemini_Fast_Testing_Key',
-    baseUrl: 'https://generativelanguage.googleapis.com',
-    createdAt: Date.now(),
-    isDefault: true,
-  },
 ];
 
 // API Key Operations
@@ -1156,14 +931,14 @@ export async function getModels(): Promise<ModelItem[]> {
     request.onsuccess = async () => {
       let results = (request.result as ModelItem[]) || [];
 
-      // Purge model records belonging to default provider groups removed from
-      // the catalog, including records persisted by older app versions.
-      const removedModels = results.filter(r => REMOVED_DEFAULT_PROVIDER_IDS.has(r.providerId));
-      for (const model of removedModels) {
+      // Purge models belonging to removed/reused provider slots.
+      const staleProviderIds = new Set(['cerebras', 'ollama', 'groq']);
+      const staleModels = results.filter(r => staleProviderIds.has(r.providerId));
+      for (const model of staleModels) {
         store.delete(model.id);
       }
-      if (removedModels.length > 0) {
-        results = results.filter(r => !REMOVED_DEFAULT_PROVIDER_IDS.has(r.providerId));
+      if (staleModels.length > 0) {
+        results = results.filter(r => !staleProviderIds.has(r.providerId));
       }
 
       if (results.length === 0) {
@@ -1255,13 +1030,28 @@ export async function getProviders(): Promise<ProviderDefinition[]> {
     request.onsuccess = async () => {
       let results = (request.result as ProviderDefinition[]) || [];
 
-      // Purge stale default provider groups persisted by older app versions.
-      const removedProviders = results.filter(p => REMOVED_DEFAULT_PROVIDER_IDS.has(p.id));
-      for (const provider of removedProviders) {
-        store.delete(provider.id);
+      // Migrate the old Ollama slot into the Groq slot and remove Cerebras.
+      for (const staleId of ['groq', 'cerebras']) {
+        store.delete(staleId);
+        results = results.filter(p => p.id !== staleId);
       }
-      if (removedProviders.length > 0) {
-        results = results.filter(p => !REMOVED_DEFAULT_PROVIDER_IDS.has(p.id));
+      const oldOllama = results.find(p => p.id === 'ollama');
+      if (oldOllama) {
+        store.delete('ollama');
+        results = results.filter(p => p.id !== 'ollama');
+      }
+      const groqProvider = DEFAULT_PROVIDERS.find(p => p.id === 'groq');
+      if (groqProvider) {
+        store.put(groqProvider);
+        results.push(groqProvider);
+      }
+      // Ensure every current built-in provider is present even for databases
+      // initialized by older releases.
+      for (const provider of DEFAULT_PROVIDERS) {
+        if (!results.some(p => p.id === provider.id)) {
+          store.put(provider);
+          results.push(provider);
+        }
       }
 
       if (results.length === 0) {
