@@ -776,6 +776,17 @@ export const DEFAULT_MODELS: ModelItem[] = [
     contextWindow: 32768,
     temperature: 0.7,
   },
+  {
+    id: 'nvidia/nemotron-3-super:free',
+    name: 'Nemotron 3 Super (OpenRouter Free)',
+    providerId: 'openrouter',
+    description: 'OpenRouter 当前 $0 免费模型：NVIDIA Nemotron 3 Super',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 262144,
+    temperature: 1,
+  },
   // OpenAI
   {
     id: 'gpt-4o',
