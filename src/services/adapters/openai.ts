@@ -116,11 +116,8 @@ export class OpenAIAdapter implements BaseAdapter {
       headers['Authorization'] = `Bearer ${apiKeyConfig.apiKey.trim()}`;
     }
 
-    // Special provider headers
-    if (apiKeyConfig.providerId === 'openrouter') {
-      headers['HTTP-Referer'] = window.location.origin;
-      headers['X-Title'] = 'OmniChat Local AI';
-    }
+    // OpenRouter attribution headers are optional. Keep the browser request minimal
+    // so the API call only needs the standard Authorization + Content-Type headers.
 
     const stream = (parameters?.stream !== undefined ? parameters.stream : model.supportsStreaming !== false) && callbacks != null;
 
