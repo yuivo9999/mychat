@@ -67,23 +67,26 @@ async function startServer() {
         body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
       });
 
-      // If failed on a Gemini endpoint and envKey is available, retry with gemini-3.8-flash and envKey
+      // If failed on a Gemini endpoint and envKey is available, retry with healthy models
       if (!response.ok && envGeminiKey && targetUrl.includes('generativelanguage.googleapis.com')) {
-        try {
-          const parsed = new URL(targetUrl);
-          parsed.searchParams.set('key', envGeminiKey);
-          if (parsed.pathname.includes('/models/')) {
-            parsed.pathname = parsed.pathname.replace(/\/models\/[^:]+/, '/models/gemini-3.8-flash');
-          }
-          const retryResponse = await fetch(parsed.toString(), {
-            method,
-            headers: { ...headers },
-            body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
-          });
-          if (retryResponse.ok) {
-            response = retryResponse;
-          }
-        } catch {}
+        for (const candidate of ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.8-flash']) {
+          try {
+            const parsed = new URL(targetUrl);
+            parsed.searchParams.set('key', envGeminiKey);
+            if (parsed.pathname.includes('/models/')) {
+              parsed.pathname = parsed.pathname.replace(/\/models\/[^:]+/, `/models/${candidate}`);
+            }
+            const retryResponse = await fetch(parsed.toString(), {
+              method,
+              headers: { ...headers },
+              body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
+            });
+            if (retryResponse.ok) {
+              response = retryResponse;
+              break;
+            }
+          } catch {}
+        }
       }
 
       res.status(response.status);

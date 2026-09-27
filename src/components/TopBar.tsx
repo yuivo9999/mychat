@@ -205,11 +205,11 @@ export const TopBar: React.FC<TopBarProps> = ({
         >
           <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
           <div className="flex flex-col text-left">
-            <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 leading-tight">
-              {currentModel?.name || '选择模型'}
+            <span className="text-xs font-mono font-semibold text-neutral-800 dark:text-neutral-200 leading-tight">
+              {currentModel?.id || '选择模型'}
             </span>
             <span className="text-[10px] text-neutral-400 leading-none">
-              {currentProvider?.name || 'AI 模型'}
+              {currentProvider?.name || 'AI 模型'}{currentModel?.name && currentModel?.name !== currentModel?.id ? ` · ${currentModel.name}` : ''}
             </span>
           </div>
           <ChevronDown className={`w-3.5 h-3.5 text-neutral-400 transition-transform ${modelDropdownOpen ? 'rotate-180' : ''}`} />
@@ -262,13 +262,18 @@ export const TopBar: React.FC<TopBarProps> = ({
                               >
                                 <div className="min-w-0 pr-2">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="truncate">{m.name}</span>
+                                    <span className="font-mono font-medium truncate">{m.id}</span>
                                     {m.supportsVision && (
-                                      <span className="text-[9px] px-1 py-0.2 bg-neutral-200 dark:bg-neutral-700 rounded text-neutral-600 dark:text-neutral-300">视觉</span>
+                                      <span className="text-[9px] px-1 py-0.2 bg-neutral-200 dark:bg-neutral-700 rounded text-neutral-600 dark:text-neutral-300 shrink-0">视觉</span>
                                     )}
                                   </div>
+                                  {m.name && m.name !== m.id && (
+                                    <div className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate mt-0.5">
+                                      {m.name}
+                                    </div>
+                                  )}
                                   {m.description && (
-                                    <p className="text-[11px] text-neutral-400 truncate mt-0.5">{m.description}</p>
+                                    <p className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">{m.description}</p>
                                   )}
                                 </div>
                                 {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}

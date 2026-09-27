@@ -283,13 +283,17 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
       const elapsed = Math.round(performance.now() - startTime);
       setTestResult({
         success: res.success,
-        message: res.message,
+        message: res.message.includes(targetModel)
+          ? res.message
+          : (res.success
+              ? `已成功向官方标准模型 [${targetModel}] 发送握手请求并收到正常响应！`
+              : `向官方标准模型 [${targetModel}] 请求失败: ${res.message}`),
         latencyMs: elapsed,
       });
     } catch (err: any) {
       setTestResult({
         success: false,
-        message: err.message || '网络连接失败，请检查 Base URL 与 API Key 是否有效。',
+        message: `向官方标准模型 [${targetModel}] 发送测试请求时异常: ${err.message || '网络连接失败，请检查 Base URL 与 API Key 是否有效。'}`,
       });
     } finally {
       setIsTesting(false);
@@ -764,8 +768,11 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
 
               {/* 模型清单 - 支持全部删空与一键载入官方预设 */}
               <div className="space-y-1.5">
-                <div className="text-xs text-neutral-400 flex items-center justify-between">
-                  <span>模型清单 ({groupModels.length})</span>
+                <div className="text-xs text-neutral-400 flex items-center justify-between flex-wrap gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <span>模型清单 ({groupModels.length})</span>
+                    <span className="text-[11px] text-neutral-500">（发给 AI 的参数是标准模型 ID）</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -795,7 +802,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                     )}
                   </div>
                 </div>
-                <div className="space-y-1 max-h-44 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-neutral-700">
+                <div className="space-y-1 max-h-48 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-neutral-700">
                   {groupModels.length === 0 ? (
                     <div className="p-3 rounded-xl bg-[#12141c]/70 border border-neutral-800/80 text-center text-xs text-neutral-500 space-y-1.5">
                       <div>暂无模型，点击右上角「+ 模型」或同步官方模型</div>
@@ -816,15 +823,27 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                     groupModels.map((m) => (
                       <div
                         key={m.id}
-                        className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#12141c] border border-neutral-800/80 text-xs group"
+                        className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#12141c] border border-neutral-800/80 text-xs group"
                       >
-                        <span className="font-mono text-neutral-300 truncate max-w-[80%]">
-                          {m.id}
-                        </span>
+                        <div className="flex flex-col min-w-0 pr-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-medium text-orange-300 truncate">
+                              {m.id}
+                            </span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 shrink-0">
+                              标准代号
+                            </span>
+                          </div>
+                          {m.name && m.name !== m.id && (
+                            <span className="text-[11px] text-neutral-400 truncate mt-0.5">
+                              别名: {m.name}
+                            </span>
+                          )}
+                        </div>
                         <button
                           type="button"
                           onClick={() => onDeleteModel(m.id)}
-                          className="px-2 py-0.5 text-xs text-neutral-400 hover:text-red-400 rounded-md hover:bg-red-950/40 transition"
+                          className="px-2 py-0.5 text-xs text-neutral-400 hover:text-red-400 rounded-md hover:bg-red-950/40 transition shrink-0"
                           title="删除此模型"
                         >
                           删
@@ -903,19 +922,22 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
 
             {/* 模型 */}
             <div className="space-y-1">
-              <label className="text-xs text-neutral-400">模型</label>
+              <div className="text-xs text-neutral-400 flex items-center justify-between">
+                <span>模型</span>
+                <span className="text-[11px] text-neutral-500 font-mono">发给 AI 的标准代号: <span className="text-orange-400 font-medium">{defaultModelId || '未配置'}</span></span>
+              </div>
               <div className="relative">
                 <select
                   value={defaultModelId}
                   onChange={(e) => setDefaultModelId(e.target.value)}
-                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
+                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8 font-mono"
                 >
                   {defaultServiceModels.length === 0 ? (
                     <option value="" className="bg-[#181c26] text-neutral-400">（尚未配置模型）</option>
                   ) : (
                     defaultServiceModels.map((m) => (
                       <option key={m.id} value={m.id} className="bg-[#181c26] text-white">
-                        {m.name || m.id} {m.id === currentModelId ? '· (现用)' : ''}
+                        {m.id} {m.name && m.name !== m.id ? `(${m.name})` : ''} {m.id === currentModelId ? '· [现用]' : ''}
                       </option>
                     ))
                   )}

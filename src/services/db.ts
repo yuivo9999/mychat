@@ -182,9 +182,20 @@ export const DEFAULT_MODELS: ModelItem[] = [
   // Google Gemini Models (免费层与最新前沿模型)
   {
     id: 'gemini-3.8-flash',
-    name: 'Gemini 3.8 Flash (免费可用 · 最新全模态旗舰)',
+    name: 'Gemini 3.8 Flash',
     providerId: 'google',
-    description: '谷歌最新一代前沿多模态大模型，具备极高智力与极速响应，支持免费层调用',
+    description: '谷歌最新一代前沿多模态大模型，具备极高智力与极速响应，官方支持免费层调用',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
+  {
+    id: 'gemini-flash-latest',
+    name: 'Gemini Flash (Latest)',
+    providerId: 'google',
+    description: '官方 Flash 最新稳定版本，多模态综合能力均衡，免费配额最高',
     supportsVision: true,
     supportsFiles: true,
     supportsStreaming: true,
@@ -193,7 +204,7 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
   {
     id: 'gemini-flash-lite-latest',
-    name: 'Gemini Flash-Lite (免费可用 · 极速测试专选)',
+    name: 'Gemini Flash-Lite',
     providerId: 'google',
     description: '轻量化极低延迟模型，响应迅猛，特别适合日常连通性测试与快速问答',
     supportsVision: true,
@@ -203,21 +214,10 @@ export const DEFAULT_MODELS: ModelItem[] = [
     temperature: 0.7,
   },
   {
-    id: 'gemini-flash-latest',
-    name: 'Gemini Flash Latest (免费可用 · 官方推荐默认)',
-    providerId: 'google',
-    description: '官方 Flash 最新稳定版本，多模态综合能力均衡，免费配额友好',
-    supportsVision: true,
-    supportsFiles: true,
-    supportsStreaming: true,
-    contextWindow: 1048576,
-    temperature: 0.7,
-  },
-  {
     id: 'gemini-3.7-flash',
-    name: 'Gemini 3.7 Flash (免费可用 · 深度思考推理)',
+    name: 'Gemini 3.7 Flash',
     providerId: 'google',
-    description: '具备思维链推理能力的敏捷多模态模型，支持免费层使用',
+    description: '具备思维链深度推理能力的敏捷多模态模型，支持免费层使用',
     supportsVision: true,
     supportsFiles: true,
     supportsStreaming: true,
@@ -226,7 +226,7 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
   {
     id: 'gemini-3.6-flash',
-    name: 'Gemini 3.6 Flash (免费可用 · 稳定版)',
+    name: 'Gemini 3.6 Flash',
     providerId: 'google',
     description: '稳定高效的 3.6 代模型，免费层支持良好',
     supportsVision: true,
@@ -237,9 +237,9 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
   {
     id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash (自动兼容最新模型)',
+    name: 'Gemini 1.5 Flash (自动升级 3.8)',
     providerId: 'google',
-    description: '经典 1.5 Flash 规格，系统自动平滑接入最新 Flash 引擎',
+    description: '经典 1.5 Flash 代号，系统在后端自动平滑兼容至官方最新 3.8 Flash 引擎执行',
     supportsVision: true,
     supportsFiles: true,
     supportsStreaming: true,
@@ -248,9 +248,9 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
   {
     id: 'gemini-1.5-pro',
-    name: 'Gemini 1.5 Pro (自动兼容最新模型)',
+    name: 'Gemini 1.5 Pro (自动升级 3.8)',
     providerId: 'google',
-    description: '经典 1.5 Pro 规格，系统自动平滑接入最新引擎',
+    description: '经典 1.5 Pro 代号，系统在后端自动平滑兼容至官方最新引擎执行',
     supportsVision: true,
     supportsFiles: true,
     supportsStreaming: true,
@@ -259,9 +259,9 @@ export const DEFAULT_MODELS: ModelItem[] = [
   },
   {
     id: 'gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash (自动兼容最新模型)',
+    name: 'Gemini 2.5 Flash (自动升级 3.8)',
     providerId: 'google',
-    description: '经典 2.5 Flash 规格，系统自动平滑接入最新引擎',
+    description: '经典 2.5 Flash 代号，系统在后端自动平滑兼容至官方最新 3.8 Flash 引擎执行',
     supportsVision: true,
     supportsFiles: true,
     supportsStreaming: true,
@@ -683,15 +683,26 @@ export async function getModels(): Promise<ModelItem[]> {
         return;
       }
 
-      // Check for missing default models (e.g. newly added Google Gemini models)
-      const missingDefaults = DEFAULT_MODELS.filter(dm => !results.some(r => r.id === dm.id));
+      // Check for missing default models and update existing default definitions to clean standard names
+      const updatedResults = results.map(r => {
+        const defaultDef = DEFAULT_MODELS.find(dm => dm.id === r.id);
+        if (defaultDef && r.name !== defaultDef.name && !r.isCustom) {
+          const updated = { ...r, name: defaultDef.name, description: defaultDef.description };
+          store.put(updated);
+          return updated;
+        }
+        return r;
+      });
+
+      const missingDefaults = DEFAULT_MODELS.filter(dm => !updatedResults.some(r => r.id === dm.id));
       if (missingDefaults.length > 0) {
         for (const m of missingDefaults) {
           store.put(m);
         }
-        results = [...results, ...missingDefaults];
+        resolve([...updatedResults, ...missingDefaults]);
+        return;
       }
-      resolve(results);
+      resolve(updatedResults);
     };
     request.onerror = () => reject(request.error);
   });

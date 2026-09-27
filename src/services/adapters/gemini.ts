@@ -207,9 +207,10 @@ export class GeminiAdapter implements BaseAdapter {
     return text;
   }
 
-  async testConnection(apiKeyConfig: ApiKeyConfig, modelId = 'gemini-2.5-flash'): Promise<{ success: boolean; message: string }> {
+  async testConnection(apiKeyConfig: ApiKeyConfig, modelId = 'gemini-3.8-flash'): Promise<{ success: boolean; message: string }> {
     try {
-      const endpoint = this.resolveEndpoint(apiKeyConfig, modelId, false);
+      const effectiveModel = this.normalizeModelId(modelId);
+      const endpoint = this.resolveEndpoint(apiKeyConfig, effectiveModel, false);
       const res = await executeFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -220,7 +221,7 @@ export class GeminiAdapter implements BaseAdapter {
       });
 
       if (res.ok) {
-        return { success: true, message: `Gemini 连接成功！已成功握手 ${modelId}。` };
+        return { success: true, message: `Gemini 连接成功！已成功握手官方标准模型 [${effectiveModel}]。` };
       }
 
       let errorData: any = null;
@@ -229,7 +230,7 @@ export class GeminiAdapter implements BaseAdapter {
       } catch {
         errorData = await res.text();
       }
-      return { success: false, message: parseHttpError(res.status, errorData, res.statusText) };
+      return { success: false, message: `握手模型 [${effectiveModel}] 失败: ${parseHttpError(res.status, errorData, res.statusText)}` };
     } catch (err: any) {
       return { success: false, message: err.message || '连接失败' };
     }
