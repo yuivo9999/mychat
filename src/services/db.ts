@@ -856,7 +856,7 @@ export async function clearAllApiKeys(): Promise<void> {
 
 // OpenRouter free-model sync: the free roster changes frequently, so do not hard-code
 // a frozen list. The official Models API returns the live catalog.
-const OPENROUTER_FREE_SYNC_KEY = 'omnichat_openrouter_free_models_synced_at';
+const OPENROUTER_FREE_SYNC_KEY = 'omnichat_openrouter_free_models_synced_at_v2';
 const OPENROUTER_FREE_SYNC_INTERVAL = 10 * 60 * 1000;
 
 async function syncOpenRouterFreeModels(store: IDBObjectStore): Promise<ModelItem[]> {
