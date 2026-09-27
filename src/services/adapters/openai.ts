@@ -77,11 +77,12 @@ export class OpenAIAdapter implements BaseAdapter {
         
         if (hasAttachments && model.supportsVision) {
           const contents: any[] = [];
-          
-          // Add text first
+
+          // Text/code/document attachments are extracted locally. Images are
+          // sent natively below and must not be duplicated as fake text.
           let textWithExtracted = msg.content;
           for (const att of msg.attachments || []) {
-            if (att.extractedText || att.base64Data) {
+            if (!att.type.startsWith('image/') && (att.extractedText || att.base64Data)) {
               textWithExtracted += `\n\n[附件文本: ${att.name}]\n${extractAttachmentText(att)}`;
             }
           }
@@ -101,13 +102,19 @@ export class OpenAIAdapter implements BaseAdapter {
           }
           formattedMessages.push({ role: 'user', content: contents });
         } else {
+          const hasGroqImageAttachment =
+            apiKeyConfig.providerId === 'groq' &&
+            (msg.attachments || []).some(att => att.type.startsWith('image/'));
+
+          if (hasGroqImageAttachment) {
+            throw new Error(`当前 Groq 模型 [${model.id}] 不支持图片输入。请切换到 Groq 的视觉模型后再发送图片；TXT、JS 等文本/代码附件仍可直接使用。`);
+          }
+
           let text = msg.content;
           if (hasAttachments) {
             for (const att of msg.attachments || []) {
               if (att.extractedText || att.base64Data) {
                 text += `\n\n[附件文本: ${att.name}]\n${extractAttachmentText(att)}`;
-              } else if (att.type.startsWith('image/')) {
-                text += `\n\n[图片附件: ${att.name}]`;
               }
             }
           }
