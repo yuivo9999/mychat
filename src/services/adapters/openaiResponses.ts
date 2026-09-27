@@ -13,7 +13,7 @@ export async function sendOpenAIResponses(options: AdapterOptions, callbacks?: S
       for (const att of msg.attachments || []) {
         if (att.type.startsWith('image/') && model.supportsVision && att.dataUrl) {
           parts.push({ type: 'input_image', image_url: att.dataUrl });
-        } else if (att.base64Data) {
+        } else if (!att.type.startsWith('image/') && att.base64Data) {
           parts.push({
             type: 'input_file',
             filename: att.name,
