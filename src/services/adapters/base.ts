@@ -33,28 +33,8 @@ export async function executeFetch(
     signal?: AbortSignal;
   }
 ): Promise<Response> {
-  const method = init.method || 'POST';
-  const headers = init.headers || {};
-  const body = init.body;
-  let parsedBody: any = body;
-
-  if (typeof body === 'string') {
-    try { parsedBody = JSON.parse(body); } catch { parsedBody = body; }
-  }
-
-  try {
-    return await fetch('/api/proxy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: targetUrl, method, headers, body: parsedBody }),
-      signal: init.signal,
-    });
-  } catch (proxyErr: any) {
-    if (proxyErr.name === 'AbortError') throw proxyErr;
-    // Direct fallback is useful for local development against providers that
-    // explicitly allow browser CORS. Hosted deployments should use /api/proxy.
-    return fetch(targetUrl, init);
-  }
+  // Direct provider access: no /api/proxy and no server-side relay.
+  return fetch(targetUrl, init);
 }
 
 export function parseHttpError(status: number, errorData: any, statusText: string): string {
