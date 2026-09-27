@@ -1,6 +1,7 @@
 import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch } from './base';
 import { ApiKeyConfig } from '../../types';
 import { extractAttachmentText } from '../fileParser';
+import { sendOpenAIResponses } from './openaiResponses';
 
 export class OpenAIAdapter implements BaseAdapter {
   private getDefaultBaseUrl(providerId: string): string {
@@ -44,6 +45,14 @@ export class OpenAIAdapter implements BaseAdapter {
 
   async sendMessage(options: AdapterOptions, callbacks?: StreamCallbacks): Promise<string> {
     const { model, apiKeyConfig, messages, systemPrompt, temperature, maxTokens, topP, parameters, abortSignal, timeoutSeconds } = options;
+    if (
+      apiKeyConfig.providerId === 'openai' &&
+      model.supportsFiles &&
+      messages.some(m => m.role === 'user' && (m.attachments?.length || 0) > 0)
+    ) {
+      return sendOpenAIResponses(options, callbacks);
+    }
+
     const endpoint = this.resolveEndpoint(apiKeyConfig);
 
     const formattedMessages: any[] = [];
