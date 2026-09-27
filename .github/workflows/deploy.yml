@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -43,17 +43,12 @@ jobs:
           p = Path('src/services/db.ts')
           s = p.read_text(encoding='utf-8')
 
-          # The previous catalog migration accidentally removed core db.ts exports.
-          # Restore them idempotently so the application can build and the browser
-          # database keeps working normally.
           if 'export async function getConversations()' not in s:
               marker = "export const DEFAULT_API_KEYS: ApiKeyConfig[] = ["
-              block = r'''export async function getConversations(): Promise<Conversation[]> {
+              block = '''export async function getConversations(): Promise<Conversation[]> {
             const db = await openDB();
             return new Promise((resolve, reject) => {
-              const transaction = db.transaction('conversations', 'readonly');
-              const store = transaction.objectStore('conversations');
-              const request = store.getAll();
+              const request = db.transaction('conversations', 'readonly').objectStore('conversations').getAll();
               request.onsuccess = () => {
                 const list = (request.result as Conversation[]) || [];
                 list.sort((a, b) => b.updatedAt - a.updatedAt);
@@ -106,7 +101,7 @@ jobs:
 
           if 'export const DEFAULT_SETTINGS: UserSettings = {' not in s:
               marker = '// Open IndexedDB instance'
-              block = r'''export const DEFAULT_SETTINGS: UserSettings = {
+              block = '''export const DEFAULT_SETTINGS: UserSettings = {
             theme: 'system',
             fontSize: 'standard',
             enterToSend: true,
@@ -128,8 +123,6 @@ jobs:
                   raise SystemExit('settings insertion marker not found')
               s = s.replace(marker, block + marker, 1)
 
-          # Remove the old Cerebras/Ollama records and ensure Groq is present in
-          # already-initialized IndexedDB stores. This is deliberately idempotent.
           if 'const REMOVED_DEFAULT_PROVIDER_IDS' in s:
               s = s.replace(
                   "const REMOVED_DEFAULT_PROVIDER_IDS = new Set(['anthropic', 'moonshot', 'qwen', 'siliconflow']);",
@@ -138,10 +131,8 @@ jobs:
 
           needle = "      let results = (request.result as ProviderDefinition[]) || [];"
           if needle in s and "const requiredDefaultProviders = DEFAULT_PROVIDERS.filter" not in s:
-              replacement = needle + r'''
+              replacement = needle + '''
 
-              // Reconcile the persisted catalog with the current built-in catalog.
-              // This also repairs old browsers where Groq was added after first launch.
               const staleProviderIds = new Set(['cerebras', 'ollama', 'anthropic', 'moonshot', 'qwen', 'siliconflow']);
               for (const provider of results) {
                 if (staleProviderIds.has(provider.id)) store.delete(provider.id);
@@ -156,29 +147,8 @@ jobs:
               }'''
               s = s.replace(needle, replacement, 1)
 
-          # Remove Cerebras model records even if the old provider migration left them.
-          model_needle = "      let results = (request.result as ModelItem[]) || [];"
-          if model_needle in s and "staleProviderIds.has(r.providerId)" not in s:
-              s = s.replace(
-                  model_needle,
-                  model_needle + "\n\n      const staleProviderIds = new Set(['cerebras', 'ollama']);\n      for (const model of results) { if (staleProviderIds.has(model.providerId)) store.delete(model.id); }\n      results = results.filter(r => !staleProviderIds.has(r.providerId));",
-                  1
-              )
-
           p.write_text(s, encoding='utf-8')
           PY
-
-      - name: Persist runtime catalog and database repairs
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          if git diff --quiet -- src/services/db.ts; then
-            echo 'Database service already repaired.'
-          else
-            git add src/services/db.ts
-            git commit -m 'fix: restore database exports and Groq migration'
-            git push
-          fi
 
       - name: Build project
         run: npm run build
