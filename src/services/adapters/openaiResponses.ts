@@ -39,7 +39,7 @@ export async function sendOpenAIResponses(options: AdapterOptions, callbacks?: S
         } else if (!att.type.startsWith('image/')) {
           const fallbackText = extractAttachmentText(att);
           if (fallbackText) parts.push({ type: 'input_text', text: '[附件文本: ' + att.name + ']\\n' + fallbackText });
-        }        }
+        }
       }
     }
     if (parts.length) input.push({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: parts });
