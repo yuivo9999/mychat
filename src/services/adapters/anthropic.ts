@@ -54,6 +54,18 @@ export class AnthropicAdapter implements BaseAdapter {
                   },
                 });
               }
+            } else if (
+              att.base64Data &&
+              (att.type === 'application/pdf' || att.name.toLowerCase().endsWith('.pdf'))
+            ) {
+              contentParts.push({
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: att.base64Data,
+                },
+              });
             } else if (att.base64Data) {
               contentParts.push({
                 type: 'text',
