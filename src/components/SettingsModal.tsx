@@ -57,7 +57,7 @@ interface SettingsModalProps {
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
-  initialTab = 'providers',
+  initialTab = 'chat',
   onOpenModelConfig,
   providers,
   onSaveProvider,
@@ -76,7 +76,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClearAllApiKeys,
   onResetAllData,
 }) => {
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState(['chat', 'appearance', 'data', 'advanced'].includes(initialTab) ? initialTab : 'chat');
 
   // API Key Form State
   const [editingKeyId, setEditingKeyId] = useState<string | null>(null);
@@ -267,14 +267,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const tabs = [
-    { id: 'providers', label: '1. AI 提供商', icon: Layers },
-    { id: 'keys', label: '2. API Key', icon: Key },
-    { id: 'models', label: '3. 模型管理', icon: Bot },
-    { id: 'default', label: '4. 默认模型', icon: Sparkles },
-    { id: 'chat', label: '5. 聊天设置', icon: Sliders },
-    { id: 'appearance', label: '6. 外观风格', icon: Palette },
-    { id: 'data', label: '7. 数据管理', icon: Database },
-    { id: 'advanced', label: '8. 高级设置', icon: ShieldAlert },
+    { id: 'chat', label: '聊天设置', icon: Sliders },
+    { id: 'appearance', label: '外观风格', icon: Palette },
+    { id: 'data', label: '数据管理', icon: Database },
+    { id: 'advanced', label: '高级设置', icon: ShieldAlert },
   ];
 
   return (
@@ -304,19 +300,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
           {/* Navigation Sidebar */}
           <nav className="w-full md:w-52 border-b md:border-b-0 md:border-r border-neutral-200 dark:border-neutral-800 p-2 md:p-3 flex md:flex-col gap-1 overflow-x-auto md:overflow-y-auto shrink-0 bg-neutral-50/30 dark:bg-neutral-950/20">
-            {onOpenModelConfig && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenModelConfig();
-                }}
-                className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 transition mb-1 text-left shrink-0"
-              >
-                <span>⚡ 打开 AI 模型独立配置</span>
-                <span className="text-[10px]">→</span>
-              </button>
-            )}
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -340,538 +323,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* Tab Content Panels */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-            {/* 1. AI 提供商 */}
-            {activeTab === 'providers' && (
-              <div className="space-y-5">
-                <div>
-                  <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">AI 提供商分组管理</h3>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    系统内置主流大模型提供商支持，您可以启用/禁用提供商，或新增自定义 OpenAI 兼容接口。
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {providers.map((p) => (
-                    <div
-                      key={p.id}
-                      className="p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/40 flex items-start justify-between"
-                    >
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-xs text-neutral-900 dark:text-neutral-100 truncate">{p.name}</span>
-                          {p.isCustom && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-500">自定义</span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-neutral-400 mt-1 line-clamp-2 leading-relaxed">{p.description}</p>
-                        <p className="text-[10px] text-neutral-400/80 font-mono mt-1.5 truncate">{p.defaultBaseUrl || '无需 Base URL'}</p>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        {p.isCustom && (
-                          <button
-                            type="button"
-                            onClick={() => onDeleteProvider(p.id)}
-                            className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
-                            title="删除自定义提供商"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                        <input
-                          type="checkbox"
-                          checked={p.enabled}
-                          onChange={(e) => onSaveProvider({ ...p, enabled: e.target.checked })}
-                          className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
-                          title="启用/禁用"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Add Custom Provider Form */}
-                <div className="p-4 rounded-2xl border border-dashed border-neutral-300 dark:border-neutral-700 bg-neutral-50/30 dark:bg-neutral-900/30 space-y-3">
-                  <h4 className="text-xs font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>添加自定义 API 提供商 (OpenAI 兼容协议)</span>
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      placeholder="提供商名称 (例如: 公司内网网关 / 自建 vLLM)"
-                      value={newProvName}
-                      onChange={(e) => setNewProvName(e.target.value)}
-                      className="text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Base URL (例如: https://my-gateway.com/v1)"
-                      value={newProvBaseUrl}
-                      onChange={(e) => setNewProvBaseUrl(e.target.value)}
-                      className="text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="描述说明 (选填)"
-                    value={newProvDesc}
-                    onChange={(e) => setNewProvDesc(e.target.value)}
-                    className="w-full text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!newProvName.trim()) return;
-                      const customP: ProviderDefinition = {
-                        id: `custom_${Date.now()}`,
-                        name: newProvName.trim(),
-                        defaultBaseUrl: newProvBaseUrl.trim(),
-                        description: newProvDesc.trim() || '用户自建兼容端点',
-                        icon: 'Sliders',
-                        isCustom: true,
-                        enabled: true,
-                      };
-                      await onSaveProvider(customP);
-                      setNewProvName('');
-                      setNewProvBaseUrl('');
-                      setNewProvDesc('');
-                    }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs"
-                  >
-                    保存提供商
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* 2. API Key 管理 */}
-            {activeTab === 'keys' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">API Key 本地凭证管理</h3>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    API Key 仅保存在当前浏览器的 IndexedDB 中，不会上传至任何中转服务器。支持针对同一提供商配置多个 API Key 并在聊天界面自由切换。
-                  </p>
-                </div>
-
-                {/* API Key Form */}
-                <form onSubmit={handleSaveKey} className="p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 space-y-3">
-                  <h4 className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
-                    {editingKeyId ? '修改 API Key' : '添加新的 API Key'}
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-medium text-neutral-500 mb-1">所属 AI 提供商</label>
-                      <select
-                        value={keyProviderId}
-                        onChange={(e) => setKeyProviderId(e.target.value)}
-                        className="w-full text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                      >
-                        {providers.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-medium text-neutral-500 mb-1">自定义名称 (标签)</label>
-                      <input
-                        type="text"
-                        placeholder="例如: 个人专用 / 备用 Key"
-                        value={keyLabel}
-                        onChange={(e) => setKeyLabel(e.target.value)}
-                        className="w-full text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-medium text-neutral-500 mb-1">API Key 密钥</label>
-                    <input
-                      type="password"
-                      placeholder="sk-..."
-                      value={keyValue}
-                      onChange={(e) => setKeyValue(e.target.value)}
-                      required
-                      className="w-full text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-medium text-neutral-500 mb-1">自定义 API Base URL / 代理地址 (选填，留空使用官方默认地址)</label>
-                    <input
-                      type="text"
-                      placeholder="https://api.openai.com/v1"
-                      value={keyBaseUrl}
-                      onChange={(e) => setKeyBaseUrl(e.target.value)}
-                      className="w-full text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-mono"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs"
-                    >
-                      {editingKeyId ? '保存修改' : '保存 API Key'}
-                    </button>
-                    {editingKeyId && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingKeyId(null);
-                          setKeyLabel('');
-                          setKeyValue('');
-                          setKeyBaseUrl('');
-                        }}
-                        className="px-3 py-2 rounded-xl text-xs text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-800"
-                      >
-                        取消
-                      </button>
-                    )}
-                  </div>
-                </form>
-
-                {/* API Keys List */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-                    已保存的 API Key ({apiKeys.length})
-                  </h4>
-
-                  {apiKeys.length === 0 ? (
-                    <div className="p-6 text-center border border-dashed border-neutral-200 dark:border-neutral-800 rounded-2xl text-xs text-neutral-400">
-                      尚未添加任何 API Key。请在上方表单添加您获取的 Key。
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {apiKeys.map((k) => {
-                        const isVisible = visibleKeys[k.id];
-                        const prov = providers.find(p => p.id === k.providerId);
-                        const isTesting = testingKeyId === k.id;
-                        const tResult = testResult?.id === k.id ? testResult : null;
-
-                        return (
-                          <div
-                            key={k.id}
-                            className="p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 space-y-2 shadow-2xs"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-xs text-neutral-900 dark:text-neutral-100">{k.label}</span>
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 font-medium">
-                                  {prov?.name || k.providerId}
-                                </span>
-                                {k.isDefault && (
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">
-                                    默认
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleTestKey(k)}
-                                  disabled={isTesting}
-                                  className="px-2.5 py-1 text-xs rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 flex items-center gap-1 transition"
-                                >
-                                  <RotateCw className={`w-3 h-3 ${isTesting ? 'animate-spin' : ''}`} />
-                                  <span>{isTesting ? '测试中...' : '测试连接'}</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleKeyVisibility(k.id)}
-                                  className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
-                                  title={isVisible ? '隐藏' : '显示完整 Key'}
-                                >
-                                  {isVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleEditKey(k)}
-                                  className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
-                                  title="编辑"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => onDeleteApiKey(k.id)}
-                                  className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500"
-                                  title="删除"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Masked Key Display */}
-                            <div className="text-[11px] font-mono text-neutral-500 bg-neutral-50 dark:bg-neutral-950 p-2 rounded-xl overflow-x-auto">
-                              {isVisible ? k.apiKey : `${k.apiKey.slice(0, 6)}••••••••••••••••••••${k.apiKey.slice(-4)}`}
-                            </div>
-
-                            {k.baseUrl && (
-                              <div className="text-[10px] text-neutral-400 font-mono">
-                                Base URL: {k.baseUrl}
-                              </div>
-                            )}
-
-                            {/* Test Result Message */}
-                            {tResult && (
-                              <div className={`p-2 rounded-xl text-xs flex items-center gap-1.5 ${
-                                tResult.success 
-                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
-                                  : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
-                              }`}>
-                                {tResult.success ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
-                                <span>{tResult.message}</span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* 3. 模型管理 */}
-            {activeTab === 'models' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">AI 模型参数与清单</h3>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    管理各模型的多模态视觉、流式输出、默认温度、上下文窗口与系统预设提示词 (System Prompt)。
-                  </p>
-                </div>
-
-                {/* Model edit form */}
-                <form onSubmit={handleSaveModel} className="p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 space-y-3">
-                  <h4 className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
-                    {editingModelId ? `编辑模型: ${editingModelId}` : '添加自定义新模型'}
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-medium text-neutral-500 mb-1">模型 ID (API 请求参数)</label>
-                      <input
-                        type="text"
-                        placeholder="例如: gpt-4.5-preview / deepseek-ai/DeepSeek-V3"
-                        value={modelFormId}
-                        onChange={(e) => setModelFormId(e.target.value)}
-                        required
-                        className="w-full text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-neutral-500 mb-1">显示名称</label>
-                      <input
-                        type="text"
-                        placeholder="例如: GPT 4.5 Preview"
-                        value={modelFormName}
-                        onChange={(e) => setModelFormName(e.target.value)}
-                        required
-                        className="w-full text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-neutral-500 mb-1">所属提供商</label>
-                      <select
-                        value={modelFormProviderId}
-                        onChange={(e) => setModelFormProviderId(e.target.value)}
-                        className="w-full text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                      >
-                        {providers.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-medium text-neutral-500 mb-1">默认 Temperature ({modelFormTemp})</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="2"
-                        step="0.1"
-                        value={modelFormTemp}
-                        onChange={(e) => setModelFormTemp(parseFloat(e.target.value))}
-                        className="w-full accent-indigo-600"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-medium text-neutral-500 mb-1">最大 Token 数 (Max Tokens)</label>
-                      <input
-                        type="number"
-                        value={modelFormMaxTokens}
-                        onChange={(e) => setModelFormMaxTokens(parseInt(e.target.value) || 4096)}
-                        className="w-full text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 py-1">
-                    <label className="flex items-center gap-1.5 text-xs text-neutral-700 dark:text-neutral-300 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={modelFormVision}
-                        onChange={(e) => setModelFormVision(e.target.checked)}
-                        className="rounded text-indigo-600 h-4 w-4"
-                      />
-                      <span>支持图片视觉分析 (Vision)</span>
-                    </label>
-
-                    <label className="flex items-center gap-1.5 text-xs text-neutral-700 dark:text-neutral-300 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={modelFormStreaming}
-                        onChange={(e) => setModelFormStreaming(e.target.checked)}
-                        className="rounded text-indigo-600 h-4 w-4"
-                      />
-                      <span>支持打字机流式输出 (Streaming)</span>
-                    </label>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-medium text-neutral-500 mb-1">专属系统预设词 (System Prompt - 选填)</label>
-                    <textarea
-                      value={modelFormSystemPrompt}
-                      onChange={(e) => setModelFormSystemPrompt(e.target.value)}
-                      placeholder="留空则使用全局默认系统设定..."
-                      rows={2}
-                      className="w-full text-xs p-2.5 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-sans"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs"
-                    >
-                      {editingModelId ? '更新模型配置' : '保存新模型'}
-                    </button>
-                    {editingModelId && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingModelId(null);
-                          setModelFormId('');
-                          setModelFormName('');
-                          setModelFormSystemPrompt('');
-                        }}
-                        className="px-3 py-2 rounded-xl text-xs text-neutral-500 hover:bg-neutral-200 dark:hover:bg-neutral-800"
-                      >
-                        取消编辑
-                      </button>
-                    )}
-                  </div>
-                </form>
-
-                {/* Model items grid */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
-                    全部已配置模型 ({models.length})
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[400px] overflow-y-auto p-1">
-                    {models.map((m) => {
-                      const prov = providers.find(p => p.id === m.providerId);
-                      return (
-                        <div
-                          key={m.id}
-                          className="p-3 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 flex items-start justify-between shadow-2xs"
-                        >
-                          <div className="min-w-0 pr-2">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-xs text-neutral-900 dark:text-neutral-100 truncate">{m.name}</span>
-                              {m.supportsVision && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 font-medium">视觉</span>
-                              )}
-                            </div>
-                            <p className="text-[10px] text-neutral-400 font-mono mt-0.5 truncate">{m.id}</p>
-                            <span className="text-[10px] text-neutral-400 mt-1 inline-block">
-                              {prov?.name || m.providerId}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleEditModel(m)}
-                              className="p-1 rounded text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
-                              title="编辑参数"
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            {m.isCustom && (
-                              <button
-                                type="button"
-                                onClick={() => onDeleteModel(m.id)}
-                                className="p-1 rounded text-neutral-400 hover:text-red-500"
-                                title="删除自定义模型"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 4. 默认模型 */}
-            {activeTab === 'default' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">默认模型与全局系统提示词</h3>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    新建聊天时自动优先采用的默认模型和初始人格设定。
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
-                      默认选用的 AI 模型
-                    </label>
-                    <select
-                      value={settings.defaultModelId}
-                      onChange={(e) => onSaveSettings({ ...settings, defaultModelId: e.target.value })}
-                      className="w-full text-xs p-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                    >
-                      {models.map(m => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({providers.find(p => p.id === m.providerId)?.name || m.providerId})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
-                      全局默认 System Prompt (系统提示词)
-                    </label>
-                    <textarea
-                      value={settings.defaultSystemPrompt}
-                      onChange={(e) => onSaveSettings({ ...settings, defaultSystemPrompt: e.target.value })}
-                      rows={5}
-                      className="w-full text-xs p-3 rounded-xl border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white leading-relaxed font-sans"
-                    />
-                    <p className="text-[11px] text-neutral-400 mt-1">
-                      此提示词将作为对话上下文的系统指令发送给模型，指导 AI 的语言风格与专业深度。
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* 5. 聊天设置 */}
             {activeTab === 'chat' && (
               <div className="space-y-6">
@@ -964,56 +415,96 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
 
-            {/* 6. 外观风格 */}
+            {/* 外观风格 */}
             {activeTab === 'appearance' && (
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">主题与排版风格</h3>
+                  <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">皮肤风格选择</h3>
                   <p className="text-xs text-neutral-500 mt-1">
-                    调整深浅色主题与整体阅读密度。
+                    点击下方按钮切换界面色彩与字体外观设计。
                   </p>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-2">色彩模式</label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {(['light', 'dark', 'system'] as const).map((t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => onSaveSettings({ ...settings, theme: t })}
-                          className={`p-3.5 rounded-2xl border text-center text-xs font-medium transition ${
-                            settings.theme === t
-                              ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold'
-                              : 'border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
-                          }`}
-                        >
-                          {t === 'light' ? '☀️ 浅色明亮' : t === 'dark' ? '🌙 深色夜间' : '💻 跟随系统'}
-                        </button>
-                      ))}
+                <div className="flex flex-col gap-3 w-full">
+                  <button
+                    type="button"
+                    onClick={() => onSaveSettings({ ...settings, theme: 'light' })}
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
+                      settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1'
+                        ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20'
+                        : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
+                    }`}
+                  >
+                    <div className="flex flex-col justify-center">
+                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug">默认皮肤</div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">现代极简设计，黑白灰无衬线视觉风格</div>
                     </div>
-                  </div>
+                    {settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && (
+                      <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 shrink-0 ml-3">
+                        <Check className="w-4 h-4" /> 当前已使用
+                      </span>
+                    )}
+                  </button>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-2">排版密度</label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {(['compact', 'standard', 'spacious'] as const).map((d) => (
-                        <button
-                          key={d}
-                          type="button"
-                          onClick={() => onSaveSettings({ ...settings, fontSize: d })}
-                          className={`p-3 rounded-2xl border text-center text-xs font-medium transition ${
-                            settings.fontSize === d
-                              ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold'
-                              : 'border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
-                          }`}
-                        >
-                          {d === 'compact' ? '紧凑布局' : d === 'standard' ? '标准舒适' : '宽松易读'}
-                        </button>
-                      ))}
+                  <button
+                    type="button"
+                    onClick={() => onSaveSettings({ ...settings, theme: 'modern1' })}
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
+                      settings.theme === 'modern1'
+                        ? 'border-sky-500 bg-sky-50/70 dark:bg-sky-950/30 ring-2 ring-sky-500/30'
+                        : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
+                    }`}
+                  >
+                    <div className="flex flex-col justify-center">
+                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug">现代1</div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">冰蓝雾灰清爽底色、深海钢蓝字色与蔚蓝高亮，高效商务排版</div>
                     </div>
-                  </div>
+                    {settings.theme === 'modern1' && (
+                      <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 flex items-center gap-1 shrink-0 ml-3">
+                        <Check className="w-4 h-4" /> 当前已使用
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSaveSettings({ ...settings, theme: 'classic1' })}
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
+                      settings.theme === 'classic1'
+                        ? 'border-amber-700 bg-amber-50/60 ring-2 ring-amber-700/20'
+                        : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
+                    }`}
+                  >
+                    <div className="flex flex-col justify-center font-serif">
+                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug">古典1</div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">古朴宣纸底色、深褐墨香与朱砂沉淀，配合典雅衬线字体</div>
+                    </div>
+                    {settings.theme === 'classic1' && (
+                      <span className="text-xs font-semibold text-amber-800 flex items-center gap-1 shrink-0 ml-3 font-serif">
+                        <Check className="w-4 h-4" /> 当前已使用
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSaveSettings({ ...settings, theme: 'classic2' })}
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
+                      settings.theme === 'classic2'
+                        ? 'border-amber-500 bg-amber-950/40 ring-2 ring-amber-500/30'
+                        : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
+                    }`}
+                  >
+                    <div className="flex flex-col justify-center font-serif">
+                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug">古典2</div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">天下舆图黑金底色、金烫繁字与沉香古韵，配合典雅宋体字形</div>
+                    </div>
+                    {settings.theme === 'classic2' && (
+                      <span className="text-xs font-semibold text-amber-400 flex items-center gap-1 shrink-0 ml-3 font-serif">
+                        <Check className="w-4 h-4" /> 当前已使用
+                      </span>
+                    )}
+                  </button>
                 </div>
               </div>
             )}

@@ -104,7 +104,7 @@ export default function App() {
 
   // Modals
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<string>('providers');
+  const [settingsTab, setSettingsTab] = useState<string>('chat');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isBatchOpen, setIsBatchOpen] = useState(false);
@@ -147,14 +147,22 @@ export default function App() {
   // Theme synchronization
   useEffect(() => {
     const root = document.documentElement;
-    const isDark =
-      settings.theme === 'dark' ||
-      (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    root.classList.remove('dark', 'theme-classic1', 'theme-classic2', 'theme-modern1');
 
-    if (isDark) {
-      root.classList.add('dark');
+    if (settings.theme === 'classic1') {
+      root.classList.add('theme-classic1');
+    } else if (settings.theme === 'classic2') {
+      root.classList.add('theme-classic2');
+    } else if (settings.theme === 'modern1') {
+      root.classList.add('theme-modern1');
     } else {
-      root.classList.remove('dark');
+      const isDark =
+        settings.theme === 'dark' ||
+        (settings.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+      if (isDark) {
+        root.classList.add('dark');
+      }
     }
   }, [settings.theme]);
 
@@ -1688,6 +1696,10 @@ export default function App() {
           onStopGeneration={handleStopGeneration}
           currentModel={currentModel}
           currentApiKey={currentApiKey}
+          models={models}
+          providers={providers}
+          selectedModelId={selectedModelId}
+          onSelectModel={handleSelectModel}
           settings={settings}
           onOpenSettings={(tab) => {
             if (tab) setSettingsTab(tab);

@@ -382,10 +382,222 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-sm scrollbar-thin scrollbar-thumb-neutral-700">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 text-sm scrollbar-thin scrollbar-thumb-neutral-700">
           
-          {/* 1. 服务商 / 账号组 */}
-          <div className="space-y-2">
+          {/* 1. 默认模型服务 (置顶区域) */}
+          <div className="bg-[#181c26] border border-neutral-800 rounded-xl p-4 space-y-3.5 shadow-md">
+            <div className="font-semibold text-neutral-200 flex items-center justify-between">
+              <span>默认模型服务</span>
+            </div>
+            
+            {/* 服务组 */}
+            <div className="space-y-1">
+              <label className="text-xs text-neutral-400">服务组</label>
+              <div className="relative">
+                <select
+                  value={defaultServiceGroupId}
+                  onChange={(e) => {
+                    const newGId = e.target.value;
+                    setDefaultServiceGroupId(newGId);
+                    const matchingModels = models.filter(m => m.providerId === newGId);
+                    if (matchingModels.length > 0) {
+                      setDefaultModelId(matchingModels[0].id);
+                    } else {
+                      setDefaultModelId('');
+                    }
+                    const matchingKeys = apiKeys.filter(k => k.providerId === newGId);
+                    if (matchingKeys.length > 0) {
+                      setDefaultKeyId(matchingKeys[0].id);
+                    } else {
+                      setDefaultKeyId('');
+                    }
+                  }}
+                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
+                >
+                  {providers.length === 0 ? (
+                    <option value="" className="bg-[#181c26] text-neutral-400">（暂无服务组）</option>
+                  ) : (
+                    providers.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-[#181c26] text-white">
+                        {p.name}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* 账号 (API Key) */}
+            <div className="space-y-1">
+              <label className="text-xs text-neutral-400">账号（API Key）</label>
+              <div className="relative">
+                <select
+                  value={defaultKeyId}
+                  onChange={(e) => setDefaultKeyId(e.target.value)}
+                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
+                >
+                  <option value="" className="bg-[#181c26] text-neutral-400">
+                    {defaultServiceKeys.length === 0 ? '（尚未配置 API Key）' : '（使用服务商默认 Key）'}
+                  </option>
+                  {defaultServiceKeys.map((k) => (
+                    <option key={k.id} value={k.id} className="bg-[#181c26] text-white">
+                      Key ({k.apiKey.slice(0, 6)}...{k.apiKey.slice(-4)})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* 模型 */}
+            <div className="space-y-1">
+              <div className="text-xs text-neutral-400 flex items-center justify-between flex-wrap gap-1">
+                <span>模型</span>
+                <span className="text-[11px] text-neutral-500 font-mono">发给 AI 的标准代号: <span className="text-orange-400 font-medium">{defaultModelId || '未配置'}</span></span>
+              </div>
+              <div className="relative">
+                <select
+                  value={defaultModelId}
+                  onChange={(e) => setDefaultModelId(e.target.value)}
+                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8 font-mono"
+                >
+                  {defaultServiceModels.length === 0 ? (
+                    <option value="" className="bg-[#181c26] text-neutral-400">（尚未配置模型）</option>
+                  ) : (
+                    defaultServiceModels.map((m) => (
+                      <option key={m.id} value={m.id} className="bg-[#181c26] text-white">
+                        {m.id} {m.name && m.name !== m.id ? `(${m.name})` : ''} {m.id === currentModelId ? '· [现用]' : ''}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* 测试连接 与 保存 按钮卡片区域 */}
+            <div className="pt-2 border-t border-neutral-800/80 flex items-start justify-between gap-3">
+              {/* 测试连接 Column */}
+              <div className="flex-1 flex flex-col">
+                <button
+                  type="button"
+                  onClick={handleTestConnection}
+                  disabled={isTesting}
+                  className="w-full py-2.5 px-4 rounded-xl bg-[#1e2330] hover:bg-[#262c3d] text-neutral-200 border border-neutral-700/80 font-medium text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                >
+                  {isTesting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-orange-400" />
+                      <span>正在测试...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Activity className="w-4 h-4 text-neutral-400" />
+                      <span>测试连接</span>
+                    </>
+                  )}
+                </button>
+
+                {/* 小字反馈连接状态 */}
+                <div className="mt-1.5 px-0.5 text-[11px] leading-tight min-h-[16px]">
+                  {isTesting ? (
+                    <span className="text-orange-400 font-medium flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3 animate-spin inline shrink-0" />
+                      <span>测试连接中...</span>
+                    </span>
+                  ) : testResult ? (
+                    testResult.success ? (
+                      <span className="text-emerald-400 font-medium flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 inline shrink-0 text-emerald-400" />
+                        <span>连接OK {testResult.latencyMs !== undefined ? `(延迟: ${testResult.latencyMs}ms)` : ''}</span>
+                      </span>
+                    ) : (
+                      <span className="text-red-400 font-medium flex items-start gap-1 break-all" title={testResult.message}>
+                        <AlertCircle className="w-3.5 h-3.5 inline shrink-0 text-red-400 mt-0.5" />
+                        <span>连接失败: {testResult.message}</span>
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-neutral-500">点击发起连通性测试</span>
+                  )}
+                </div>
+              </div>
+
+              {/* 保存 Button */}
+              <div className="flex-1 flex flex-col">
+                <button
+                  type="button"
+                  onClick={handleSaveAll}
+                  className="w-full py-2.5 px-4 rounded-xl bg-linear-to-r from-[#f97316] to-[#ea580c] hover:from-[#fb923c] hover:to-[#f97316] text-white font-semibold text-sm shadow-lg shadow-orange-600/30 transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {showSavedToast ? (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>已保存生效！</span>
+                    </>
+                  ) : (
+                    <span>保存</span>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Test Result Message Box */}
+            {testResult && (
+              <div
+                className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in ${
+                  testResult.success
+                    ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                    : 'bg-red-950/40 border-red-500/40 text-red-300'
+                }`}
+              >
+                {testResult.success ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1 space-y-0.5">
+                  <div className="font-semibold flex items-center justify-between">
+                    <span>{testResult.success ? '连通性测试通过' : '测试失败'}</span>
+                    {testResult.latencyMs !== undefined && (
+                      <span className="font-mono text-[11px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        延迟 {testResult.latencyMs}ms
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] opacity-90 leading-relaxed">{testResult.message}</p>
+                  {!testResult.success && (testResult.message.includes('API Key') || testResult.message.includes('API_KEY') || testResult.message.includes('API key')) && (
+                    <div className="pt-2 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSaveApiKey({
+                            id: 'key_google_default_ready',
+                            providerId: 'google',
+                            label: 'Google Gemini (内置官方免费通道)',
+                            apiKey: 'AIzaSy_Google_Gemini_Fast_Testing_Key',
+                            baseUrl: 'https://generativelanguage.googleapis.com',
+                            createdAt: Date.now(),
+                            isDefault: true,
+                          });
+                          setDefaultKeyId('key_google_default_ready');
+                          setTimeout(() => handleTestConnection(), 150);
+                        }}
+                        className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-orange-600/90 hover:bg-orange-500 text-white transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>一键切换为系统免配置通道并立即重试</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. 服务商 / 账号组 */}
+          <div className="space-y-2 pt-2 border-t border-neutral-800/80">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="text-xs font-semibold text-neutral-400">服务商 / 账号组 ({providers.length})</span>
@@ -913,215 +1125,6 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
             </div>
           ) : null}
 
-          {/* 3. 默认模型服务 */}
-          <div className="bg-[#181c26] border border-neutral-800 rounded-xl p-4 space-y-3">
-            <div className="font-semibold text-neutral-200">默认模型服务</div>
-            
-            {/* 服务组 */}
-            <div className="space-y-1">
-              <label className="text-xs text-neutral-400">服务组</label>
-              <div className="relative">
-                <select
-                  value={defaultServiceGroupId}
-                  onChange={(e) => {
-                    const newGId = e.target.value;
-                    setDefaultServiceGroupId(newGId);
-                    const matchingModels = models.filter(m => m.providerId === newGId);
-                    if (matchingModels.length > 0) {
-                      setDefaultModelId(matchingModels[0].id);
-                    } else {
-                      setDefaultModelId('');
-                    }
-                    const matchingKeys = apiKeys.filter(k => k.providerId === newGId);
-                    if (matchingKeys.length > 0) {
-                      setDefaultKeyId(matchingKeys[0].id);
-                    } else {
-                      setDefaultKeyId('');
-                    }
-                  }}
-                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
-                >
-                  {providers.length === 0 ? (
-                    <option value="" className="bg-[#181c26] text-neutral-400">（暂无服务组）</option>
-                  ) : (
-                    providers.map((p) => (
-                      <option key={p.id} value={p.id} className="bg-[#181c26] text-white">
-                        {p.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-                <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* 账号 (API Key) */}
-            <div className="space-y-1">
-              <label className="text-xs text-neutral-400">账号（API Key）</label>
-              <div className="relative">
-                <select
-                  value={defaultKeyId}
-                  onChange={(e) => setDefaultKeyId(e.target.value)}
-                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
-                >
-                  <option value="" className="bg-[#181c26] text-neutral-400">
-                    {defaultServiceKeys.length === 0 ? '（尚未配置 API Key）' : '（使用服务商默认 Key）'}
-                  </option>
-                  {defaultServiceKeys.map((k) => (
-                    <option key={k.id} value={k.id} className="bg-[#181c26] text-white">
-                      Key ({k.apiKey.slice(0, 6)}...{k.apiKey.slice(-4)})
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* 模型 */}
-            <div className="space-y-1">
-              <div className="text-xs text-neutral-400 flex items-center justify-between">
-                <span>模型</span>
-                <span className="text-[11px] text-neutral-500 font-mono">发给 AI 的标准代号: <span className="text-orange-400 font-medium">{defaultModelId || '未配置'}</span></span>
-              </div>
-              <div className="relative">
-                <select
-                  value={defaultModelId}
-                  onChange={(e) => setDefaultModelId(e.target.value)}
-                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8 font-mono"
-                >
-                  {defaultServiceModels.length === 0 ? (
-                    <option value="" className="bg-[#181c26] text-neutral-400">（尚未配置模型）</option>
-                  ) : (
-                    defaultServiceModels.map((m) => (
-                      <option key={m.id} value={m.id} className="bg-[#181c26] text-white">
-                        {m.id} {m.name && m.name !== m.id ? `(${m.name})` : ''} {m.id === currentModelId ? '· [现用]' : ''}
-                      </option>
-                    ))
-                  )}
-                </select>
-                <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-
-          {/* Test Result Message Box */}
-          {testResult && (
-            <div
-              className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 animate-in fade-in ${
-                testResult.success
-                  ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                  : 'bg-red-950/40 border-red-500/40 text-red-300'
-              }`}
-            >
-              {testResult.success ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-              )}
-              <div className="flex-1 space-y-0.5">
-                <div className="font-semibold flex items-center justify-between">
-                  <span>{testResult.success ? '连通性测试通过' : '测试失败'}</span>
-                  {testResult.latencyMs !== undefined && (
-                    <span className="font-mono text-[11px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      延迟 {testResult.latencyMs}ms
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] opacity-90 leading-relaxed">{testResult.message}</p>
-                {!testResult.success && (testResult.message.includes('API Key') || testResult.message.includes('API_KEY') || testResult.message.includes('API key')) && (
-                  <div className="pt-2 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSaveApiKey({
-                          id: 'key_google_default_ready',
-                          providerId: 'google',
-                          label: 'Google Gemini (内置官方免费通道)',
-                          apiKey: 'AIzaSy_Google_Gemini_Fast_Testing_Key',
-                          baseUrl: 'https://generativelanguage.googleapis.com',
-                          createdAt: Date.now(),
-                          isDefault: true,
-                        });
-                        setDefaultKeyId('key_google_default_ready');
-                        setTimeout(() => handleTestConnection(), 150);
-                      }}
-                      className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-orange-600/90 hover:bg-orange-500 text-white transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>一键切换为系统免配置通道并立即重试</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Bottom Action Footer */}
-        <div className="px-5 py-3 border-t border-neutral-800/80 bg-[#151821] flex items-start justify-between gap-3">
-          {/* 测试连接 Column with Status Feedback Text Right Below */}
-          <div className="flex-1 flex flex-col">
-            <button
-              type="button"
-              onClick={handleTestConnection}
-              disabled={isTesting}
-              className="w-full py-2.5 px-4 rounded-xl bg-[#1e2330] hover:bg-[#262c3d] text-neutral-200 border border-neutral-700/80 font-medium text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {isTesting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-orange-400" />
-                  <span>正在测试...</span>
-                </>
-              ) : (
-                <>
-                  <Activity className="w-4 h-4 text-neutral-400" />
-                  <span>测试连接</span>
-                </>
-              )}
-            </button>
-
-            {/* 小字反馈连接状态 */}
-            <div className="mt-1.5 px-0.5 text-[11px] leading-tight min-h-[16px]">
-              {isTesting ? (
-                <span className="text-orange-400 font-medium flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3 animate-spin inline shrink-0" />
-                  <span>测试连接中...</span>
-                </span>
-              ) : testResult ? (
-                testResult.success ? (
-                  <span className="text-emerald-400 font-medium flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 inline shrink-0 text-emerald-400" />
-                    <span>连接OK {testResult.latencyMs !== undefined ? `(延迟: ${testResult.latencyMs}ms)` : ''}</span>
-                  </span>
-                ) : (
-                  <span className="text-red-400 font-medium flex items-start gap-1 break-all" title={testResult.message}>
-                    <AlertCircle className="w-3.5 h-3.5 inline shrink-0 text-red-400 mt-0.5" />
-                    <span>连接失败: {testResult.message}</span>
-                  </span>
-                )
-              ) : (
-                <span className="text-neutral-500">点击发起连通性测试</span>
-              )}
-            </div>
-          </div>
-
-          {/* 保存 Button */}
-          <div className="flex-1 flex flex-col">
-            <button
-              type="button"
-              onClick={handleSaveAll}
-              className="w-full py-2.5 px-4 rounded-xl bg-linear-to-r from-[#f97316] to-[#ea580c] hover:from-[#fb923c] hover:to-[#f97316] text-white font-semibold text-sm shadow-lg shadow-orange-600/30 transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
-            >
-              {showSavedToast ? (
-                <>
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>已保存生效！</span>
-                </>
-              ) : (
-                <span>保存</span>
-              )}
-            </button>
-          </div>
         </div>
       </div>
     </div>

@@ -132,7 +132,7 @@ export interface Conversation {
 }
 
 export interface UserSettings {
-  theme: 'light' | 'dark' | 'system';
+  theme: 'light' | 'dark' | 'system' | 'classic1' | 'classic2' | string;
   fontSize: 'compact' | 'standard' | 'spacious';
   enterToSend: boolean;
   autoScroll: boolean;

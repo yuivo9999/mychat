@@ -12,9 +12,11 @@ import {
   FileCode,
   AlertCircle,
   Server,
-  Globe
+  Globe,
+  ChevronDown,
+  Check
 } from 'lucide-react';
-import { Attachment, ModelItem, ApiKeyConfig, UserSettings, ModelParameters } from '../types';
+import { Attachment, ModelItem, ProviderDefinition, ApiKeyConfig, UserSettings, ModelParameters } from '../types';
 import { parseFileToAttachment, formatFileSize } from '../services/fileParser';
 
 interface ChatComposerProps {
@@ -23,6 +25,10 @@ interface ChatComposerProps {
   onStopGeneration: () => void;
   currentModel: ModelItem | undefined;
   currentApiKey: ApiKeyConfig | undefined;
+  models?: ModelItem[];
+  providers?: ProviderDefinition[];
+  selectedModelId?: string;
+  onSelectModel?: (modelId: string) => void;
   settings: UserSettings;
   onOpenSettings: (tab?: string) => void;
   onOpenModelConfig?: () => void;
@@ -41,6 +47,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   onStopGeneration,
   currentModel,
   currentApiKey,
+  models = [],
+  providers = [],
+  selectedModelId,
+  onSelectModel,
   settings,
   onOpenSettings,
   onOpenModelConfig,
@@ -56,6 +66,8 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [searchModelQuery, setSearchModelQuery] = useState('');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -198,19 +210,95 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
   return (
     <div className="w-full max-w-4xl mx-auto px-3 md:px-6 pb-4 pt-1 shrink-0 relative select-none">
-      {/* Missing Key Warning Prompt */}
-      {!hasApiKey && (
-        <div 
-          onClick={() => (onOpenModelConfig ? onOpenModelConfig() : onOpenSettings('keys'))}
-          className="mb-2 p-2 px-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 flex items-center justify-between cursor-pointer hover:bg-amber-500/15 transition"
-        >
-          <div className="flex items-center gap-2">
-            <Key className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span>尚未配置 <strong>{currentModel?.providerId.toUpperCase() || '当前模型'}</strong> 的 API Key，将无法发送请求。</span>
-          </div>
-          <span className="font-semibold underline shrink-0 text-orange-600 dark:text-orange-400">点击进入 AI 模型配置 →</span>
+      {/* Right-aligned small, flat model name display area above input box */}
+      <div className="flex items-center justify-end px-1 mb-1.5 min-h-[26px]">
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full bg-white/90 dark:bg-neutral-900/90 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200/80 dark:border-neutral-800 text-xs font-mono font-medium transition cursor-pointer shadow-2xs max-w-[280px] sm:max-w-[360px]"
+            title="点击切换 AI 模型或配置服务商"
+          >
+            <Sparkles className="w-3 h-3 text-indigo-500 shrink-0" />
+            <span className="truncate leading-none text-xs font-mono">
+              {currentModel?.id || '选择模型'}
+            </span>
+            <ChevronDown className={`w-3 h-3 text-neutral-400 shrink-0 transition-transform ${modelDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Model Dropdown Popup */}
+          {modelDropdownOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setModelDropdownOpen(false)} />
+              <div className="absolute right-0 bottom-full mb-2 w-72 sm:w-80 max-h-[380px] overflow-hidden flex flex-col bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-800 z-40 animate-in fade-in zoom-in-95 duration-150">
+                {/* Dropdown search & header */}
+                <div className="p-2.5 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between gap-2">
+                  <input
+                    type="text"
+                    placeholder="搜索模型或服务商..."
+                    value={searchModelQuery}
+                    onChange={(e) => setSearchModelQuery(e.target.value)}
+                    className="flex-1 text-xs bg-neutral-100 dark:bg-neutral-800 rounded-lg px-2.5 py-1.5 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 outline-hidden font-sans"
+                    autoFocus
+                  />
+                  {onOpenModelConfig && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModelDropdownOpen(false);
+                        onOpenModelConfig();
+                      }}
+                      className="px-2 py-1 text-[11px] rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 font-medium transition shrink-0 cursor-pointer"
+                    >
+                      配置
+                    </button>
+                  )}
+                </div>
+
+                {/* Models list */}
+                <div className="overflow-y-auto p-1.5 flex-1 divide-y divide-neutral-100 dark:divide-neutral-800/60 font-sans">
+                  {models.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-neutral-400">暂无可用模型</div>
+                  ) : (
+                    models
+                      .filter(m => {
+                        if (!searchModelQuery) return true;
+                        const q = searchModelQuery.toLowerCase();
+                        return m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q) || m.providerId.toLowerCase().includes(q);
+                      })
+                      .map((m) => {
+                        const isSelected = m.id === currentModel?.id;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              if (onSelectModel) onSelectModel(m.id);
+                              setModelDropdownOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left text-xs transition ${
+                              isSelected
+                                ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-medium'
+                                : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
+                            }`}
+                          >
+                            <div className="min-w-0 pr-2 font-mono">
+                              <span className="truncate block font-medium">{m.id}</span>
+                              {m.name && m.name !== m.id && (
+                                <span className="text-[10px] text-neutral-400 truncate block font-sans">{m.name}</span>
+                              )}
+                            </div>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}
+                          </button>
+                        );
+                      })
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Main Composer Box */}
       <div 
@@ -321,9 +409,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             placeholder={
               isGenerating 
                 ? 'AI 正在生成中...' 
-                : !hasApiKey
-                ? '请先配置 API Key，或在此输入您的问题...'
-                : '给 AI 发送消息... (Enter 发送，Shift + Enter 换行，支持粘贴图片与拖入文件)'
+                : '给 AI 发送消息...'
             }
             rows={3}
             className="w-full bg-transparent resize-none border-0 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 outline-hidden leading-relaxed min-h-[100px] max-h-[360px] font-sans"
@@ -432,7 +518,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
       </div>
 
       <div className="mt-1.5 text-center text-[10px] text-neutral-400 select-none">
-        按 {settings.enterToSend ? 'Enter 发送，Shift + Enter 换行' : 'Ctrl / ⌘ + Enter 发送'} · 仅向目标模型发起必要推理请求
+        仅向目标模型发起必要推理请求
       </div>
     </div>
   );
