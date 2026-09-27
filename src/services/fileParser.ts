@@ -98,7 +98,7 @@ export function extractPdfRoughText(base64: string, fileName: string): string {
 
 export function extractDocxRoughText(base64: string, fileName: string): string {
   const str = decodeBase64Text(base64);
-  const textTags = str.match(/<w:t[^>]*>([^<]+)<\\/w:t>/g);
+  const textTags = str.match(/<w:t[^>]*>([^<]+)<\/w:t>/g);
   if (textTags && textTags.length > 0) {
     return textTags.map(tag => tag.replace(/<[^>]+>/g, '')).join(' ').slice(0, 50000);
   }
