@@ -28,6 +28,7 @@ import {
 } from '../types';
 import { getAdapterForProvider } from '../services/adapters';
 import { DEFAULT_MODELS } from '../services/db';
+import { getGroqModelCapabilities } from '../services/groqModelCapabilities';
 
 interface AiModelConfigModalProps {
   isOpen: boolean;
@@ -239,12 +240,15 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
     e.preventDefault();
     if (!newModelId.trim() || !currentGroup) return;
     const modelId = newModelId.trim();
+    const groqCapabilities =
+      currentGroup.id === 'groq' ? getGroqModelCapabilities(modelId) : null;
+
     const newModelItem: ModelItem = {
       id: modelId,
       name: modelId,
       providerId: currentGroup.id,
-      supportsVision: false,
-      supportsFiles: true,
+      supportsVision: groqCapabilities?.supportsVision ?? false,
+      supportsFiles: groqCapabilities?.supportsFiles ?? true,
       supportsStreaming: true,
       contextWindow: 131072,
       temperature: 0.7,
