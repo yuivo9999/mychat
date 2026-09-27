@@ -1,5 +1,6 @@
 import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch } from './base';
 import { ApiKeyConfig } from '../../types';
+import { extractAttachmentText } from '../fileParser';
 
 export class GeminiAdapter implements BaseAdapter {
   private normalizeModelId(modelId: string): string {
@@ -45,20 +46,21 @@ export class GeminiAdapter implements BaseAdapter {
     for (const msg of messages) {
       const parts: any[] = [];
       const role = msg.role === 'assistant' ? 'model' : 'user';
-      let textContent = msg.content;
-
-      if (msg.attachments && msg.attachments.length > 0) {
-        for (const att of msg.attachments) {
-          if (att.extractedText) textContent += `\n\n[附件: ${att.name}]\n${att.extractedText}`;
-        }
-      }
+      const textContent = msg.content;
       if (textContent) parts.push({ text: textContent });
 
-      if (msg.role === 'user' && msg.attachments && model.supportsVision) {
+      if (msg.role === 'user' && msg.attachments) {
         for (const att of msg.attachments) {
-          if (att.type.startsWith('image/') && att.dataUrl) {
+          if (att.type.startsWith('image/') && model.supportsVision && att.dataUrl) {
             const matches = att.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
             if (matches) parts.push({ inlineData: { mimeType: matches[1], data: matches[2] } });
+          } else if (model.supportsFiles && att.base64Data) {
+            // Native file input: the attachment remains a separate file part;
+            // its bytes are not copied into the user prompt.
+            parts.push({ inlineData: { mimeType: att.type || 'application/octet-stream', data: att.base64Data } });
+          } else if (att.base64Data) {
+            // Only unsupported file inputs reach the local text fallback.
+            parts.push({ text: `[附件文本: ${att.name}]\n${extractAttachmentText(att)}` });
           }
         }
       }
