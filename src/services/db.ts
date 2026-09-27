@@ -28,16 +28,16 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
   },
     {
     id: 'groq',
-    name: 'Groq (免费高速推理)',
-    description: 'Groq 免费层：GPT-OSS、Qwen 等高速 OpenAI 兼容模型',
+    name: 'groq.com',
+    description: 'Groq.com 免费层模型（OpenAI 兼容 API）',
     icon: 'Zap',
     defaultBaseUrl: 'https://api.groq.com/openai/v1',
     enabled: true,
   },
   {
     id: 'cerebras',
-    name: 'Cerebras (免费高速推理)',
-    description: 'Cerebras 免费 API：超高速 GPT-OSS / Llama 推理',
+    name: 'cerebras.ai',
+    description: 'Cerebras.ai 免费层高速推理模型（OpenAI 兼容 API）',
     icon: 'Cpu',
     defaultBaseUrl: 'https://api.cerebras.ai/v1',
     enabled: true,
@@ -59,43 +59,11 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
     enabled: true,
   },
   {
-    id: 'anthropic',
-    name: 'Anthropic',
-    description: 'Claude 3.5 Sonnet, Claude 3.5 Haiku 高度拟人与编码模型',
-    icon: 'Cpu',
-    defaultBaseUrl: 'https://api.anthropic.com/v1',
-    enabled: true,
-  },
-  {
-    id: 'moonshot',
-    name: 'Moonshot (月之暗面 Kimi)',
-    description: 'Moonshot v1 长文本与文件深度理解',
-    icon: 'Moon',
-    defaultBaseUrl: 'https://api.moonshot.cn/v1',
-    enabled: true,
-  },
-  {
-    id: 'qwen',
-    name: 'Qwen (阿里通义千问)',
-    description: 'Qwen-2.5 72B / Max / Plus 系列多模态通用模型',
-    icon: 'Layers',
-    defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    enabled: true,
-  },
-  {
     id: 'zhipu',
     name: 'Zhipu (智谱 GLM)',
     description: 'GLM-4-Plus, GLM-4-Flash 清华系高智力大模型',
     icon: 'Feather',
     defaultBaseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-    enabled: true,
-  },
-  {
-    id: 'siliconflow',
-    name: 'SiliconFlow (硅基流动)',
-    description: '聚合 DeepSeek-R1, Qwen2.5, Flux 等高速低成本推理',
-    icon: 'Activity',
-    defaultBaseUrl: 'https://api.siliconflow.cn/v1',
     enabled: true,
   },
   {
@@ -126,74 +94,66 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
 ];
 
 export const DEFAULT_MODELS: ModelItem[] = [
+  // groq.com free-tier models (official free plan)
+  {
+    id: 'openai/gpt-oss-120b',
+    name: 'GPT-OSS 120B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层 GPT-OSS 120B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'openai/gpt-oss-20b',
+    name: 'GPT-OSS 20B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层 GPT-OSS 20B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'openai/gpt-oss-safeguard-20b',
+    name: 'GPT-OSS Safeguard 20B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层安全对齐 GPT-OSS 20B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+  {
+    id: 'qwen/qwen3.8-27b',
+    name: 'Qwen 3.8 27B (groq.com 免费)',
+    providerId: 'groq',
+    description: 'Groq.com 免费层 Qwen 3.8 27B，多模态',
+    supportsVision: true,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
+
+  // cerebras.ai free-tier model currently listed by Cerebras
+  {
+    id: 'gpt-oss-120b',
+    name: 'GPT-OSS 120B (cerebras.ai 免费)',
+    providerId: 'cerebras',
+    description: 'Cerebras.ai 免费层 GPT-OSS 120B',
+    supportsVision: false,
+    supportsFiles: false,
+    supportsStreaming: true,
+    contextWindow: 131072,
+    temperature: 0.7,
+  },
   // Groq free-tier models
-  {
-    id: 'groq/openai/gpt-oss-120b',
-    name: 'openai/gpt-oss-120b (Groq 免费)',
-    providerId: 'groq',
-    description: 'Groq 免费层高速 GPT-OSS 120B',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
-  {
-    id: 'groq/openai/gpt-oss-20b',
-    name: 'openai/gpt-oss-20b (Groq 免费)',
-    providerId: 'groq',
-    description: 'Groq 免费层高速 GPT-OSS 20B',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
-  {
-    id: 'groq/openai/gpt-oss-safeguard-20b',
-    name: 'openai/gpt-oss-safeguard-20b (Groq 免费)',
-    providerId: 'groq',
-    description: 'Groq 免费层安全对齐 GPT-OSS 20B',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
-  {
-    id: 'groq/qwen/qwen3.8-27b',
-    name: 'qwen/qwen3.8-27b (Groq 免费)',
-    providerId: 'groq',
-    description: 'Groq 免费层高速 Qwen 3.8 27B',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
   // Cerebras free API models
-  {
-    id: 'cerebras/gpt-oss-120b',
-    name: 'gpt-oss-120b (Cerebras 免费)',
-    providerId: 'cerebras',
-    description: 'Cerebras 免费 API 高速 GPT-OSS 120B',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
-  {
-    id: 'cerebras/llama3.1-8b',
-    name: 'llama3.1-8b (Cerebras 免费)',
-    providerId: 'cerebras',
-    description: 'Cerebras 免费 API Llama 3.1 8B',
-    supportsVision: false,
-    supportsFiles: false,
-    supportsStreaming: true,
-    contextWindow: 131072,
-    temperature: 0.7,
-  },
   // NVIDIA NIM Models (默认首个核心分组)
   {
     id: 'deepseek-ai/deepseek-v4.1-flash',
@@ -979,6 +939,8 @@ export const DEFAULT_MODELS: ModelItem[] = [
   }
 ];
 
+const REMOVED_DEFAULT_PROVIDER_IDS = new Set(['anthropic', 'moonshot', 'qwen', 'siliconflow']);
+
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'system',
   fontSize: 'standard',
@@ -1193,6 +1155,17 @@ export async function getModels(): Promise<ModelItem[]> {
 
     request.onsuccess = async () => {
       let results = (request.result as ModelItem[]) || [];
+
+      // Purge model records belonging to default provider groups removed from
+      // the catalog, including records persisted by older app versions.
+      const removedModels = results.filter(r => REMOVED_DEFAULT_PROVIDER_IDS.has(r.providerId));
+      for (const model of removedModels) {
+        store.delete(model.id);
+      }
+      if (removedModels.length > 0) {
+        results = results.filter(r => !REMOVED_DEFAULT_PROVIDER_IDS.has(r.providerId));
+      }
+
       if (results.length === 0) {
         for (const m of DEFAULT_MODELS) store.put(m);
         results = [...DEFAULT_MODELS];
@@ -1280,7 +1253,17 @@ export async function getProviders(): Promise<ProviderDefinition[]> {
     const request = store.getAll();
 
     request.onsuccess = async () => {
-      const results = (request.result as ProviderDefinition[]) || [];
+      let results = (request.result as ProviderDefinition[]) || [];
+
+      // Purge stale default provider groups persisted by older app versions.
+      const removedProviders = results.filter(p => REMOVED_DEFAULT_PROVIDER_IDS.has(p.id));
+      for (const provider of removedProviders) {
+        store.delete(provider.id);
+      }
+      if (removedProviders.length > 0) {
+        results = results.filter(p => !REMOVED_DEFAULT_PROVIDER_IDS.has(p.id));
+      }
+
       if (!isInitialized && results.length === 0) {
         localStorage.setItem('omnichat_db_initialized', 'true');
         await seedDefaultProviders();
