@@ -497,7 +497,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   >
                     <div className="flex flex-col justify-center font-serif">
                       <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug">古典2</div>
-                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">天下舆图黑金底色、金烫繁字与沉香古韵，配合典雅宋体字形</div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">天下舆图黑金主页底色；模型与参数弹窗全浅古宣色，绝无黑色背景</div>
                     </div>
                     {settings.theme === 'classic2' && (
                       <span className="text-xs font-semibold text-amber-400 flex items-center gap-1 shrink-0 ml-3 font-serif">

@@ -216,7 +216,57 @@ html.theme-classic1,
   border-color: #8b2626 !important;
 }
 
-/* 古典2 皮肤主题 - 天下舆图黑金古风（沉香漆夜底色、黑金烫字与典雅宋体） */
+/* 古典1 与 现代1 皮肤：模型设置 (AiModelConfigModal) 与 参数设置 (ParametersModal) 内部暗色文字全量转为纯白色 */
+.theme-classic1 .model-config-modal .text-neutral-400,
+.theme-classic1 .model-config-modal .text-neutral-500,
+.theme-classic1 .model-config-modal .text-neutral-600,
+.theme-classic1 .model-config-modal .text-neutral-300,
+.theme-classic1 .model-config-modal .text-neutral-700,
+.theme-classic1 .model-config-modal label,
+.theme-classic1 .model-config-modal p,
+.theme-classic1 .model-config-modal span,
+.theme-classic1 .model-config-modal select,
+.theme-classic1 .model-config-modal input,
+.theme-classic1 .model-config-modal option,
+.theme-classic1 .parameters-modal .text-neutral-400,
+.theme-classic1 .parameters-modal .text-neutral-500,
+.theme-classic1 .parameters-modal .text-neutral-600,
+.theme-classic1 .parameters-modal .text-neutral-300,
+.theme-classic1 .parameters-modal .text-neutral-700,
+.theme-classic1 .parameters-modal label,
+.theme-classic1 .parameters-modal p,
+.theme-classic1 .parameters-modal span,
+.theme-classic1 .parameters-modal input,
+.theme-modern1 .model-config-modal .text-neutral-400,
+.theme-modern1 .model-config-modal .text-neutral-500,
+.theme-modern1 .model-config-modal .text-neutral-600,
+.theme-modern1 .model-config-modal .text-neutral-300,
+.theme-modern1 .model-config-modal .text-neutral-700,
+.theme-modern1 .model-config-modal label,
+.theme-modern1 .model-config-modal p,
+.theme-modern1 .model-config-modal span,
+.theme-modern1 .model-config-modal select,
+.theme-modern1 .model-config-modal input,
+.theme-modern1 .model-config-modal option,
+.theme-modern1 .parameters-modal .text-neutral-400,
+.theme-modern1 .parameters-modal .text-neutral-500,
+.theme-modern1 .parameters-modal .text-neutral-600,
+.theme-modern1 .parameters-modal .text-neutral-300,
+.theme-modern1 .parameters-modal .text-neutral-700,
+.theme-modern1 .parameters-modal label,
+.theme-modern1 .parameters-modal p,
+.theme-modern1 .parameters-modal span,
+.theme-modern1 .parameters-modal input {
+  color: #ffffff !important;
+}
+
+.theme-classic1 .model-config-modal select option,
+.theme-modern1 .model-config-modal select option {
+  background-color: #1a1e29 !important;
+  color: #ffffff !important;
+}
+
+/* 古典2 皮肤主题 - 天下舆图黑金古风（主页面还原为黑金深暗底色，配合黑金烫字与典雅宋体） */
 html.theme-classic2,
 .theme-classic2 body {
   font-family: "Songti SC", "Noto Serif SC", "STSong", "SimSun", "KaiTi", Georgia, serif !important;
@@ -267,7 +317,6 @@ html.theme-classic2,
 
 .theme-classic2 .bg-indigo-600,
 .theme-classic2 .bg-indigo-500,
-.theme-classic2 .bg-neutral-900,
 .theme-classic2 .bg-emerald-600 {
   background-color: #dfb15b !important;
   color: #0a0907 !important;
@@ -283,6 +332,83 @@ html.theme-classic2,
 .theme-classic2 .border-indigo-600,
 .theme-classic2 .border-indigo-500 {
   border-color: #dfb15b !important;
+}
+
+/* 古典2 皮肤主界面 - 亮色背景组件保持亮色，且上面的所有文字与图标为纯黑色 */
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-white,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-white\/90,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-neutral-100,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-neutral-200,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-indigo-50,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-indigo-50\/80,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-indigo-100,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-amber-50,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-amber-100,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-sky-50,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-slate-100,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-slate-200 {
+  background-color: #f2e8dc !important;
+  color: #000000 !important;
+}
+
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-white *,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-white\/90 *,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-neutral-100 *,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-neutral-200 *,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-indigo-50 *,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-indigo-50\/80 *,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-indigo-100 *,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-amber-50 *,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-amber-100 *,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-sky-50 *,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-slate-100 *,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-slate-200 * {
+  color: #000000 !important;
+}
+
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-white svg,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-white\/90 svg,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-neutral-100 svg,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-neutral-200 svg,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-indigo-50 svg,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-indigo-50\/80 svg,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-indigo-100 svg,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-amber-50 svg,
+.theme-classic2 :not(.model-config-modal):not(.parameters-modal) .bg-amber-100 svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+/* 古典2 皮肤：模型设置 (AiModelConfigModal) 与 参数设置 (ParametersModal) 弹窗背景全量转为浅色暖古宣黄，绝无黑色背景 */
+.theme-classic2 .model-config-modal > div,
+.theme-classic2 .model-config-modal div,
+.theme-classic2 .parameters-modal > div,
+.theme-classic2 .parameters-modal div {
+  background-color: #f5efe4 !important;
+  color: #1c1712 !important;
+  border-color: #d8ccb8 !important;
+}
+
+.theme-classic2 .model-config-modal select,
+.theme-classic2 .model-config-modal input,
+.theme-classic2 .model-config-modal option,
+.theme-classic2 .parameters-modal select,
+.theme-classic2 .parameters-modal input,
+.theme-classic2 .parameters-modal option {
+  background-color: #eee6d8 !important;
+  color: #1c1712 !important;
+  border-color: #d8ccb8 !important;
+}
+
+.theme-classic2 .model-config-modal *,
+.theme-classic2 .parameters-modal * {
+  color: #1c1712 !important;
+}
+
+.theme-classic2 .model-config-modal svg,
+.theme-classic2 .parameters-modal svg {
+  color: #1c1712 !important;
+  stroke: #1c1712 !important;
 }
 
 /* 现代1 皮肤主题 - 冰蓝清爽极简（冰蓝雾灰底色、深海钢蓝文字与蔚蓝强调） */

@@ -56,7 +56,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 md:p-4 select-none animate-in fade-in duration-150">
+    <div className="parameters-modal fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 md:p-4 select-none animate-in fade-in duration-150">
       <div className="bg-[#121212] text-[#f4f4f5] border border-neutral-800 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
         {/* Header */}
         <div className="p-4 md:px-5 border-b border-neutral-800/90 flex items-center justify-between shrink-0 bg-[#161616]">
