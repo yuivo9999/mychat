@@ -942,17 +942,20 @@ export async function getModels(): Promise<ModelItem[]> {
         for (const m of missingDefaults) {
           store.put(m);
         }
-        resolve([...updatedResults, ...missingDefaults]);
-        return;
       }
+
+      // Always attempt the live OpenRouter free-model sync before returning.
+      // This is intentionally after default seeding so a partially populated
+      // IndexedDB can still receive the complete current free-model roster.
+      const withDefaults = [...updatedResults, ...missingDefaults];
       const syncedOpenRouterModels = await syncOpenRouterFreeModels(store);
       if (syncedOpenRouterModels.length > 0) {
-        const byId = new Map(updatedResults.map(m => [m.id, m]));
+        const byId = new Map(withDefaults.map(m => [m.id, m]));
         for (const model of syncedOpenRouterModels) byId.set(model.id, model);
         resolve(Array.from(byId.values()));
         return;
       }
-      resolve(updatedResults);
+      resolve(withDefaults);
     };
     request.onerror = () => reject(request.error);
   });
