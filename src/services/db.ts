@@ -438,7 +438,7 @@ export const DEFAULT_MODELS: ModelItem[] = [
     temperature: 0.7,
   },
   {
-    id: 'nvidia/nemotron-3-super:free',
+    id: 'nvidia/nemotron-3-super-120b-a12b:free',
     name: 'Nemotron 3 Super (OpenRouter Free)',
     providerId: 'openrouter',
     description: 'OpenRouter 当前 $0 免费模型：NVIDIA Nemotron 3 Super',
@@ -843,6 +843,53 @@ export async function clearAllApiKeys(): Promise<void> {
   });
 }
 
+// OpenRouter free-model sync: the free roster changes frequently, so do not hard-code
+// a frozen list. The official Models API returns the live catalog.
+const OPENROUTER_FREE_SYNC_KEY = 'omnichat_openrouter_free_models_synced_at';
+const OPENROUTER_FREE_SYNC_INTERVAL = 10 * 60 * 1000;
+
+async function syncOpenRouterFreeModels(store: IDBObjectStore): Promise<ModelItem[]> {
+  try {
+    const lastSync = Number(localStorage.getItem(OPENROUTER_FREE_SYNC_KEY) || '0');
+    if (Date.now() - lastSync < OPENROUTER_FREE_SYNC_INTERVAL) return [];
+
+    const response = await fetch('https://openrouter.ai/api/v1/models?output_modalities=text', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) return [];
+
+    const payload = await response.json();
+    const liveFreeModels = Array.isArray(payload?.data)
+      ? payload.data.filter((m: any) =>
+          m?.pricing?.prompt === '0' &&
+          m?.pricing?.completion === '0' &&
+          m?.id &&
+          m?.architecture?.output_modalities?.includes('text')
+        )
+      : [];
+
+    const synced: ModelItem[] = liveFreeModels.map((m: any) => ({
+      id: String(m.id),
+      name: String(m.name || m.id),
+      providerId: 'openrouter',
+      description: 'OpenRouter 免费模型：' + String(m.name || m.id),
+      supportsVision: Array.isArray(m.architecture?.input_modalities) && m.architecture.input_modalities.includes('image'),
+      supportsFiles: Array.isArray(m.architecture?.input_modalities) && m.architecture.input_modalities.includes('file'),
+      supportsStreaming: true,
+      contextWindow: typeof m.context_length === 'number' ? m.context_length : undefined,
+      temperature: typeof m.default_parameters?.temperature === 'number' ? m.default_parameters.temperature : 0.7,
+      topP: typeof m.default_parameters?.top_p === 'number' ? m.default_parameters.top_p : undefined,
+    }));
+
+    for (const model of synced) store.put(model);
+    localStorage.setItem(OPENROUTER_FREE_SYNC_KEY, String(Date.now()));
+    return synced;
+  } catch {
+    // Sync failure must never prevent the existing local model list from loading.
+    return [];
+  }
+}
 // Models Operations
 export async function getModels(): Promise<ModelItem[]> {
   const db = await openDB();
@@ -855,11 +902,17 @@ export async function getModels(): Promise<ModelItem[]> {
     request.onsuccess = async () => {
       let results = (request.result as ModelItem[]) || [];
       if (results.length === 0) {
-        for (const m of DEFAULT_MODELS) {
-          store.put(m);
+        for (const m of DEFAULT_MODELS) store.put(m);
+        results = [...DEFAULT_MODELS];
+      }
+
+      // Remove the obsolete OpenRouter free slug shipped by older builds.
+      const staleOpenRouterIds = ['nvidia/nemotron-3-super:free'];
+      for (const staleId of staleOpenRouterIds) {
+        if (results.some(r => r.id === staleId)) {
+          store.delete(staleId);
+          results = results.filter(r => r.id !== staleId);
         }
-        resolve(DEFAULT_MODELS);
-        return;
       }
 
       // Check for missing default models and update existing default definitions to clean standard names
@@ -879,6 +932,13 @@ export async function getModels(): Promise<ModelItem[]> {
           store.put(m);
         }
         resolve([...updatedResults, ...missingDefaults]);
+        return;
+      }
+      const syncedOpenRouterModels = await syncOpenRouterFreeModels(store);
+      if (syncedOpenRouterModels.length > 0) {
+        const byId = new Map(updatedResults.map(m => [m.id, m]));
+        for (const model of syncedOpenRouterModels) byId.set(model.id, model);
+        resolve(Array.from(byId.values()));
         return;
       }
       resolve(updatedResults);
