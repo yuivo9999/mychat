@@ -1,4 +1,21 @@
 import { AdapterOptions, StreamCallbacks, executeFetch, parseHttpError } from './base';
+import { extractAttachmentText } from '../fileParser';
+
+function supportsResponsesFileMime(mimeType: string): boolean {
+  return [
+    'text/plain',
+    'text/markdown',
+    'text/html',
+    'text/css',
+    'text/xml',
+    'text/csv',
+    'text/rtf',
+    'text/javascript',
+    'application/json',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ].includes(mimeType.toLowerCase());
+}
 
 export async function sendOpenAIResponses(options: AdapterOptions, callbacks?: StreamCallbacks): Promise<string> {
   const { model, apiKeyConfig, messages, systemPrompt, parameters, abortSignal, timeoutSeconds } = options;
@@ -13,13 +30,16 @@ export async function sendOpenAIResponses(options: AdapterOptions, callbacks?: S
       for (const att of msg.attachments || []) {
         if (att.type.startsWith('image/') && model.supportsVision && att.dataUrl) {
           parts.push({ type: 'input_image', image_url: att.dataUrl });
-        } else if (!att.type.startsWith('image/') && att.base64Data) {
+        } else if (!att.type.startsWith('image/') && att.base64Data && supportsResponsesFileMime(att.type)) {
           parts.push({
             type: 'input_file',
             filename: att.name,
-            file_data: `data:${att.type || 'application/octet-stream'};base64,${att.base64Data}`,
+            file_data: 'data:' + (att.type || 'application/octet-stream') + ';base64,' + att.base64Data,
           });
-        }
+        } else if (!att.type.startsWith('image/')) {
+          const fallbackText = extractAttachmentText(att);
+          if (fallbackText) parts.push({ type: 'input_text', text: '[附件文本: ' + att.name + ']\\n' + fallbackText });
+        }        }
       }
     }
     if (parts.length) input.push({ role: msg.role === 'assistant' ? 'assistant' : 'user', content: parts });
