@@ -209,6 +209,28 @@ export const DEFAULT_MODELS: ModelItem[] = [
     contextWindow: 1048576,
     temperature: 0.7,
   },
+  {
+    id: 'gemini-3.5-flash',
+    name: 'Gemini 3.5 Flash',
+    providerId: 'google',
+    description: 'Google Gemini 3.5 Flash，高性价比与快速响应，支持原生多模态与 TXT/文档文件输入',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
+  {
+    id: 'gemini-3.5-flash-lite',
+    name: 'Gemini 3.5 Flash Lite',
+    providerId: 'google',
+    description: 'Google Gemini 3.5 Flash Lite，轻量超低延迟版本，支持原生多模态与 TXT/文档文件输入',
+    supportsVision: true,
+    supportsFiles: true,
+    supportsStreaming: true,
+    contextWindow: 1048576,
+    temperature: 0.7,
+  },
 
   // Google Gemini and Gemma models share the Gemini API attachment transport.
   // File routing is centralized in googleFileSupport.ts, not duplicated per model.
