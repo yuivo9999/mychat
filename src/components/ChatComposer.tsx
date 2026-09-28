@@ -14,7 +14,8 @@ import {
   Server,
   Globe,
   ChevronDown,
-  Check
+  Check,
+  Bot
 } from 'lucide-react';
 import { Attachment, ModelItem, ProviderDefinition, ApiKeyConfig, UserSettings, ModelParameters } from '../types';
 import { parseFileToAttachment, formatFileSize } from '../services/fileParser';
@@ -39,6 +40,12 @@ interface ChatComposerProps {
   onOpenParameters?: () => void;
   webAccessEnabled?: boolean;
   onToggleWebAccess?: (enabled: boolean) => void;
+  agentMode?: boolean;
+  onToggleAgentMode?: (enabled: boolean) => void;
+  pendingAttachments?: Attachment[] | null;
+  onClearPendingAttachments?: () => void;
+  pendingPrompt?: string | null;
+  onClearPendingPrompt?: () => void;
 }
 
 export const ChatComposer: React.FC<ChatComposerProps> = ({
@@ -61,6 +68,12 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   onOpenParameters,
   webAccessEnabled = false,
   onToggleWebAccess,
+  agentMode = false,
+  onToggleAgentMode,
+  pendingAttachments,
+  onClearPendingAttachments,
+  pendingPrompt,
+  onClearPendingPrompt,
 }) => {
   const [content, setContent] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -72,6 +85,21 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync external pendingPrompt and pendingAttachments
+  useEffect(() => {
+    if (pendingPrompt) {
+      setContent(pendingPrompt);
+      onClearPendingPrompt?.();
+    }
+  }, [pendingPrompt, onClearPendingPrompt]);
+
+  useEffect(() => {
+    if (pendingAttachments && pendingAttachments.length > 0) {
+      setAttachments(prev => [...prev, ...pendingAttachments]);
+      onClearPendingAttachments?.();
+    }
+  }, [pendingAttachments, onClearPendingAttachments]);
 
   // Auto-resize textarea
   const adjustTextareaHeight = useCallback(() => {
@@ -321,21 +349,45 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
         {/* Half-height streamlined toolbar (Icon-only, no text clutter) */}
         <div className="flex items-center justify-between px-3 py-1 border-b border-neutral-100 dark:border-neutral-800/80 bg-neutral-50/70 dark:bg-neutral-900/60 rounded-t-2xl">
-          {/* Reasoning Toggle: Minimalist switch */}
-          <div 
-            onClick={() => onUpdateParameters({ ...parameters, enableReasoning: !parameters.enableReasoning })}
-            className="flex items-center gap-1.5 cursor-pointer select-none"
-            title={parameters.enableReasoning ? '深度推理: 已开启 (Reasoning ON)' : '深度推理: 已关闭 (Reasoning OFF)'}
-          >
-            <Sparkles className={`w-3.5 h-3.5 ${parameters.enableReasoning ? 'text-[#84cc16]' : 'text-neutral-400'}`} />
-            <div className="flex items-center bg-neutral-200 dark:bg-neutral-800 p-0.5 rounded-full text-[9px] font-bold border border-neutral-300/60 dark:border-neutral-700/60">
-              <span className={`px-1.5 py-0.2 rounded-full transition-all ${!parameters.enableReasoning ? 'bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white shadow-xs' : 'text-neutral-400'}`}>
-                OFF
-              </span>
-              <span className={`px-1.5 py-0.2 rounded-full transition-all ${parameters.enableReasoning ? 'bg-[#84cc16] text-black shadow-xs' : 'text-neutral-400'}`}>
-                ON
-              </span>
+          {/* Left: Thinking Mode (Reasoning) Toggle & Agent Toggle */}
+          <div className="flex items-center gap-3">
+            {/* Reasoning Toggle: Minimalist switch */}
+            <div 
+              onClick={() => onUpdateParameters({ ...parameters, enableReasoning: !parameters.enableReasoning })}
+              className="flex items-center gap-1.5 cursor-pointer select-none"
+              title={parameters.enableReasoning ? '思考模式: 已开启 (Reasoning ON)' : '思考模式: 已关闭 (Reasoning OFF)'}
+            >
+              <Sparkles className={`w-3.5 h-3.5 ${parameters.enableReasoning ? 'text-[#84cc16]' : 'text-neutral-400'}`} />
+              <span className="text-[11px] font-medium text-neutral-600 dark:text-neutral-400">思考模式</span>
+              <div className="flex items-center bg-neutral-200 dark:bg-neutral-800 p-0.5 rounded-full text-[9px] font-bold border border-neutral-300/60 dark:border-neutral-700/60">
+                <span className={`px-1.5 py-0.2 rounded-full transition-all ${!parameters.enableReasoning ? 'bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white shadow-xs' : 'text-neutral-400'}`}>
+                  OFF
+                </span>
+                <span className={`px-1.5 py-0.2 rounded-full transition-all ${parameters.enableReasoning ? 'bg-[#84cc16] text-black shadow-xs' : 'text-neutral-400'}`}>
+                  ON
+                </span>
+              </div>
             </div>
+
+            {/* Agent Toggle: Minimalist switch (right next to 思考模式, matching Section 4) */}
+            {onToggleAgentMode && (
+              <div 
+                onClick={() => onToggleAgentMode(!agentMode)}
+                className="flex items-center gap-1.5 cursor-pointer select-none"
+                title={agentMode ? 'Agent 模式: 已开启 (AI 可自主调用工具读写、创建与修改工作区)' : 'Agent 模式: 已关闭 (普通聊天/工作区只读模式，不执行任何写操作)'}
+              >
+                <Bot className={`w-3.5 h-3.5 ${agentMode ? 'text-purple-500' : 'text-neutral-400'}`} />
+                <span className="text-[11px] font-medium text-neutral-600 dark:text-neutral-400">Agent</span>
+                <div className="flex items-center bg-neutral-200 dark:bg-neutral-800 p-0.5 rounded-full text-[9px] font-bold border border-neutral-300/60 dark:border-neutral-700/60">
+                  <span className={`px-1.5 py-0.2 rounded-full transition-all ${!agentMode ? 'bg-white dark:bg-neutral-950 text-neutral-900 dark:text-white shadow-xs' : 'text-neutral-400'}`}>
+                    OFF
+                  </span>
+                  <span className={`px-1.5 py-0.2 rounded-full transition-all ${agentMode ? 'bg-purple-600 text-white shadow-xs' : 'text-neutral-400'}`}>
+                    ON
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Parameters & Model Config Buttons (Icon-only) */}
@@ -417,9 +469,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         </div>
 
         {/* Bottom Toolbar Row */}
-        <div className="px-3 pb-2.5 pt-1 flex items-center justify-between">
+        <div className="px-3.5 pb-2 pt-1 flex items-center justify-between">
           {/* Left Buttons: Attachments & Tools */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3">
             {/* Hidden Inputs */}
             <input
               type="file"
@@ -440,28 +492,26 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 rounded-xl text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center gap-1 text-xs"
+              className="p-1.5 rounded-xl text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center justify-center cursor-pointer"
               title="上传文档/代码/文件 (TXT, PDF, MD, JSON, CSV, DOCX)"
             >
-              <Paperclip className="w-4 h-4" />
-              <span className="hidden sm:inline text-[11px]">附件</span>
+              <Paperclip className="w-6 h-6 stroke-[1.8]" />
             </button>
 
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
-              className="p-2 rounded-xl text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center gap-1 text-xs"
+              className="p-1.5 rounded-xl text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center justify-center cursor-pointer"
               title="上传图片 (PNG, JPG, WEBP, GIF)"
             >
-              <ImageIcon className="w-4 h-4" />
-              <span className="hidden sm:inline text-[11px]">图片</span>
+              <ImageIcon className="w-6 h-6 stroke-[1.8]" />
             </button>
 
             {/* 访问网络按钮 (默认关闭) */}
             <button
               type="button"
               onClick={() => onToggleWebAccess?.(!webAccessEnabled)}
-              className={`p-2 rounded-xl transition flex items-center gap-1.5 text-xs select-none cursor-pointer ${
+              className={`p-1.5 rounded-xl transition flex items-center justify-center select-none cursor-pointer ${
                 webAccessEnabled
                   ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 font-medium shadow-2xs'
                   : 'text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800'
@@ -472,18 +522,14 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                   : '访问网络 (默认关闭): 点击开启允许 AI 检索互联网资料与网页来回答问题'
               }
             >
-              <Globe className={`w-4 h-4 ${webAccessEnabled ? 'text-blue-600 dark:text-blue-400' : ''}`} />
-              <span className="hidden sm:inline text-[11px]">访问网络</span>
-              {webAccessEnabled && (
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-              )}
+              <Globe className={`w-6 h-6 stroke-[1.8] ${webAccessEnabled ? 'text-blue-600 dark:text-blue-400' : ''}`} />
             </button>
           </div>
 
           {/* Right Action: Send or Stop */}
           <div className="flex items-center gap-2">
             {content.length > 0 && (
-              <span className="text-[11px] text-neutral-400 font-mono hidden sm:inline">
+              <span className="text-xs text-neutral-400 font-mono hidden sm:inline mr-1">
                 {content.length} 字
               </span>
             )}
@@ -492,10 +538,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               <button
                 type="button"
                 onClick={onStopGeneration}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-xs transition active:scale-95 cursor-pointer animate-pulse"
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-xs transition active:scale-95 cursor-pointer animate-pulse"
                 title="停止生成"
               >
-                <Square className="w-3.5 h-3.5 fill-current" />
+                <Square className="w-5 h-5 fill-current" />
                 <span>停止</span>
               </button>
             ) : (
@@ -503,14 +549,14 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                 type="button"
                 onClick={handleSend}
                 disabled={!canSend}
-                className={`p-2 rounded-xl flex items-center justify-center transition-all shadow-xs ${
+                className={`p-2.5 rounded-2xl flex items-center justify-center transition-all shadow-xs ${
                   canSend
                     ? 'bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-white text-white dark:text-neutral-900 active:scale-95 cursor-pointer'
                     : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600 cursor-not-allowed'
                 }`}
                 title={canSend ? '发送消息' : '请输入内容'}
               >
-                <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+                <ArrowUp className="w-6 h-6 stroke-[2.2]" />
               </button>
             )}
           </div>

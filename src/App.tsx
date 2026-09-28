@@ -40,6 +40,12 @@ import {
   executeWorkspaceTool, 
   cleanResponseText 
 } from './services/agentEngine';
+import {
+  resolveMentionedWorkspaceFiles,
+  workspaceFileToAttachment,
+  workspaceZipToAttachment,
+  isWorkspaceZipRequested
+} from './services/workspaceFileAttachment';
 import { WorkspaceDrawer } from './components/WorkspaceDrawer';
 import { 
   getConversations, 
@@ -131,7 +137,11 @@ export default function App() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | undefined>(undefined);
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
-  const [agentMode, setAgentMode] = useState(true);
+  const [agentMode, setAgentMode] = useState(false);
+
+  // Pending Attachments & Prompt injected into ChatComposer from Workspace Drawer
+  const [pendingAttachments, setPendingAttachments] = useState<Attachment[] | null>(null);
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
   // Projects State (Image 1, 2, 3: 项目分类与多会话共享记忆管理)
   const [projects, setProjects] = useState<Project[]>([]);
@@ -293,7 +303,7 @@ export default function App() {
     if (currentConversation?.agentMode !== undefined) {
       setAgentMode(currentConversation.agentMode);
     } else {
-      setAgentMode(true);
+      setAgentMode(false);
     }
     if (currentConversation?.workspaceId) {
       setActiveWorkspaceId(currentConversation.workspaceId);
@@ -358,6 +368,11 @@ export default function App() {
 
   const handleToggleAgentMode = (enabled: boolean) => {
     setAgentMode(enabled);
+    if (currentConversation) {
+      const updated = { ...currentConversation, agentMode: enabled, updatedAt: Date.now() };
+      saveConversation(updated);
+      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+    }
   };
 
   const handleUpdateParameters = (newParams: ModelParameters) => {
@@ -424,6 +439,7 @@ export default function App() {
       apiKeyId: selectedApiKeyId,
       parameters: parameters,
       webAccessEnabled: false,
+      agentMode: false, // 默认 Agent OFF
       projectId,
       messages: [],
     };
@@ -431,6 +447,7 @@ export default function App() {
     setConversations(prev => [newConv, ...prev]);
     setActiveConversationId(newConv.id);
     setWebAccessEnabled(false);
+    setAgentMode(false);
     saveConversation(newConv);
 
     if (isMobile) {
@@ -503,12 +520,14 @@ export default function App() {
       apiKeyId: selectedApiKeyId,
       parameters: parameters,
       webAccessEnabled: false, // 默认关闭
+      agentMode: false, // 默认 Agent OFF
       messages: [],
     };
 
     setConversations(prev => [newConv, ...prev]);
     setActiveConversationId(newConv.id);
     setWebAccessEnabled(false);
+    setAgentMode(false);
     saveConversation(newConv);
 
     if (isMobile) {
@@ -604,12 +623,83 @@ export default function App() {
       setActiveConversationId(newConv.id);
     }
 
+    // On-demand Workspace Files Resolution:
+    // Files are attached as true file resources (Attachment) rather than concatenating into a giant prompt
+    let effectiveAttachments = [...attachments];
+    if (currentWorkspace && currentWorkspace.files) {
+      const alreadyAttached = new Set(effectiveAttachments.map(a => a.name));
+
+      // 1. Check if user asked for a ZIP of the workspace
+      if (isWorkspaceZipRequested(text)) {
+        try {
+          const zipAtt = await workspaceZipToAttachment(currentWorkspace);
+          if (!alreadyAttached.has(zipAtt.name)) {
+            effectiveAttachments.push(zipAtt);
+            alreadyAttached.add(zipAtt.name);
+          }
+        } catch (e) {
+          console.warn('Failed to package workspace zip on demand:', e);
+        }
+      }
+
+      // 2. Check if user explicitly mentioned specific file(s) in the workspace (e.g. "第3章", "App.tsx")
+      const mentionedFiles = resolveMentionedWorkspaceFiles(text, currentWorkspace, alreadyAttached);
+      for (const mf of mentionedFiles) {
+        const att = workspaceFileToAttachment(mf);
+        effectiveAttachments.push(att);
+        alreadyAttached.add(att.name);
+      }
+    }
+
+    // Detect Workspace Intent
+    const workspaceIntent = detectWorkspaceIntent(text, targetConv.chatContext);
+
+    // If the user requested modifying, creating, or deleting files in the workspace while Agent is OFF:
+    // System MUST NOT silently turn on Agent, but instead reject execution and prompt user to enable Agent mode
+    if (workspaceIntent.type === 'modify' && !agentMode) {
+      const refuseUserMessage: Message = {
+        id: `msg_u_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        role: 'user',
+        content: text,
+        timestamp: Date.now(),
+        attachments: effectiveAttachments,
+      };
+
+      const refuseAssistantMessage: Message = {
+        id: `msg_a_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        role: 'assistant',
+        content: '⚠️ **这个任务需要修改或写入工作区文件。**\n\n当前处于**普通聊天模式**（工作区只读）。请先在输入框顶部开启 **Agent [ON]** 模式，然后再执行修改操作。',
+        timestamp: Date.now(),
+        model: currentModel.name,
+        providerId: currentModel.providerId,
+        status: 'completed',
+        thinkingSteps: [
+          {
+            id: `step_mode_check_${Date.now()}`,
+            icon: 'github',
+            title: '权限安全检查：当前为普通聊天只读模式 (Agent OFF)，已拦截写入操作',
+            status: 'completed',
+          },
+        ],
+      };
+
+      const updatedMessages = [...targetConv.messages, refuseUserMessage, refuseAssistantMessage];
+      const updatedConv: Conversation = {
+        ...targetConv,
+        updatedAt: Date.now(),
+        messages: updatedMessages,
+      };
+      setConversations(prev => prev.map(c => c.id === updatedConv.id ? updatedConv : c));
+      await saveConversation(updatedConv);
+      return;
+    }
+
     const userMessage: Message = {
       id: `msg_u_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       role: 'user',
       content: text,
       timestamp: Date.now(),
-      attachments,
+      attachments: effectiveAttachments,
     };
 
     const initialThinkingSteps: ThinkingStep[] = [
@@ -621,11 +711,11 @@ export default function App() {
       },
     ];
 
-    if (attachments && attachments.length > 0) {
+    if (effectiveAttachments && effectiveAttachments.length > 0) {
       initialThinkingSteps.push({
         id: `step_att_${Date.now()}`,
         icon: 'code',
-        title: `审查解析多模态附件数据（${attachments.length} 个文件）`,
+        title: `审查解析多模态附件数据（${effectiveAttachments.length} 个文件）`,
         status: 'completed',
       });
     }
@@ -767,8 +857,8 @@ export default function App() {
       const diagIntent = detectDiagnosisIntent(text, targetConv.chatContext);
       const isDiagnosisMode = workspaceContextEnabled && (diagIntent.isDiagnosis || workspaceIntent.type === 'inspect');
 
-      // 3. System Prompt: ONLY inject Workspace Summary, Tools Protocol & Diagnosis Protocol when Workspace Context is explicitly requested!
-      if (workspaceContextEnabled) {
+      // 3. System Prompt: ONLY inject Workspace Summary, Tools Protocol & Diagnosis Protocol when Workspace Agent is explicitly enabled!
+      if (workspaceAgentEnabled) {
         effectiveSystemPrompt = buildAgentSystemPrompt(
           wsToOperate,
           targetConv.chatContext,
@@ -776,7 +866,7 @@ export default function App() {
           isDiagnosisMode
         );
       } else {
-        // Pure chat mode: only append chat's own private memory if present, ZERO workspace info or tools protocol
+        // Pure chat mode / Agent OFF: only append chat's own private memory if present, ZERO workspace tools protocol or directory trees
         const chatMemory = formatChatContextPrompt(targetConv.chatContext);
         if (chatMemory) {
           effectiveSystemPrompt = effectiveSystemPrompt ? `${effectiveSystemPrompt}\n\n${chatMemory}` : chatMemory;
@@ -1898,6 +1988,12 @@ export default function App() {
           onOpenParameters={() => setIsParametersOpen(true)}
           webAccessEnabled={webAccessEnabled}
           onToggleWebAccess={handleToggleWebAccess}
+          agentMode={agentMode}
+          onToggleAgentMode={handleToggleAgentMode}
+          pendingAttachments={pendingAttachments}
+          onClearPendingAttachments={() => setPendingAttachments(null)}
+          pendingPrompt={pendingPrompt}
+          onClearPendingPrompt={() => setPendingPrompt(null)}
         />
       </div>
 
@@ -1995,7 +2091,18 @@ export default function App() {
         onSelectWorkspace={handleSelectWorkspaceForCurrentChat}
         onSaveWorkspace={handleSaveWorkspaceState}
         onDeleteWorkspace={handleDeleteWorkspaceSafe}
-        onSendAiMessage={(prompt) => handleSendMessage(prompt, [])}
+        onSendAiMessage={(prompt, atts) => {
+          if (atts && atts.length > 0) {
+            setPendingAttachments(atts);
+          }
+          if (prompt) {
+            setPendingPrompt(prompt);
+          }
+          // If a valid API key is present, trigger generation directly
+          if (currentApiKey && currentApiKey.apiKey) {
+            handleSendMessage(prompt, atts || []);
+          }
+        }}
         aiStatusText={isGenerating ? (statusMessage || 'AI 正在处理...') : undefined}
       />
 

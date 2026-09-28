@@ -693,7 +693,48 @@ export async function clearAllConversations(): Promise<void> {
   });
 }
 
-export const DEFAULT_API_KEYS: ApiKeyConfig[] = [];
+export const DEFAULT_API_KEYS: ApiKeyConfig[] = [
+  {
+    id: 'key_google_default',
+    providerId: 'google',
+    label: '默认 Gemini Key',
+    apiKey: '',
+    isDefault: true,
+    createdAt: Date.now(),
+  },
+  {
+    id: 'key_openai_default',
+    providerId: 'openai',
+    label: '默认 OpenAI Key',
+    apiKey: '',
+    isDefault: true,
+    createdAt: Date.now(),
+  },
+  {
+    id: 'key_deepseek_default',
+    providerId: 'deepseek',
+    label: '默认 DeepSeek Key',
+    apiKey: '',
+    isDefault: true,
+    createdAt: Date.now(),
+  },
+  {
+    id: 'key_groq_default',
+    providerId: 'groq',
+    label: '默认 Groq Key',
+    apiKey: '',
+    isDefault: true,
+    createdAt: Date.now(),
+  },
+  {
+    id: 'key_nvidia_default',
+    providerId: 'nvidia',
+    label: '默认 NVIDIA Key',
+    apiKey: '',
+    isDefault: true,
+    createdAt: Date.now(),
+  },
+];
 
 // API Key Operations
 export async function getApiKeys(): Promise<ApiKeyConfig[]> {

@@ -82,7 +82,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   workspaceName,
   modifiedFilesCount = 0,
   onOpenWorkspace,
-  agentMode = true,
+  agentMode = false,
   onToggleAgentMode,
 }) => {
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);

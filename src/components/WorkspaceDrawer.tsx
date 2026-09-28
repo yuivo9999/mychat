@@ -9,40 +9,34 @@ import {
   Plus, 
   Trash2, 
   Search, 
-  Save, 
-  RotateCcw, 
-  FileCheck, 
-  ChevronRight, 
-  ChevronDown, 
   AlertTriangle,
-  History,
-  ShieldAlert,
-  Edit2,
-  MoreVertical,
-  Bot,
-  Activity,
-  ArrowLeft,
-  FilePlus,
+  Edit3,
+  MoreHorizontal,
+  FileText, 
+  File, 
+  Code2, 
+  Check, 
+  Archive, 
+  MessageSquarePlus,
+  FolderInput,
+  ChevronRight,
+  ChevronDown,
   FolderPlus,
-  FileText,
-  File,
-  Code2,
-  RefreshCw,
-  Check
+  FilePlus,
+  Layers,
+  ChevronDown as DropdownIcon
 } from 'lucide-react';
 import { Workspace, WorkspaceFile } from '../types/workspace';
+import { Attachment } from '../types';
+import { workspaceFileToAttachment, workspaceZipToAttachment } from '../services/workspaceFileAttachment';
 import { 
   importZipToNewWorkspace, 
   createEmptyWorkspace, 
-  revertToPreviousSnapshot, 
-  restoreOriginalSnapshot,
-  getModifiedFilesAgainstOriginal,
   packageWorkspaceToZip,
   addFilesToActiveWorkspace,
   deleteFolderFromWorkspace,
   renameFolderInWorkspace
 } from '../services/workspaceService';
-import { DiffViewerModal } from './DiffViewerModal';
 
 interface WorkspaceDrawerProps {
   isOpen: boolean;
@@ -52,7 +46,7 @@ interface WorkspaceDrawerProps {
   onSelectWorkspace: (id: string) => void;
   onSaveWorkspace: (ws: Workspace) => void;
   onDeleteWorkspace: (id: string) => void;
-  onSendAiMessage?: (prompt: string) => void;
+  onSendAiMessage?: (prompt: string, attachments?: Attachment[]) => void;
   aiStatusText?: string;
 }
 
@@ -141,25 +135,60 @@ function buildFileTree(files: Record<string, WorkspaceFile>, searchQuery = ''): 
   return rootNodes;
 }
 
-// Helper to choose appropriate file icon based on extension
-function getFileIcon(fileName: string) {
+// Format relative timestamp like "修改于 16 秒前", "修改于 45 分钟前", "修改于 1 小时前", etc. (Exact to user image)
+function formatRelativeTime(timestamp?: number): string {
+  if (!timestamp) return '修改于 刚刚';
+  const now = Date.now();
+  const diffSec = Math.floor((now - timestamp) / 1000);
+  if (diffSec < 15) return '修改于 刚刚';
+  if (diffSec < 60) return `修改于 ${diffSec} 秒前`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `修改于 ${diffMin} 分钟前`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `修改于 ${diffHours} 小时前`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return '修改于 昨天';
+  if (diffDays < 7) return `修改于 ${diffDays} 天前`;
+  const date = new Date(timestamp);
+  return `修改于 ${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+// Helper to choose appropriate file icon based on extension with rounded box
+function renderFileIcon(fileName: string) {
   const lower = fileName.toLowerCase();
-  if (lower.endsWith('.tsx') || lower.endsWith('.jsx')) {
-    return <Code2 className="w-3.5 h-3.5 text-cyan-500 shrink-0" />;
+  if (lower.endsWith('.zip') || lower.endsWith('.tar') || lower.endsWith('.gz')) {
+    return (
+      <div className="w-10 h-10 rounded-xl border border-amber-200/70 dark:border-amber-800/50 bg-amber-50/80 dark:bg-amber-950/40 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-2xs">
+        <Archive className="w-5 h-5" />
+      </div>
+    );
   }
-  if (lower.endsWith('.ts') || lower.endsWith('.js')) {
-    return <Code2 className="w-3.5 h-3.5 text-yellow-500 shrink-0" />;
+  if (lower.endsWith('.tsx') || lower.endsWith('.jsx') || lower.endsWith('.ts') || lower.endsWith('.js')) {
+    return (
+      <div className="w-10 h-10 rounded-xl border border-blue-200/70 dark:border-blue-800/50 bg-blue-50/80 dark:bg-blue-950/40 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 shadow-2xs">
+        <Code2 className="w-5 h-5" />
+      </div>
+    );
   }
-  if (lower.endsWith('.json')) {
-    return <FileText className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
+  if (lower.endsWith('.json') || lower.endsWith('.yaml') || lower.endsWith('.yml') || lower.endsWith('.xml') || lower.endsWith('.sql')) {
+    return (
+      <div className="w-10 h-10 rounded-xl border border-amber-200/70 dark:border-amber-800/50 bg-amber-50/80 dark:bg-amber-950/40 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-2xs">
+        <FileCode className="w-5 h-5" />
+      </div>
+    );
   }
-  if (lower.endsWith('.css') || lower.endsWith('.scss') || lower.endsWith('.html')) {
-    return <FileCode className="w-3.5 h-3.5 text-blue-500 shrink-0" />;
+  if (lower.endsWith('.md') || lower.endsWith('.txt') || lower.endsWith('.doc') || lower.endsWith('.docx') || lower.endsWith('.pdf')) {
+    return (
+      <div className="w-10 h-10 rounded-xl border border-sky-200/70 dark:border-sky-800/50 bg-sky-50/80 dark:bg-sky-950/40 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-2xs">
+        <FileText className="w-5 h-5" />
+      </div>
+    );
   }
-  if (lower.endsWith('.md') || lower.endsWith('.txt')) {
-    return <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
-  }
-  return <File className="w-3.5 h-3.5 text-neutral-400 shrink-0" />;
+  return (
+    <div className="w-10 h-10 rounded-xl border border-neutral-200/70 dark:border-neutral-700/50 bg-neutral-50 dark:bg-neutral-800/60 flex items-center justify-center text-neutral-500 shrink-0 shadow-2xs">
+      <File className="w-5 h-5" />
+    </div>
+  );
 }
 
 export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
@@ -173,35 +202,26 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
   onSendAiMessage,
   aiStatusText,
 }) => {
-  // Navigation & Selection state
-  const [selectedFileKey, setSelectedFileKey] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mobileView, setMobileView] = useState<'files' | 'editor'>('files');
-
-  // Sidebar resize state (desktop)
-  const [sidebarWidth, setSidebarWidth] = useState(230);
-  const isResizingRef = useRef(false);
-
-  // Editor State
-  const [isEditingFile, setIsEditingFile] = useState(false);
-  const [fileEditText, setFileEditText] = useState('');
-
-  // Modals & Menus
-  const [isDiffModalOpen, setIsDiffModalOpen] = useState(false);
-  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [activeMenuPath, setActiveMenuPath] = useState<string | null>(null);
+  const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
+  const [isUploadDropdownOpen, setIsUploadDropdownOpen] = useState(false);
+  const [isNewDropdownOpen, setIsNewDropdownOpen] = useState(false);
 
   // Folder Expansion Set
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['src', 'components', 'services']));
 
-  // File / Folder Creation Dialog
+  // Modals
   const [createType, setCreateType] = useState<'file' | 'folder' | null>(null);
   const [createTargetParent, setCreateTargetParent] = useState<string>('');
   const [newPathInput, setNewPathInput] = useState('');
 
-  // Rename Dialog
   const [renamingItem, setRenamingItem] = useState<{ path: string; isFolder: boolean } | null>(null);
   const [renameInput, setRenameInput] = useState('');
+
+  const [movingFile, setMovingFile] = useState<WorkspaceFile | null>(null);
+  const [selectedTargetFolder, setSelectedTargetFolder] = useState<string>('');
+  const [customNewFolder, setCustomNewFolder] = useState<string>('');
 
   // File Upload Conflict Dialog
   const [pendingUploadFiles, setPendingUploadFiles] = useState<{ path: string; content: string }[] | null>(null);
@@ -211,62 +231,60 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
   const zipInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const moreMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close menus when clicking outside
+  // Close popup menus when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
-        setIsMoreMenuOpen(false);
-      }
       if (activeMenuPath && !(e.target as HTMLElement).closest('.file-action-menu')) {
         setActiveMenuPath(null);
+      }
+      if (isWorkspaceDropdownOpen && !(e.target as HTMLElement).closest('.workspace-dropdown')) {
+        setIsWorkspaceDropdownOpen(false);
+      }
+      if (isUploadDropdownOpen && !(e.target as HTMLElement).closest('.upload-dropdown')) {
+        setIsUploadDropdownOpen(false);
+      }
+      if (isNewDropdownOpen && !(e.target as HTMLElement).closest('.new-dropdown')) {
+        setIsNewDropdownOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [activeMenuPath]);
+  }, [activeMenuPath, isWorkspaceDropdownOpen, isUploadDropdownOpen, isNewDropdownOpen]);
 
   // Active workspace
   const currentWorkspace = useMemo(() => {
     return workspaces.find(w => w.id === activeWorkspaceId) || workspaces[0] || null;
   }, [workspaces, activeWorkspaceId]);
 
-  // Modified files comparing to original v1 snapshot
-  const modifiedFilesList = useMemo(() => {
-    if (!currentWorkspace) return [];
-    return getModifiedFilesAgainstOriginal(currentWorkspace);
-  }, [currentWorkspace]);
-
-  // Active selected file
-  const activeFile: WorkspaceFile | null = useMemo(() => {
-    if (!currentWorkspace) return null;
-    if (selectedFileKey && currentWorkspace.files[selectedFileKey]) {
-      return currentWorkspace.files[selectedFileKey];
-    }
-    const firstKey = Object.keys(currentWorkspace.files)[0];
-    return firstKey ? currentWorkspace.files[firstKey] : null;
-  }, [currentWorkspace, selectedFileKey]);
-
-  // Check if active file has unsaved local edits
-  const isCurrentFileModifiedUnsaved = useMemo(() => {
-    if (!activeFile || !isEditingFile) return false;
-    return fileEditText !== activeFile.content;
-  }, [activeFile, isEditingFile, fileEditText]);
-
-  // Sync editor text when active file changes
-  useEffect(() => {
-    if (activeFile) {
-      setFileEditText(activeFile.content);
-      setIsEditingFile(false);
-    }
-  }, [activeFile?.path]);
-
   // Build Hierarchical File Tree
   const fileTree = useMemo(() => {
     if (!currentWorkspace) return [];
     return buildFileTree(currentWorkspace.files, searchQuery);
   }, [currentWorkspace, searchQuery]);
+
+  // Total file count
+  const fileCount = useMemo(() => {
+    if (!currentWorkspace?.files) return 0;
+    return Object.keys(currentWorkspace.files).length;
+  }, [currentWorkspace]);
+
+  // All available folders for "添加到文件夹"
+  const availableFolders = useMemo(() => {
+    if (!currentWorkspace?.files) return [];
+    const folderSet = new Set<string>();
+    for (const path of Object.keys(currentWorkspace.files)) {
+      const parts = path.split('/');
+      if (parts.length > 1) {
+        let acc = '';
+        for (let i = 0; i < parts.length - 1; i++) {
+          acc = acc ? `${acc}/${parts[i]}` : parts[i];
+          folderSet.add(acc);
+        }
+      }
+    }
+    return Array.from(folderSet).sort();
+  }, [currentWorkspace]);
 
   // Toggle folder expand/collapse
   const toggleFolder = (folderPath: string) => {
@@ -281,137 +299,225 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
     });
   };
 
-  // Drag-to-resize sidebar width handler
-  const handleMouseDownResize = (e: React.MouseEvent) => {
-    e.preventDefault();
-    isResizingRef.current = true;
-    const startX = e.clientX;
-    const startWidth = sidebarWidth;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!isResizingRef.current) return;
-      const delta = moveEvent.clientX - startX;
-      const newWidth = Math.max(180, Math.min(420, startWidth + delta));
-      setSidebarWidth(newWidth);
-    };
-
-    const handleMouseUp = () => {
-      isResizingRef.current = false;
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+  // 1. Action: 围绕此文件展开对话 (Starts AI chat focused on this file)
+  const handleChatAroundFile = (file: WorkspaceFile) => {
+    const att = workspaceFileToAttachment(file);
+    onSendAiMessage?.(`围绕此文件 \`${file.path}\` 展开对话与分析：`, [att]);
+    setActiveMenuPath(null);
+    onClose();
   };
 
-  // 1. Handle Upload ZIP (Import new or full project)
-  const handleUploadZip = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const res = await importZipToNewWorkspace(file);
-    if (!res.success || !res.workspace) {
-      alert(res.error || 'ZIP 上传解压失败');
-    } else {
-      onSaveWorkspace(res.workspace);
-      onSelectWorkspace(res.workspace.id);
-      setSelectedFileKey(Object.keys(res.workspace.files)[0] || null);
+  // 2. Action: 下载文件 (Downloads single file)
+  const handleDownloadSingleFile = (file: WorkspaceFile) => {
+    try {
+      const fileName = file.path.split('/').pop() || 'file';
+      const blob = new Blob([file.content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert(`下载失败: ${e.message || '未知错误'}`);
     }
-    e.target.value = '';
-    setIsMoreMenuOpen(false);
+    setActiveMenuPath(null);
   };
 
-  // 2. Handle Upload Plain Files to current Workspace
-  const handleUploadFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!currentWorkspace || !e.target.files || e.target.files.length === 0) return;
-    const files = Array.from(e.target.files);
-    const loadedFiles: { path: string; content: string }[] = [];
-
-    for (const f of files) {
-      const text = await f.text();
-      loadedFiles.push({ path: f.name, content: text });
-    }
-
-    // Check for conflicts
-    const conflicts = loadedFiles
-      .map(f => f.path)
-      .filter(p => currentWorkspace.files[p] !== undefined);
-
-    if (conflicts.length > 0) {
-      setPendingUploadFiles(loadedFiles);
-      setConflictFilesList(conflicts);
-    } else {
-      const res = addFilesToActiveWorkspace(currentWorkspace, loadedFiles, 'overwrite');
-      onSaveWorkspace(res.updatedWorkspace);
-      if (loadedFiles[0]) {
-        setSelectedFileKey(loadedFiles[0].path);
-      }
-    }
-    e.target.value = '';
-    setIsMoreMenuOpen(false);
-  };
-
-  // 3. Handle Upload Folder to current Workspace
-  const handleUploadFolder = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!currentWorkspace || !e.target.files || e.target.files.length === 0) return;
-    const files = Array.from(e.target.files);
-    const loadedFiles: { path: string; content: string }[] = [];
-
-    for (const f of files) {
-      // webkitRelativePath contains the directory structure
-      const rawPath = f.webkitRelativePath || f.name;
-      // Strip out root folder name if desired, or retain full path
-      const parts = rawPath.replace(/\\/g, '/').split('/');
-      const relativePath = parts.length > 1 ? parts.slice(1).join('/') : rawPath;
-
-      if (!relativePath || relativePath.endsWith('.DS_Store') || relativePath.includes('node_modules/')) {
-        continue;
-      }
-
-      const text = await f.text();
-      loadedFiles.push({ path: relativePath, content: text });
-    }
-
-    if (loadedFiles.length === 0) {
-      alert('未检测到有效的文本或代码文件');
+  // 3. Action: 重命名
+  const handleSaveRename = () => {
+    if (!renamingItem || !currentWorkspace) return;
+    const nextPath = renameInput.trim();
+    if (!nextPath || nextPath === renamingItem.path) {
+      setRenamingItem(null);
       return;
     }
 
-    const conflicts = loadedFiles
-      .map(f => f.path)
-      .filter(p => currentWorkspace.files[p] !== undefined);
-
-    if (conflicts.length > 0) {
-      setPendingUploadFiles(loadedFiles);
-      setConflictFilesList(conflicts);
-    } else {
-      const res = addFilesToActiveWorkspace(currentWorkspace, loadedFiles, 'overwrite');
+    if (renamingItem.isFolder) {
+      const res = renameFolderInWorkspace(currentWorkspace, renamingItem.path, nextPath);
       onSaveWorkspace(res.updatedWorkspace);
-      if (loadedFiles[0]) {
-        setSelectedFileKey(loadedFiles[0].path);
+    } else {
+      const ws = { ...currentWorkspace, files: { ...currentWorkspace.files } };
+      const fileData = ws.files[renamingItem.path];
+      if (fileData) {
+        delete ws.files[renamingItem.path];
+        ws.files[nextPath] = {
+          ...fileData,
+          path: nextPath,
+          updatedAt: Date.now(),
+        };
+        ws.updatedAt = Date.now();
+        onSaveWorkspace(ws);
       }
     }
-    e.target.value = '';
-    setIsMoreMenuOpen(false);
+    setRenamingItem(null);
+    setRenameInput('');
   };
 
-  // Resolve upload conflicts
-  const handleResolveConflict = (resolution: 'overwrite' | 'rename' | 'skip') => {
-    if (!currentWorkspace || !pendingUploadFiles) return;
-    const res = addFilesToActiveWorkspace(currentWorkspace, pendingUploadFiles, resolution);
+  // 4. Action: 添加到文件夹 / 移动到文件夹
+  const handleMoveFileToFolder = () => {
+    if (!movingFile || !currentWorkspace) return;
+    const targetDir = customNewFolder.trim() || selectedTargetFolder.trim();
+    const fileName = movingFile.path.split('/').pop() || movingFile.path;
+    const newPath = targetDir ? `${targetDir.replace(/^\/+|\/+$/g, '')}/${fileName}` : fileName;
+
+    if (newPath === movingFile.path) {
+      setMovingFile(null);
+      return;
+    }
+
+    const ws = { ...currentWorkspace, files: { ...currentWorkspace.files } };
+    delete ws.files[movingFile.path];
+    ws.files[newPath] = {
+      ...movingFile,
+      path: newPath,
+      updatedAt: Date.now(),
+    };
+    ws.updatedAt = Date.now();
+    onSaveWorkspace(ws);
+
+    if (targetDir) {
+      setExpandedFolders(prev => new Set(prev).add(targetDir));
+    }
+
+    setMovingFile(null);
+    setSelectedTargetFolder('');
+    setCustomNewFolder('');
+  };
+
+  // 5. Action: 删除文件
+  const handleDeleteFile = (filePath: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!currentWorkspace) return;
+    if (confirm(`确认删除文件 "${filePath}"？`)) {
+      const ws = { ...currentWorkspace, files: { ...currentWorkspace.files } };
+      delete ws.files[filePath];
+      ws.updatedAt = Date.now();
+      onSaveWorkspace(ws);
+      setActiveMenuPath(null);
+    }
+  };
+
+  // 6. Action: 删除文件夹
+  const handleDeleteFolder = (folderPath: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!currentWorkspace) return;
+    if (confirm(`确认删除文件夹 "${folderPath}" 及其包含的所有文件？`)) {
+      const res = deleteFolderFromWorkspace(currentWorkspace, folderPath);
+      onSaveWorkspace(res.updatedWorkspace);
+      setActiveMenuPath(null);
+    }
+  };
+
+  // 7. Action: 创建新文件 / 文件夹
+  const handleCreateSubmit = () => {
+    if (!createType || !currentWorkspace) return;
+    let rawPath = newPathInput.trim().replace(/^\/+/, '');
+    if (!rawPath) {
+      setCreateType(null);
+      return;
+    }
+
+    const fullPath = createTargetParent ? `${createTargetParent}/${rawPath}` : rawPath;
+
+    if (createType === 'file') {
+      const ws = { ...currentWorkspace, files: { ...currentWorkspace.files } };
+      if (ws.files[fullPath]) {
+        alert(`文件 "${fullPath}" 已存在！`);
+        return;
+      }
+      ws.files[fullPath] = {
+        path: fullPath,
+        content: '',
+        size: 0,
+        updatedAt: Date.now(),
+      };
+      ws.updatedAt = Date.now();
+      onSaveWorkspace(ws);
+    } else {
+      const placeholder = `${fullPath}/.gitkeep`;
+      const ws = { ...currentWorkspace, files: { ...currentWorkspace.files } };
+      ws.files[placeholder] = {
+        path: placeholder,
+        content: '',
+        size: 0,
+        updatedAt: Date.now(),
+      };
+      ws.updatedAt = Date.now();
+      onSaveWorkspace(ws);
+      setExpandedFolders(prev => new Set(prev).add(fullPath));
+    }
+
+    setCreateType(null);
+    setNewPathInput('');
+  };
+
+  // 8. Action: 上传单文件/多文件
+  const handleUploadFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0 || !currentWorkspace) return;
+
+    const filesToUpload: { path: string; content: string }[] = [];
+    const conflicts: string[] = [];
+
+    for (let i = 0; i < fileList.length; i++) {
+      const f = fileList[i];
+      const relPath = (f as any).webkitRelativePath || f.name;
+      const cleanPath = relPath.replace(/^\/+/, '');
+      const text = await f.text();
+
+      if (currentWorkspace.files[cleanPath]) {
+        conflicts.push(cleanPath);
+      }
+      filesToUpload.push({ path: cleanPath, content: text });
+    }
+
+    if (conflicts.length > 0) {
+      setConflictFilesList(conflicts);
+      setPendingUploadFiles(filesToUpload);
+    } else {
+      const res = addFilesToActiveWorkspace(currentWorkspace, filesToUpload, 'overwrite');
+      onSaveWorkspace(res.updatedWorkspace);
+    }
+    e.target.value = '';
+    setIsUploadDropdownOpen(false);
+  };
+
+  // 9. Action: 上传 ZIP 导入为新工作区
+  const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const res = await importZipToNewWorkspace(file);
+      if (res.success && res.workspace) {
+        onSaveWorkspace(res.workspace);
+        onSelectWorkspace(res.workspace.id);
+      } else {
+        alert(`导入 ZIP 失败: ${res.error || '未知错误'}`);
+      }
+    } catch (err: any) {
+      alert(`导入 ZIP 失败: ${err.message || '未知错误'}`);
+    }
+    e.target.value = '';
+    setIsUploadDropdownOpen(false);
+  };
+
+  // 10. Action: 解决同名冲突
+  const handleResolveConflict = (strategy: 'overwrite' | 'rename') => {
+    if (!pendingUploadFiles || !currentWorkspace) return;
+    const res = addFilesToActiveWorkspace(currentWorkspace, pendingUploadFiles, strategy);
     onSaveWorkspace(res.updatedWorkspace);
     setPendingUploadFiles(null);
     setConflictFilesList([]);
-    if (pendingUploadFiles[0]) {
-      setSelectedFileKey(pendingUploadFiles[0].path);
-    }
   };
 
-  // 4. Handle Download Clean Project ZIP
+  // 11. Action: 打包下载整工作区 ZIP
   const handleDownloadZip = async () => {
     if (!currentWorkspace || Object.keys(currentWorkspace.files).length === 0) {
-      alert('当前工作区没有可打包的文件');
+      alert('当前工作区没有可下载的文件');
       return;
     }
     try {
@@ -424,228 +530,59 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err: any) {
-      alert(`打包失败: ${err.message || '未知错误'}`);
-    }
-    setIsMoreMenuOpen(false);
-  };
-
-  // 5. Handle Download Single File
-  const handleDownloadSingleFile = (file: WorkspaceFile) => {
-    const blob = new Blob([file.content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = file.path.split('/').pop() || 'file.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setActiveMenuPath(null);
-  };
-
-  // 6. Handle Save File Edit
-  const handleSaveFileContent = () => {
-    if (!currentWorkspace || !activeFile) return;
-    const updatedFiles = {
-      ...currentWorkspace.files,
-      [activeFile.path]: {
-        ...activeFile,
-        content: fileEditText,
-        size: fileEditText.length,
-        updatedAt: Date.now(),
-      },
-    };
-    const updatedWs: Workspace = {
-      ...currentWorkspace,
-      files: updatedFiles,
-      updatedAt: Date.now(),
-    };
-    onSaveWorkspace(updatedWs);
-    setIsEditingFile(false);
-  };
-
-  // 7. Handle Create File or Folder
-  const handleConfirmCreate = () => {
-    if (!currentWorkspace || !newPathInput.trim()) return;
-    let target = newPathInput.trim().replace(/^\/+/, '');
-    if (createTargetParent) {
-      target = `${createTargetParent.replace(/\/+$/, '')}/${target}`;
-    }
-
-    if (createType === 'folder') {
-      // Add a .gitkeep or placeholder inside the new folder
-      target = `${target.replace(/\/+$/, '')}/.gitkeep`;
-    }
-
-    if (currentWorkspace.files[target]) {
-      alert('已存在同名路径');
-      return;
-    }
-
-    const updatedFiles = {
-      ...currentWorkspace.files,
-      [target]: {
-        path: target,
-        content: createType === 'folder' ? '# 目录占位\n' : '// 新建文件\n',
-        size: 15,
-        updatedAt: Date.now(),
-      },
-    };
-
-    onSaveWorkspace({
-      ...currentWorkspace,
-      files: updatedFiles,
-      updatedAt: Date.now(),
-    });
-
-    setSelectedFileKey(target);
-    setCreateType(null);
-    setCreateTargetParent('');
-    setNewPathInput('');
-  };
-
-  // 8. Handle Delete File
-  const handleDeleteFile = (path: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (!currentWorkspace) return;
-    if (confirm(`确定删除文件 "${path}"？`)) {
-      const updatedFiles = { ...currentWorkspace.files };
-      delete updatedFiles[path];
-      const updatedWs: Workspace = {
-        ...currentWorkspace,
-        files: updatedFiles,
-        updatedAt: Date.now(),
-      };
-      onSaveWorkspace(updatedWs);
-      if (selectedFileKey === path) {
-        setSelectedFileKey(Object.keys(updatedFiles)[0] || null);
-      }
-      setActiveMenuPath(null);
+    } catch (e: any) {
+      alert(`打包下载失败: ${e.message || '未知错误'}`);
     }
   };
 
-  // 9. Handle Delete Folder
-  const handleDeleteFolder = (folderPath: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    if (!currentWorkspace) return;
-    const prefix = folderPath.replace(/\/+$/, '') + '/';
-    const filesInFolder = Object.keys(currentWorkspace.files).filter(p => p.startsWith(prefix));
-    
-    if (confirm(`确定删除文件夹 "${folderPath}"？\n其中包含 ${filesInFolder.length} 个文件，删除后将无法恢复。`)) {
-      const res = deleteFolderFromWorkspace(currentWorkspace, folderPath);
-      onSaveWorkspace(res.updatedWorkspace);
-      if (selectedFileKey && selectedFileKey.startsWith(prefix)) {
-        setSelectedFileKey(Object.keys(res.updatedWorkspace.files)[0] || null);
-      }
-      setActiveMenuPath(null);
-    }
-  };
+  if (!isOpen) return null;
 
-  // 10. Handle Rename Item (File or Folder)
-  const handleConfirmRename = () => {
-    if (!currentWorkspace || !renamingItem || !renameInput.trim()) return;
-    const newName = renameInput.trim().replace(/^\/+/, '');
-    
-    if (renamingItem.isFolder) {
-      const res = renameFolderInWorkspace(currentWorkspace, renamingItem.path, newName);
-      onSaveWorkspace(res.updatedWorkspace);
-      if (selectedFileKey?.startsWith(renamingItem.path)) {
-        const rest = selectedFileKey.slice(renamingItem.path.length);
-        setSelectedFileKey(`${newName}${rest}`);
-      }
-    } else {
-      if (currentWorkspace.files[newName] && newName !== renamingItem.path) {
-        alert('目标路径已存在同名文件');
-        return;
-      }
-      const file = currentWorkspace.files[renamingItem.path];
-      const updatedFiles = { ...currentWorkspace.files };
-      delete updatedFiles[renamingItem.path];
-      updatedFiles[newName] = { ...file, path: newName, updatedAt: Date.now() };
-
-      onSaveWorkspace({
-        ...currentWorkspace,
-        files: updatedFiles,
-        updatedAt: Date.now(),
-      });
-      setSelectedFileKey(newName);
-    }
-
-    setRenamingItem(null);
-    setRenameInput('');
-    setActiveMenuPath(null);
-  };
-
-  // 11. Handle AI Analysis Trigger
-  const handleTriggerAiAnalysis = (filePath: string) => {
-    onSendAiMessage?.(`请分析工作区文件: \`${filePath}\` 的实现与架构。`);
-    setActiveMenuPath(null);
-    onClose();
-  };
-
-  // 12. Handle AI Diagnosis Trigger
-  const handleTriggerAiDiagnosis = (filePath: string) => {
-    onSendAiMessage?.(`我怀疑工作区文件 \`${filePath}\` 这里有问题，请帮我系统诊断相关代码。`);
-    setActiveMenuPath(null);
-    onClose();
-  };
-
-  // Recursive Tree Node Renderer
+  // Recursive Tree Node Renderer (Clean, List View as pictured in IMG_20260928_231518.jpg)
   const renderTreeNode = (node: TreeNode, depth = 0) => {
     const isExpanded = expandedFolders.has(node.path);
-    const isSelected = selectedFileKey === node.path;
-    const isModified = modifiedFilesList.some(m => m.path === node.path);
     const isMenuOpen = activeMenuPath === node.path;
 
     if (node.isFolder) {
+      const childCount = node.children ? node.children.length : 0;
       return (
         <div key={node.path} className="select-none">
           <div
             onClick={() => toggleFolder(node.path)}
-            style={{ paddingLeft: `${depth * 14 + 8}px` }}
-            className="group flex items-center justify-between py-1.5 pr-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800/60 cursor-pointer text-xs transition text-neutral-700 dark:text-neutral-300"
+            style={{ paddingLeft: `${depth * 18 + 16}px` }}
+            className="group flex items-center justify-between py-2.5 pr-4 rounded-xl cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800/60 text-neutral-800 dark:text-neutral-200 transition-colors"
           >
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <span className="text-neutral-400">
-                {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-              </span>
-              <span className="text-amber-500">
-                {isExpanded ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />}
-              </span>
-              <span className="truncate font-medium text-[12px]">{node.name}</span>
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-10 h-10 rounded-xl border border-amber-200/70 dark:border-amber-800/50 bg-amber-50/80 dark:bg-amber-950/40 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-2xs">
+                {isExpanded ? <FolderOpen className="w-5 h-5" /> : <Folder className="w-5 h-5" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 font-medium text-sm text-neutral-800 dark:text-neutral-200">
+                  <span className="truncate">{node.name}</span>
+                  {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-neutral-400" /> : <ChevronRight className="w-3.5 h-3.5 text-neutral-400" />}
+                </div>
+                <div className="text-xs text-neutral-400 dark:text-neutral-500 font-normal">
+                  {childCount} 个项目
+                </div>
+              </div>
             </div>
 
             {/* Folder Actions Menu */}
-            <div className="relative flex items-center gap-0.5 transition">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCreateTargetParent(node.path);
-                  setCreateType('file');
-                  setNewPathInput('');
-                }}
-                className="p-1 rounded text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                title="在此目录下新建文件"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
+            <div className="relative flex items-center">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setActiveMenuPath(isMenuOpen ? null : node.path);
                 }}
-                className="p-1 rounded text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 cursor-pointer"
-                title="文件夹操作选项"
+                className="p-1.5 rounded-lg border border-neutral-200/80 dark:border-neutral-700/80 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
+                title="文件夹操作"
               >
-                <MoreVertical className="w-3.5 h-3.5" />
+                <MoreHorizontal className="w-4 h-4" />
               </button>
 
               {/* Folder Menu Popup */}
               {isMenuOpen && (
-                <div className="file-action-menu absolute right-0 top-6 z-50 w-36 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 text-xs animate-in fade-in">
+                <div className="file-action-menu absolute right-0 top-8 z-50 w-44 bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 py-1.5 text-xs animate-in fade-in zoom-in-95">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -654,10 +591,23 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                       setCreateType('file');
                       setActiveMenuPath(null);
                     }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200 font-medium"
                   >
-                    <FilePlus className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>新建文件</span>
+                    <FilePlus className="w-4 h-4 text-neutral-500" />
+                    <span>新建子文件</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCreateTargetParent(node.path);
+                      setCreateType('folder');
+                      setActiveMenuPath(null);
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200 font-medium"
+                  >
+                    <FolderPlus className="w-4 h-4 text-neutral-500" />
+                    <span>新建子文件夹</span>
                   </button>
                   <button
                     type="button"
@@ -667,17 +617,18 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                       setRenameInput(node.path);
                       setActiveMenuPath(null);
                     }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200 font-medium"
                   >
-                    <Edit2 className="w-3.5 h-3.5 text-neutral-400" />
+                    <Edit3 className="w-4 h-4 text-neutral-500" />
                     <span>重命名</span>
                   </button>
+                  <div className="my-1 border-t border-neutral-100 dark:border-neutral-700" />
                   <button
                     type="button"
                     onClick={(e) => handleDeleteFolder(node.path, e)}
-                    className="w-full text-left px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center gap-2"
+                    className="w-full text-left px-3.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 font-medium flex items-center gap-2.5"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4 text-red-500" />
                     <span>删除文件夹</span>
                   </button>
                 </div>
@@ -685,9 +636,9 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
             </div>
           </div>
 
-          {/* Child Nodes */}
+          {/* Children container */}
           {isExpanded && node.children && (
-            <div className="flex flex-col space-y-0.5">
+            <div className="space-y-0.5">
               {node.children.map(child => renderTreeNode(child, depth + 1))}
             </div>
           )}
@@ -695,81 +646,73 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
       );
     }
 
-    // File Node
+    // Single File Row (Matching IMG_20260928_231518.jpg)
     return (
       <div
         key={node.path}
-        onClick={() => {
-          setSelectedFileKey(node.path);
-          setMobileView('editor');
-        }}
-        style={{ paddingLeft: `${depth * 14 + 18}px` }}
-        className={`group flex items-center justify-between py-1.5 pr-2 rounded-md cursor-pointer text-xs transition ${
-          isSelected
-            ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-medium'
-            : 'hover:bg-neutral-100 dark:hover:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300'
-        }`}
+        style={{ paddingLeft: `${depth * 18 + 16}px` }}
+        className="group flex items-center justify-between py-2.5 pr-4 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800/60 transition-colors"
       >
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          {getFileIcon(node.name)}
-          <span className="truncate text-[12px]">{node.name}</span>
-          {isModified && (
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" title="自原始版本以来已被修改" />
-          )}
+        {/* Left: Icon and Name/Time info */}
+        <div 
+          onClick={() => node.file && handleChatAroundFile(node.file)}
+          className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+        >
+          {renderFileIcon(node.name)}
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-sm text-neutral-800 dark:text-neutral-200 truncate">
+              {node.name}
+            </div>
+            <div className="text-xs text-neutral-400 dark:text-neutral-500 font-normal mt-0.5">
+              {formatRelativeTime(node.file?.updatedAt)}
+            </div>
+          </div>
         </div>
 
-        {/* File Actions Menu Button (Three Vertical Dots) */}
-        <div className="relative flex items-center transition">
+        {/* Right: Three Dots Button `...` (Matching Image) */}
+        <div className="relative flex items-center ml-2">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               setActiveMenuPath(isMenuOpen ? null : node.path);
             }}
-            className="p-1 rounded text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-200/80 dark:hover:bg-neutral-700 cursor-pointer transition-colors"
-            title="文件操作菜单 (打开, AI分析, AI诊断, 重命名, 删除等)"
+            className="p-1.5 rounded-lg border border-neutral-200/80 dark:border-neutral-700/80 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
+            title="更多操作"
           >
-            <MoreVertical className="w-3.5 h-3.5" />
+            <MoreHorizontal className="w-4 h-4" />
           </button>
 
-          {/* File Menu Popup */}
+          {/* 5-Item Popup Menu (Exact match to user requirement & screenshot) */}
           {isMenuOpen && node.file && (
-            <div className="file-action-menu absolute right-0 top-6 z-50 w-36 bg-white dark:bg-neutral-800 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 text-xs animate-in fade-in">
+            <div className="file-action-menu absolute right-0 top-8 z-50 w-52 bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 py-2 text-xs animate-in fade-in zoom-in-95">
+              {/* 1. 围绕此内容展开对话 */}
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSelectedFileKey(node.path);
-                  setMobileView('editor');
-                  setActiveMenuPath(null);
+                  handleChatAroundFile(node.file!);
                 }}
-                className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+                className="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-3 text-neutral-800 dark:text-neutral-200 font-medium transition-colors"
               >
-                <Code2 className="w-3.5 h-3.5 text-neutral-400" />
-                <span>打开代码</span>
+                <MessageSquarePlus className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
+                <span>围绕此内容展开对话</span>
               </button>
+
+              {/* 2. 下载 */}
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleTriggerAiDiagnosis(node.path);
+                  handleDownloadSingleFile(node.file!);
                 }}
-                className="w-full text-left px-3 py-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-medium flex items-center gap-2"
+                className="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-3 text-neutral-800 dark:text-neutral-200 font-medium transition-colors"
               >
-                <Activity className="w-3.5 h-3.5" />
-                <span>🩺 AI 诊断</span>
+                <Download className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
+                <span>下载</span>
               </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleTriggerAiAnalysis(node.path);
-                }}
-                className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
-              >
-                <Bot className="w-3.5 h-3.5 text-neutral-500" />
-                <span>🤖 AI 分析</span>
-              </button>
+
+              {/* 3. 重命名 */}
               <button
                 type="button"
                 onClick={(e) => {
@@ -778,29 +721,38 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                   setRenameInput(node.path);
                   setActiveMenuPath(null);
                 }}
-                className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+                className="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-3 text-neutral-800 dark:text-neutral-200 font-medium transition-colors"
               >
-                <Edit2 className="w-3.5 h-3.5 text-neutral-400" />
+                <Edit3 className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
                 <span>重命名</span>
               </button>
+
+              {/* 4. 添加到文件夹 */}
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDownloadSingleFile(node.file!);
+                  setMovingFile(node.file!);
+                  setSelectedTargetFolder('');
+                  setCustomNewFolder('');
+                  setActiveMenuPath(null);
                 }}
-                className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2"
+                className="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-3 text-neutral-800 dark:text-neutral-200 font-medium transition-colors"
               >
-                <Download className="w-3.5 h-3.5 text-neutral-400" />
-                <span>下载文件</span>
+                <FolderInput className="w-4 h-4 text-neutral-600 dark:text-neutral-300" />
+                <span>添加到文件夹</span>
               </button>
+
+              <div className="my-1 border-t border-neutral-100 dark:border-neutral-700" />
+
+              {/* 5. 删除 */}
               <button
                 type="button"
                 onClick={(e) => handleDeleteFile(node.path, e)}
-                className="w-full text-left px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center gap-2"
+                className="w-full text-left px-4 py-2.5 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 font-medium flex items-center gap-3 transition-colors"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>删除文件</span>
+                <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <span>删除</span>
               </button>
             </div>
           )}
@@ -809,502 +761,427 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
     );
   };
 
-  if (!isOpen) return null;
-
   return (
     <>
-      <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-[680px] md:w-[840px] lg:w-[940px] bg-white dark:bg-neutral-900 border-l border-neutral-200 dark:border-neutral-800 shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
-        {/* Row 1: Main Header (Back / Title / AI Status / More / Close) */}
-        <div className="px-4 py-2.5 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between bg-neutral-50/70 dark:bg-neutral-950/60">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition"
-              title="返回聊天"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="font-semibold text-sm text-neutral-900 dark:text-neutral-100 truncate">
-                AI 编程工作区
-              </span>
-              {aiStatusText && (
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-[10px] font-medium border border-indigo-200/50 dark:border-indigo-800/50">
-                  <Activity className="w-2.5 h-2.5 animate-pulse" />
-                  {aiStatusText}
-                </span>
+      {/* Hidden File Inputs for Upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleUploadFilesSelected}
+        multiple
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={folderInputRef}
+        onChange={handleUploadFilesSelected}
+        {...({ webkitdirectory: '', directory: '' } as any)}
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={zipInputRef}
+        onChange={handleZipUpload}
+        accept=".zip"
+        className="hidden"
+      />
+
+      {/* Main Modal Backdrop */}
+      <div 
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in"
+        onClick={onClose}
+      >
+        {/* File Manager Card Panel (Pure file list area, no code editor pane) */}
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-2xl h-[680px] max-h-[90vh] bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl border border-neutral-200 dark:border-neutral-800 flex flex-col overflow-hidden animate-in zoom-in-95"
+        >
+          {/* Header Bar */}
+          <div className="px-5 py-3 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between shrink-0 bg-neutral-50/50 dark:bg-neutral-900/50 gap-3">
+            {/* Left: Workspace Icon / Selector */}
+            <div className="relative workspace-dropdown shrink-0">
+              <button
+                type="button"
+                onClick={() => workspaces.length > 1 && setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
+                className={`flex items-center gap-1 text-left group ${workspaces.length > 1 ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+                title={workspaces.length > 1 ? "点击切换工作区" : "工作区"}
+              >
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 shadow-2xs">
+                  <Layers className="w-4 h-4" />
+                </div>
+                {workspaces.length > 1 && (
+                  <DropdownIcon className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                )}
+              </button>
+
+              {/* Workspace Selector Dropdown */}
+              {isWorkspaceDropdownOpen && workspaces.length > 1 && (
+                <div className="absolute left-0 top-11 z-50 w-32 bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 text-xs animate-in fade-in zoom-in-95">
+                  <div className="px-2.5 py-1 font-semibold text-[10px] text-neutral-400 uppercase tracking-wider whitespace-nowrap">
+                    切换工作区
+                  </div>
+                  {workspaces.map(w => (
+                    <button
+                      key={w.id}
+                      onClick={() => {
+                        onSelectWorkspace(w.id);
+                        setIsWorkspaceDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 flex items-center justify-between hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors ${
+                        w.id === currentWorkspace?.id ? 'text-indigo-600 font-semibold' : 'text-neutral-700 dark:text-neutral-300'
+                      }`}
+                    >
+                      <span className="truncate">{w.name}</span>
+                      {w.id === currentWorkspace?.id && <Check className="w-3.5 h-3.5 shrink-0 ml-1" />}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
-          </div>
 
-          <div className="flex items-center gap-1.5">
-            {/* Hidden Input Elements for File / Folder Uploads */}
-            <input type="file" ref={zipInputRef} accept=".zip" onChange={handleUploadZip} className="hidden" />
-            <input type="file" ref={fileInputRef} multiple onChange={handleUploadFiles} className="hidden" />
-            <input 
-              type="file" 
-              ref={folderInputRef} 
-              multiple 
-              {...({ webkitdirectory: '', directory: '' } as any)} 
-              onChange={handleUploadFolder} 
-              className="hidden" 
-            />
+            {/* Right: Actions (Upload, New, ZIP, Close) */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* Upload Dropdown */}
+              <div className="relative upload-dropdown shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsUploadDropdownOpen(!isUploadDropdownOpen)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs font-medium text-neutral-700 dark:text-neutral-300 transition cursor-pointer whitespace-nowrap shrink-0"
+                  title="上传文件或项目"
+                >
+                  <Upload className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                  <span className="whitespace-nowrap">上传</span>
+                  <DropdownIcon className="w-3 h-3 text-neutral-400 shrink-0" />
+                </button>
 
-            {/* Quick Diff Pill (Desktop) */}
-            {modifiedFilesList.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setIsDiffModalOpen(true)}
-                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60 text-xs font-medium transition cursor-pointer"
-                title="查看与基准版本的代码差异对比"
-              >
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                <span>已修改 {modifiedFilesList.length} 个文件</span>
-              </button>
-            )}
-
-            {/* "⋯ 更多" Dropdown Menu */}
-            <div className="relative" ref={moreMenuRef}>
-              <button
-                type="button"
-                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
-                className="p-1.5 rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200/70 dark:hover:bg-neutral-800 transition flex items-center gap-1"
-                title="更多工作区管理选项"
-              >
-                <MoreVertical className="w-4 h-4" />
-                <span className="text-xs hidden sm:inline">更多</span>
-              </button>
-
-              {isMoreMenuOpen && (
-                <div className="absolute right-0 top-8 z-50 w-52 bg-white dark:bg-neutral-800 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-700 py-1.5 text-xs animate-in fade-in">
-                  <div className="px-3 py-1 text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
-                    文件导入与导出
+                {isUploadDropdownOpen && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-44 bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 py-1.5 text-xs animate-in fade-in zoom-in-95">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors"
+                    >
+                      <File className="w-4 h-4 text-neutral-500" />
+                      <span>上传文件</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => folderInputRef.current?.click()}
+                      className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors"
+                    >
+                      <Folder className="w-4 h-4 text-neutral-500" />
+                      <span>上传文件夹</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => zipInputRef.current?.click()}
+                      className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors"
+                    >
+                      <Archive className="w-4 h-4 text-amber-500" />
+                      <span>导入 ZIP 压缩包</span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      fileInputRef.current?.click();
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200"
-                  >
-                    <FilePlus className="w-4 h-4 text-indigo-500" />
-                    <span>上传普通文件 (加入当前)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      folderInputRef.current?.click();
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200"
-                  >
-                    <FolderPlus className="w-4 h-4 text-indigo-500" />
-                    <span>上传项目文件夹</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      zipInputRef.current?.click();
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200"
-                  >
-                    <Upload className="w-4 h-4 text-neutral-500" />
-                    <span>导入新工程 ZIP 包</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDownloadZip}
-                    className="w-full text-left px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400 font-medium"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>打包下载当前项目 ZIP</span>
-                  </button>
+                )}
+              </div>
 
-                  <div className="my-1 border-t border-neutral-100 dark:border-neutral-700" />
-                  <div className="px-3 py-1 text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
-                    版本与重置
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsDiffModalOpen(true);
-                      setIsMoreMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200"
-                  >
-                    <FileCheck className="w-4 h-4 text-amber-500" />
-                    <span>查看完整修改差异 (Diff)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (currentWorkspace) {
-                        const res = revertToPreviousSnapshot(currentWorkspace);
-                        if (res.success) onSaveWorkspace(res.workspace);
-                        alert(res.message);
-                      }
-                      setIsMoreMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200"
-                  >
-                    <RotateCcw className="w-4 h-4 text-neutral-400" />
-                    <span>撤销至上一快照版本</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (currentWorkspace && confirm('确认将当前工作区恢复至用户初始基准版本 (v1)？所有 AI 及手动修改将被重置。')) {
-                        const res = restoreOriginalSnapshot(currentWorkspace);
-                        onSaveWorkspace(res.workspace);
-                        alert(res.message);
-                      }
-                      setIsMoreMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-amber-600 dark:text-amber-400"
-                  >
-                    <History className="w-4 h-4" />
-                    <span>恢复到原始版本 (v1)</span>
-                  </button>
+              {/* New Dropdown */}
+              <div className="relative new-dropdown shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsNewDropdownOpen(!isNewDropdownOpen)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-xs font-medium text-neutral-700 dark:text-neutral-300 transition cursor-pointer whitespace-nowrap shrink-0"
+                  title="新建文件或文件夹"
+                >
+                  <Plus className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+                  <span className="whitespace-nowrap">新建</span>
+                  <DropdownIcon className="w-3 h-3 text-neutral-400 shrink-0" />
+                </button>
 
-                  <div className="my-1 border-t border-neutral-100 dark:border-neutral-700" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newWs = createEmptyWorkspace(`新项目_${workspaces.length + 1}`);
-                      onSaveWorkspace(newWs);
-                      onSelectWorkspace(newWs.id);
-                      setIsMoreMenuOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-200"
-                  >
-                    <Plus className="w-4 h-4 text-indigo-500" />
-                    <span>新建空白工作区</span>
-                  </button>
-                  {workspaces.length > 1 && currentWorkspace && (
+                {isNewDropdownOpen && (
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 w-44 bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 py-1.5 text-xs animate-in fade-in zoom-in-95">
                     <button
                       type="button"
                       onClick={() => {
-                        onDeleteWorkspace(currentWorkspace.id);
-                        setIsMoreMenuOpen(false);
+                        setCreateTargetParent('');
+                        setCreateType('file');
+                        setIsNewDropdownOpen(false);
                       }}
-                      className="w-full text-left px-3 py-2 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center gap-2.5"
+                      className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300"
                     >
-                      <Trash2 className="w-4 h-4" />
-                      <span>删除当前工作区</span>
+                      <FilePlus className="w-4 h-4 text-neutral-500" />
+                      <span>新建文件</span>
                     </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-800 transition"
-              title="关闭抽屉"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Row 2: Secondary Metadata Bar (Current Workspace Selector · Version · Mobile View Switcher) */}
-        <div className="px-4 py-2 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between bg-white dark:bg-neutral-900 text-xs">
-          <div className="flex items-center gap-2 min-w-0">
-            {/* Workspace Select */}
-            <select
-              value={currentWorkspace?.id || ''}
-              onChange={(e) => onSelectWorkspace(e.target.value)}
-              className="px-2 py-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 font-medium border-0 focus:ring-1 focus:ring-indigo-500 cursor-pointer text-xs"
-            >
-              {workspaces.map(ws => (
-                <option key={ws.id} value={ws.id}>
-                  {ws.name} ({Object.keys(ws.files).length} 文件)
-                </option>
-              ))}
-            </select>
-            {currentWorkspace && (
-              <span className="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-mono text-[10px] font-bold">
-                v{currentWorkspace.currentVersion}
-              </span>
-            )}
-          </div>
-
-          {/* Mobile Tab View Switcher */}
-          <div className="flex sm:hidden items-center p-0.5 rounded-lg bg-neutral-100 dark:bg-neutral-800">
-            <button
-              type="button"
-              onClick={() => setMobileView('files')}
-              className={`px-2.5 py-1 rounded text-xs font-medium transition ${
-                mobileView === 'files'
-                  ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
-                  : 'text-neutral-500'
-              }`}
-            >
-              文件 ({Object.keys(currentWorkspace?.files || {}).length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileView('editor')}
-              className={`px-2.5 py-1 rounded text-xs font-medium transition ${
-                mobileView === 'editor'
-                  ? 'bg-white dark:bg-neutral-700 text-indigo-600 dark:text-indigo-300 shadow-xs'
-                  : 'text-neutral-500'
-              }`}
-            >
-              代码 {isCurrentFileModifiedUnsaved && '●'}
-            </button>
-          </div>
-        </div>
-
-        {/* Main Body (Split View: File Tree + Code Editor) */}
-        <div className="flex-1 flex overflow-hidden relative">
-          {/* Left Panel: File Tree (Shown on desktop or when mobileView === 'files') */}
-          <div 
-            style={{ width: `${sidebarWidth}px` }}
-            className={`flex flex-col border-r border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/30 overflow-hidden shrink-0 ${
-              mobileView === 'files' ? 'w-full sm:w-auto flex' : 'hidden sm:flex'
-            }`}
-          >
-            {/* Search and Quick Add Bar */}
-            <div className="p-2.5 border-b border-neutral-200 dark:border-neutral-800 space-y-2">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-neutral-400" />
-                <input
-                  type="text"
-                  placeholder="搜索文件路径或名称..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:border-indigo-500 text-neutral-800 dark:text-neutral-200 placeholder-neutral-400"
-                />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreateTargetParent('');
+                        setCreateType('folder');
+                        setIsNewDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300"
+                    >
+                      <FolderPlus className="w-4 h-4 text-neutral-500" />
+                      <span>新建文件夹</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newWs = createEmptyWorkspace(`新项目_${workspaces.length + 1}`);
+                        onSaveWorkspace(newWs);
+                        onSelectWorkspace(newWs.id);
+                        setIsNewDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300"
+                    >
+                      <Layers className="w-4 h-4 text-indigo-500" />
+                      <span>新建空白工作区</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-0.5">
-                <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
-                  项目文件 ({Object.keys(currentWorkspace?.files || {}).length})
-                </span>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCreateTargetParent('');
-                      setCreateType('file');
-                      setNewPathInput('');
-                    }}
-                    className="p-1 rounded text-neutral-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-neutral-200/60 dark:hover:bg-neutral-800"
-                    title="新建文件"
-                  >
-                    <FilePlus className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCreateTargetParent('');
-                      setCreateType('folder');
-                      setNewPathInput('');
-                    }}
-                    className="p-1 rounded text-neutral-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-neutral-200/60 dark:hover:bg-neutral-800"
-                    title="新建文件夹"
-                  >
-                    <FolderPlus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* File Tree List */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-              {fileTree.length === 0 ? (
-                <div className="p-4 text-center text-xs text-neutral-400">
-                  {searchQuery ? '未找到匹配的文件' : '当前工作区为空，请在上方导入或新建文件'}
-                </div>
-              ) : (
-                fileTree.map(node => renderTreeNode(node))
-              )}
-            </div>
-
-            {/* Mobile Bottom Quick Actions */}
-            <div className="p-2 border-t border-neutral-200 dark:border-neutral-800 flex sm:hidden items-center justify-around text-xs bg-white dark:bg-neutral-900">
+              {/* Download ZIP button */}
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center gap-1 text-neutral-600 dark:text-neutral-400 p-1"
+                onClick={handleDownloadZip}
+                className="p-2 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 transition cursor-pointer shrink-0"
+                title="打包下载整工作区 ZIP"
               >
-                <Upload className="w-3.5 h-3.5" />
-                <span className="text-[10px]">上传文件</span>
+                <Download className="w-4 h-4" />
               </button>
+
+              {/* Close Button */}
               <button
                 type="button"
-                onClick={() => handleDownloadZip()}
-                className="flex flex-col items-center gap-1 text-emerald-600 dark:text-emerald-400 p-1"
+                onClick={onClose}
+                className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer shrink-0"
+                title="关闭工作区"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span className="text-[10px]">下载 ZIP</span>
+                <X className="w-5 h-5" />
               </button>
-              {modifiedFilesList.length > 0 && (
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="px-6 py-2.5 border-b border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 shrink-0">
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 text-neutral-400 absolute left-3 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜索工作区文件..."
+                className="w-full pl-9 pr-8 py-2 bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200/80 dark:border-neutral-700/80 rounded-xl text-xs text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+              />
+              {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => setIsDiffModalOpen(true)}
-                  className="flex flex-col items-center gap-1 text-amber-600 dark:text-amber-400 p-1"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 cursor-pointer"
                 >
-                  <FileCheck className="w-3.5 h-3.5" />
-                  <span className="text-[10px]">Diff ({modifiedFilesList.length})</span>
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
           </div>
 
-          {/* Draggable Divider (Desktop Only) */}
-          <div
-            onMouseDown={handleMouseDownResize}
-            className="hidden sm:block w-1 hover:w-1.5 bg-neutral-200 hover:bg-indigo-400 dark:bg-neutral-800 dark:hover:bg-indigo-600 cursor-col-resize select-none transition-all z-10"
-            title="拖动调整文件树宽度"
-          />
+          {/* Category Header "名称" */}
+          <div className="px-6 pt-3 pb-1.5 flex items-center justify-between text-xs font-semibold text-neutral-400 dark:text-neutral-500 select-none">
+            <span>名称</span>
+            <span>共 {fileCount} 个文件</span>
+          </div>
 
-          {/* Right Panel: Code Viewer & Editor (Shown on desktop or when mobileView === 'editor') */}
-          <div className={`flex-1 flex flex-col overflow-hidden bg-neutral-950 text-neutral-100 ${
-            mobileView === 'editor' ? 'w-full sm:w-auto flex' : 'hidden sm:flex'
-          }`}>
-            {activeFile ? (
-              <>
-                {/* Editor Header Bar */}
-                <div className="px-4 py-2 border-b border-neutral-800 bg-neutral-900/90 flex items-center justify-between text-xs shrink-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-mono text-neutral-200 font-semibold truncate">
-                      {activeFile.path}
-                    </span>
-                    {isCurrentFileModifiedUnsaved && (
-                      <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" title="有未保存的代码修改" />
-                    )}
-                    <span className="text-[10px] text-neutral-500 font-mono">
-                      ({Math.round((activeFile.size / 1024) * 10) / 10} KB)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {/* Trigger AI Diagnosis */}
-                    <button
-                      type="button"
-                      onClick={() => handleTriggerAiDiagnosis(activeFile.path)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-medium transition cursor-pointer shadow-xs"
-                      title="让 AI 对当前文件进行 10 步系统性静态代码诊断"
-                    >
-                      <Activity className="w-3 h-3" />
-                      <span>AI 诊断</span>
-                    </button>
-
-                    {/* Trigger AI Analysis */}
-                    <button
-                      type="button"
-                      onClick={() => handleTriggerAiAnalysis(activeFile.path)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-[11px] font-medium transition cursor-pointer"
-                      title="让 AI 分析本文件结构与逻辑"
-                    >
-                      <Bot className="w-3 h-3" />
-                      <span className="hidden sm:inline">AI 分析</span>
-                    </button>
-
-                    {/* Toggle Manual Edit Mode / Save */}
-                    {!isEditingFile ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFileEditText(activeFile.content);
-                          setIsEditingFile(true);
-                        }}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-[11px] font-medium transition cursor-pointer"
-                        title="手动编辑此代码文件"
-                      >
-                        <Edit2 className="w-3 h-3" />
-                        <span className="hidden sm:inline">编辑</span>
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFileEditText(activeFile.content);
-                            setIsEditingFile(false);
-                          }}
-                          className="px-2 py-1 rounded text-neutral-400 hover:text-neutral-200 text-[11px] transition"
-                        >
-                          取消
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSaveFileContent}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-medium transition cursor-pointer shadow-xs"
-                        >
-                          <Save className="w-3 h-3" />
-                          <span>保存</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Code Content Area */}
-                <div className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed select-text">
-                  {isEditingFile ? (
-                    <textarea
-                      value={fileEditText}
-                      onChange={(e) => setFileEditText(e.target.value)}
-                      className="w-full h-full bg-neutral-950 text-neutral-100 font-mono text-xs p-2 rounded border border-neutral-800 focus:outline-none focus:border-indigo-500 resize-none"
-                      spellCheck={false}
-                    />
-                  ) : (
-                    <pre className="text-neutral-300 whitespace-pre font-mono text-xs">
-                      {activeFile.content || '（文件内容为空）'}
-                    </pre>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-neutral-500 space-y-3">
-                <FileCode className="w-12 h-12 stroke-1 opacity-40" />
-                <p className="text-sm font-medium">未选择任何文件</p>
-                <p className="text-xs max-w-sm">请在左侧文件树中点击一个文件进行浏览、编辑或执行 AI 诊断。</p>
+          {/* File List Body */}
+          <div className="flex-1 overflow-y-auto px-4 py-1 space-y-1">
+            {fileTree.length === 0 ? (
+              <div className="py-20 text-center text-neutral-400 space-y-2">
+                <Folder className="w-10 h-10 mx-auto opacity-30" />
+                <p className="text-sm font-medium">当前工作区为空</p>
+                <p className="text-xs text-neutral-500">点击上方“上传”或“新建”即可添加代码与文档文件</p>
               </div>
+            ) : (
+              fileTree.map(node => renderTreeNode(node, 0))
             )}
           </div>
         </div>
       </div>
 
-      {/* Inline Create File / Folder Dialog */}
-      {createType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl p-5 shadow-2xl border border-neutral-200 dark:border-neutral-800 space-y-4 animate-in zoom-in-95">
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-              {createType === 'file' ? <FilePlus className="w-4 h-4 text-indigo-600" /> : <FolderPlus className="w-4 h-4 text-amber-600" />}
-              <span>{createType === 'file' ? '新建代码/文本文件' : '新建文件夹目录'}</span>
-            </h3>
+      {/* "添加到文件夹" Modal */}
+      {movingFile && (
+        <div 
+          className="fixed inset-0 z-60 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setMovingFile(null)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-2xl p-5 shadow-2xl border border-neutral-200 dark:border-neutral-800 space-y-4 animate-in zoom-in-95"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-neutral-900 dark:text-white font-semibold text-sm">
+                <FolderInput className="w-4 h-4 text-indigo-500" />
+                <span>添加到文件夹</span>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setMovingFile(null)}
+                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
             <p className="text-xs text-neutral-500">
-              {createTargetParent ? `目标父目录: ${createTargetParent}/` : '创建于工作区根目录'}
+              选择将文件 <code className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-1.5 py-0.5 rounded font-mono">{movingFile.path}</code> 移动到目标文件夹：
             </p>
-            <input
-              type="text"
-              placeholder={createType === 'file' ? '例如: src/types/api.ts' : '例如: components/ui'}
-              value={newPathInput}
-              onChange={(e) => setNewPathInput(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:border-indigo-500 text-neutral-900 dark:text-neutral-100 font-mono"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleConfirmCreate();
-                if (e.key === 'Escape') setCreateType(null);
-              }}
-            />
-            <div className="flex justify-end gap-2 pt-2">
+
+            <div className="space-y-2 max-h-48 overflow-y-auto p-1">
+              {/* Root folder option */}
+              <label 
+                onClick={() => {
+                  setSelectedTargetFolder('');
+                  setCustomNewFolder('');
+                }}
+                className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer text-xs transition ${
+                  selectedTargetFolder === '' && !customNewFolder
+                    ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-semibold'
+                    : 'border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
+                }`}
+              >
+                <Folder className="w-4 h-4 text-neutral-400" />
+                <span>工作区根目录 ( / )</span>
+              </label>
+
+              {/* Existing folders */}
+              {availableFolders.map(folder => (
+                <label 
+                  key={folder}
+                  onClick={() => {
+                    setSelectedTargetFolder(folder);
+                    setCustomNewFolder('');
+                  }}
+                  className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer text-xs transition ${
+                    selectedTargetFolder === folder && !customNewFolder
+                      ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-semibold'
+                      : 'border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
+                  }`}
+                >
+                  <Folder className="w-4 h-4 text-amber-500" />
+                  <span className="font-mono">{folder}/</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Custom New Folder input */}
+            <div className="space-y-1 pt-1">
+              <label className="text-[11px] font-medium text-neutral-500">或者输入新建文件夹名：</label>
+              <input
+                type="text"
+                value={customNewFolder}
+                onChange={(e) => {
+                  setCustomNewFolder(e.target.value);
+                  setSelectedTargetFolder('');
+                }}
+                placeholder="例如：chapters 或 docs"
+                className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
               <button
                 type="button"
-                onClick={() => setCreateType(null)}
-                className="px-3 py-1.5 rounded-lg text-xs text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                onClick={() => setMovingFile(null)}
+                className="px-3 py-1.5 rounded-xl text-xs text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 取消
               </button>
               <button
                 type="button"
-                onClick={handleConfirmCreate}
-                className="px-4 py-1.5 rounded-lg text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition cursor-pointer"
+                onClick={handleMoveFileToFolder}
+                className="px-4 py-1.5 rounded-xl text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition cursor-pointer"
+              >
+                确认移动
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Dialog Modal */}
+      {renamingItem && (
+        <div 
+          className="fixed inset-0 z-60 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setRenamingItem(null)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-2xl p-5 shadow-2xl border border-neutral-200 dark:border-neutral-800 space-y-4 animate-in zoom-in-95"
+          >
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
+              重命名 {renamingItem.isFolder ? '文件夹' : '文件'}
+            </h3>
+            <input
+              type="text"
+              value={renameInput}
+              onChange={(e) => setRenameInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveRename()}
+              autoFocus
+              className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-mono"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRenamingItem(null)}
+                className="px-3 py-1.5 rounded-xl text-xs text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveRename}
+                className="px-4 py-1.5 rounded-xl text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition cursor-pointer"
+              >
+                确定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create File / Folder Dialog */}
+      {createType && (
+        <div 
+          className="fixed inset-0 z-60 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setCreateType(null)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm bg-white dark:bg-neutral-900 rounded-2xl p-5 shadow-2xl border border-neutral-200 dark:border-neutral-800 space-y-4 animate-in zoom-in-95"
+          >
+            <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">
+              新建{createType === 'file' ? '文件' : '文件夹'}
+              {createTargetParent && <span className="text-xs text-neutral-400 font-normal"> (在 {createTargetParent}/ 下)</span>}
+            </h3>
+            <input
+              type="text"
+              value={newPathInput}
+              onChange={(e) => setNewPathInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateSubmit()}
+              placeholder={createType === 'file' ? '例如: chapter_01.txt 或 util.ts' : '例如: chapters 或 components'}
+              autoFocus
+              className="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl text-xs text-neutral-800 dark:text-neutral-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-mono"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCreateType(null)}
+                className="px-3 py-1.5 rounded-xl text-xs text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateSubmit}
+                className="px-4 py-1.5 rounded-xl text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition cursor-pointer"
               >
                 创建
               </button>
@@ -1313,49 +1190,10 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
         </div>
       )}
 
-      {/* Rename Dialog */}
-      {renamingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl p-5 shadow-2xl border border-neutral-200 dark:border-neutral-800 space-y-4 animate-in zoom-in-95">
-            <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-              <Edit2 className="w-4 h-4 text-indigo-600" />
-              <span>重命名 {renamingItem.isFolder ? '文件夹' : '文件'}</span>
-            </h3>
-            <input
-              type="text"
-              value={renameInput}
-              onChange={(e) => setRenameInput(e.target.value)}
-              className="w-full px-3 py-2 text-xs rounded-lg bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 focus:outline-none focus:border-indigo-500 text-neutral-900 dark:text-neutral-100 font-mono"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleConfirmRename();
-                if (e.key === 'Escape') setRenamingItem(null);
-              }}
-            />
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setRenamingItem(null)}
-                className="px-3 py-1.5 rounded-lg text-xs text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmRename}
-                className="px-4 py-1.5 rounded-lg text-xs bg-indigo-600 hover:bg-indigo-700 text-white font-medium transition cursor-pointer"
-              >
-                确认重命名
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* File Upload Conflict Resolution Modal */}
+      {/* File Upload Conflict Dialog */}
       {pendingUploadFiles && conflictFilesList.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-xl p-5 shadow-2xl border border-amber-200 dark:border-amber-800/60 space-y-4 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-70 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white dark:bg-neutral-900 rounded-2xl p-5 shadow-2xl border border-amber-200 dark:border-amber-800/60 space-y-4 animate-in zoom-in-95">
             <div className="flex items-center gap-2.5 text-amber-600 dark:text-amber-400">
               <AlertTriangle className="w-5 h-5 shrink-0" />
               <h3 className="text-sm font-semibold">检测到同名文件冲突</h3>
@@ -1363,7 +1201,7 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
             <p className="text-xs text-neutral-600 dark:text-neutral-300">
               当前工作区中已存在以下同名文件：
             </p>
-            <div className="max-h-32 overflow-y-auto p-2.5 rounded-lg bg-neutral-50 dark:bg-neutral-950 font-mono text-[11px] text-neutral-700 dark:text-neutral-300 divide-y divide-neutral-200 dark:divide-neutral-800">
+            <div className="max-h-32 overflow-y-auto p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-950 font-mono text-[11px] text-neutral-700 dark:text-neutral-300 divide-y divide-neutral-200 dark:divide-neutral-800">
               {conflictFilesList.map(p => (
                 <div key={p} className="py-1">{p}</div>
               ))}
@@ -1378,21 +1216,21 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                   setPendingUploadFiles(null);
                   setConflictFilesList([]);
                 }}
-                className="px-3 py-1.5 rounded-lg text-xs text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                className="px-3 py-1.5 rounded-xl text-xs text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
               >
                 取消上传
               </button>
               <button
                 type="button"
                 onClick={() => handleResolveConflict('rename')}
-                className="px-3 py-1.5 rounded-lg text-xs bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 font-medium transition cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-200 font-medium transition cursor-pointer"
               >
                 另存为副本 (_copy)
               </button>
               <button
                 type="button"
                 onClick={() => handleResolveConflict('overwrite')}
-                className="px-3.5 py-1.5 rounded-lg text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium transition cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium transition cursor-pointer"
               >
                 覆盖已有文件
               </button>
@@ -1400,19 +1238,6 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
           </div>
         </div>
       )}
-
-      {/* Diff Viewer Modal */}
-      <DiffViewerModal
-        isOpen={isDiffModalOpen}
-        onClose={() => setIsDiffModalOpen(false)}
-        workspace={currentWorkspace}
-        onDownloadZip={handleDownloadZip}
-        onDiagnoseDiff={(filePath) => {
-          onSendAiMessage?.(`请帮我系统诊断最近对 \`${filePath}\` 的修改是否引入了潜在问题或 Bug。`);
-          setIsDiffModalOpen(false);
-          onClose();
-        }}
-      />
     </>
   );
 };
