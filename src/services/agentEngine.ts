@@ -10,8 +10,10 @@ import {
   getWorkspaceDirectoryTree, 
   computeDiffBetweenFileSnapshots 
 } from './workspaceService';
-import { formatChatContextPrompt } from './chatContextService';
+import { formatChatContextPrompt, detectWorkspaceIntent, WorkspaceIntent } from './chatContextService';
 import { ChatContext } from '../types/workspace';
+
+export { detectWorkspaceIntent, type WorkspaceIntent };
 
 // AI Tool Calling Specification for Workspace operations (Strictly non-executing!)
 export const WORKSPACE_TOOLS_SPEC = [

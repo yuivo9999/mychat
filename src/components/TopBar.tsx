@@ -46,6 +46,7 @@ interface TopBarProps {
   onCopyAllChat: () => void;
   onOpenParameters?: () => void;
   isReasoningEnabled?: boolean;
+  projectName?: string;
   workspaceFilesCount?: number;
   workspaceName?: string;
   modifiedFilesCount?: number;
@@ -76,6 +77,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onCopyAllChat,
   onOpenParameters,
   isReasoningEnabled,
+  projectName,
   workspaceFilesCount = 0,
   workspaceName,
   modifiedFilesCount = 0,
@@ -203,6 +205,16 @@ export const TopBar: React.FC<TopBarProps> = ({
           >
             {currentConversation?.title || '新对话'}
           </span>
+
+          {projectName && (
+            <span 
+              className="hidden sm:inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium shrink-0"
+              title={`所属项目: ${projectName} (共享项目记忆)`}
+            >
+              <Folder className="w-3 h-3 text-amber-500" />
+              <span className="max-w-[100px] truncate">{projectName}</span>
+            </span>
+          )}
         </div>
       </div>
 

@@ -112,6 +112,22 @@ export interface ModelParameters {
   seed?: number; // 随机种子 (Seed)
 }
 
+export type ProjectMemoryMode = 'default' | 'isolated';
+
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  memoryMode: ProjectMemoryMode; // 'default': 访问外部聊天记忆，反之亦然; 'isolated': 仅限项目记忆
+  description?: string;
+  customInstructions?: string; // 自定义指令
+  sharedMemory?: {
+    summary?: string;
+    keyPoints?: string[];
+  };
+}
+
 export interface Conversation {
   id: string;
   title: string;
@@ -121,6 +137,8 @@ export interface Conversation {
   providerId: string;
   apiKeyId?: string;
   isFavorite?: boolean;
+  isPinned?: boolean; // 置顶聊天
+  projectId?: string; // 归档所属项目 ID（若已归档至某项目，存此 ID；未归档或已离档则为空）
   category?: string;
   systemPrompt?: string;
   parameters?: ModelParameters;

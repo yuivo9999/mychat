@@ -3,11 +3,12 @@ import {
   ApiKeyConfig, 
   ModelItem, 
   ProviderDefinition, 
-  UserSettings 
+  UserSettings,
+  Project
 } from '../types';
 
 const DB_NAME = 'OmniChatLocalDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
   {
@@ -493,10 +494,112 @@ function openDB(): Promise<IDBDatabase> {
         const store = db.createObjectStore('workspaces', { keyPath: 'id' });
         store.createIndex('updatedAt', 'updatedAt', { unique: false });
       }
+      if (!db.objectStoreNames.contains('projects')) {
+        const store = db.createObjectStore('projects', { keyPath: 'id' });
+        store.createIndex('updatedAt', 'updatedAt', { unique: false });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
+}
+
+// Project Operations (项目分类与共享记忆管理)
+export async function getProjects(): Promise<Project[]> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      try {
+        const request = db.transaction('projects', 'readonly').objectStore('projects').getAll();
+        request.onsuccess = () => {
+          const list = (request.result as Project[]) || [];
+          list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          // Keep localStorage in sync as backup
+          try { localStorage.setItem('omnichat_projects_backup', JSON.stringify(list)); } catch {}
+          resolve(list);
+        };
+        request.onerror = () => {
+          // Fallback to localStorage
+          try {
+            const raw = localStorage.getItem('omnichat_projects_backup');
+            resolve(raw ? JSON.parse(raw) : []);
+          } catch {
+            resolve([]);
+          }
+        };
+      } catch {
+        try {
+          const raw = localStorage.getItem('omnichat_projects_backup');
+          resolve(raw ? JSON.parse(raw) : []);
+        } catch {
+          resolve([]);
+        }
+      }
+    });
+  } catch {
+    try {
+      const raw = localStorage.getItem('omnichat_projects_backup');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+}
+
+export async function getProject(id: string): Promise<Project | null> {
+  const all = await getProjects();
+  return all.find(p => p.id === id) || null;
+}
+
+export async function saveProject(project: Project): Promise<void> {
+  try {
+    const db = await openDB();
+    await new Promise<void>((resolve, reject) => {
+      try {
+        const request = db.transaction('projects', 'readwrite').objectStore('projects').put(project);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  } catch (e) {
+    console.warn('IndexedDB saveProject fallback to localStorage:', e);
+  }
+  // Sync localStorage backup
+  try {
+    const raw = localStorage.getItem('omnichat_projects_backup');
+    const list: Project[] = raw ? JSON.parse(raw) : [];
+    const idx = list.findIndex(p => p.id === project.id);
+    if (idx >= 0) list[idx] = project;
+    else list.unshift(project);
+    localStorage.setItem('omnichat_projects_backup', JSON.stringify(list));
+  } catch {}
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  try {
+    const db = await openDB();
+    await new Promise<void>((resolve, reject) => {
+      try {
+        const request = db.transaction('projects', 'readwrite').objectStore('projects').delete(id);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      } catch (err) {
+        reject(err);
+      }
+    });
+  } catch (e) {
+    console.warn('IndexedDB deleteProject fallback to localStorage:', e);
+  }
+  try {
+    const raw = localStorage.getItem('omnichat_projects_backup');
+    if (raw) {
+      const list: Project[] = JSON.parse(raw);
+      const filtered = list.filter(p => p.id !== id);
+      localStorage.setItem('omnichat_projects_backup', JSON.stringify(filtered));
+    }
+  } catch {}
 }
 
 // Workspace Operations

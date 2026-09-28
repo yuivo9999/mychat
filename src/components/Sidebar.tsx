@@ -3,20 +3,26 @@ import {
   Plus, 
   Search, 
   Settings, 
-  Star, 
   MessageSquare, 
   ChevronLeft, 
+  ChevronDown,
   ChevronRight, 
   Trash2, 
   Edit2, 
-  Share2, 
   MoreVertical, 
+  MoreHorizontal,
   CheckSquare, 
   ShieldCheck,
-  FolderOpen,
-  Server
+  Folder,
+  FolderPlus,
+  FolderMinus,
+  Archive,
+  Pin,
+  SquarePen,
+  Server,
+  Sparkles
 } from 'lucide-react';
-import { Conversation, ModelItem } from '../types';
+import { Conversation, ModelItem, Project } from '../types';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -26,7 +32,7 @@ interface SidebarProps {
   onSelectConversation: (id: string) => void;
   onNewChat: () => void;
   onDeleteConversation: (id: string) => void;
-  onToggleFavorite: (id: string) => void;
+  onTogglePin?: (id: string) => void;
   onRenameConversation: (id: string, newTitle: string) => void;
   onExportConversation: (conv: Conversation) => void;
   onOpenSettings: () => void;
@@ -35,6 +41,15 @@ interface SidebarProps {
   onOpenBatchManage: () => void;
   models: ModelItem[];
   isMobile: boolean;
+
+  // Projects management
+  projects: Project[];
+  onCreateProjectClick: () => void;
+  onEditProjectClick?: (project: Project) => void;
+  onDeleteProject?: (projectId: string) => void;
+  onNewChatInProject?: (projectId: string) => void;
+  onArchiveConversation: (conv: Conversation) => void;
+  onUnarchiveConversation: (convId: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -45,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectConversation,
   onNewChat,
   onDeleteConversation,
-  onToggleFavorite,
+  onTogglePin,
   onRenameConversation,
   onExportConversation,
   onOpenSettings,
@@ -54,26 +69,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenBatchManage,
   models,
   isMobile,
+  projects,
+  onCreateProjectClick,
+  onEditProjectClick,
+  onDeleteProject,
+  onNewChatInProject,
+  onArchiveConversation,
+  onUnarchiveConversation,
 }) => {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [projectMenuOpenId, setProjectMenuOpenId] = useState<string | null>(null);
+  const [projectSectionMenuOpen, setProjectSectionMenuOpen] = useState(false);
+  const [chatSectionMenuOpen, setChatSectionMenuOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(new Set(projects.map(p => p.id)));
 
-  // Group conversations by time
-  const now = Date.now();
-  const oneDay = 24 * 60 * 60 * 1000;
-  const todayStart = new Date().setHours(0, 0, 0, 0);
-  const yesterdayStart = todayStart - oneDay;
-  const last7DaysStart = todayStart - 7 * oneDay;
-
-  const favorites = conversations.filter(c => c.isFavorite);
-  const nonFavorites = conversations.filter(c => !c.isFavorite);
-
-  const groups = {
-    today: nonFavorites.filter(c => c.updatedAt >= todayStart),
-    yesterday: nonFavorites.filter(c => c.updatedAt >= yesterdayStart && c.updatedAt < todayStart),
-    last7Days: nonFavorites.filter(c => c.updatedAt >= last7DaysStart && c.updatedAt < yesterdayStart),
-    earlier: nonFavorites.filter(c => c.updatedAt < last7DaysStart),
+  const toggleProjectExpand = (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedProjectIds(prev => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
   };
 
   const startRename = (conv: Conversation, e: React.MouseEvent) => {
@@ -95,7 +114,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return m ? m.name : modelId;
   };
 
-  const renderConversationItem = (conv: Conversation) => {
+  // Split conversations into normal (unarchived) and project-bound
+  const normalConversations = conversations.filter(c => !c.projectId);
+  
+  // Group normal conversations by pinned vs time
+  const now = Date.now();
+  const oneDay = 24 * 60 * 60 * 1000;
+  const todayStart = new Date().setHours(0, 0, 0, 0);
+  const yesterdayStart = todayStart - oneDay;
+  const last7DaysStart = todayStart - 7 * oneDay;
+
+  const pinnedNormal = normalConversations.filter(c => c.isPinned);
+  const unpinnedNormal = normalConversations.filter(c => !c.isPinned);
+
+  const groups = {
+    today: unpinnedNormal.filter(c => c.updatedAt >= todayStart),
+    yesterday: unpinnedNormal.filter(c => c.updatedAt >= yesterdayStart && c.updatedAt < todayStart),
+    last7Days: unpinnedNormal.filter(c => c.updatedAt >= last7DaysStart && c.updatedAt < yesterdayStart),
+    earlier: unpinnedNormal.filter(c => c.updatedAt < last7DaysStart),
+  };
+
+  // Render a single chat item with the 3-dots button and context menu
+  const renderConversationItem = (conv: Conversation, isInProject = false) => {
     const isActive = conv.id === activeConversationId;
     const isEditing = editingId === conv.id;
     const isMenuOpen = menuOpenId === conv.id;
@@ -106,14 +146,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         onClick={() => {
           if (!isEditing) onSelectConversation(conv.id);
         }}
-        className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all text-sm ${
+        className={`group relative flex items-center justify-between px-2.5 py-2 rounded-xl cursor-pointer transition-all text-sm ${
           isActive
             ? 'bg-neutral-200/80 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-medium shadow-xs'
-            : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'
+            : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100/80 dark:hover:bg-neutral-800/60 hover:text-neutral-900 dark:hover:text-neutral-200'
         }`}
       >
-        <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-1">
-          <MessageSquare className={`w-4 h-4 shrink-0 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-400'}`} />
+        <div className="flex items-center gap-2 min-w-0 flex-1 mr-1">
+          {conv.isPinned ? (
+            <Pin className="w-3.5 h-3.5 shrink-0 text-amber-500 fill-current rotate-45" />
+          ) : (
+            <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-neutral-400'}`} />
+          )}
+
           {isEditing ? (
             <input
               type="text"
@@ -133,99 +178,112 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="truncate text-[13px] leading-tight" title={conv.title}>
                 {conv.title || '新对话'}
               </span>
-              <span className="text-[11px] text-neutral-400 dark:text-neutral-500 truncate font-mono mt-0.5">
+              <span className="text-[10px] text-neutral-400 dark:text-neutral-500 truncate font-mono mt-0.5">
                 {getModelName(conv.modelId)}
               </span>
             </div>
           )}
         </div>
 
-        {/* Action icons */}
+        {/* Vertical 3-dots button and context menu matching Image 3 */}
         {!isEditing && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="relative shrink-0 flex items-center">
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                onToggleFavorite(conv.id);
+                setMenuOpenId(isMenuOpen ? null : conv.id);
+                setProjectMenuOpenId(null);
               }}
-              className={`p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition ${
-                conv.isFavorite ? 'text-amber-500 opacity-100' : 'text-neutral-400'
+              className={`p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition ${
+                isMenuOpen ? 'opacity-100 bg-neutral-200/80 dark:bg-neutral-700/80 text-neutral-800 dark:text-neutral-100' : 'opacity-60 group-hover:opacity-100'
               }`}
-              title={conv.isFavorite ? '取消收藏' : '收藏'}
+              title="操作菜单"
             >
-              <Star className="w-3.5 h-3.5 fill-current" />
+              <MoreVertical className="w-3.5 h-3.5" />
             </button>
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.confirm(`确定要删除对话窗口「${conv.title || '新对话'}」及其所有记录吗？`)) {
-                  onDeleteConversation(conv.id);
-                }
-              }}
-              className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-950/60 text-neutral-400 hover:text-red-600 dark:hover:text-red-400 transition"
-              title="删除此聊天窗口"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            {isMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpenId(null);
+                  }}
+                />
+                <div
+                  className="absolute right-0 top-6 w-36 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-800 py-1.5 z-40 text-xs select-none animate-in fade-in zoom-in-95 duration-150"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* 1. 重命名 */}
+                  <button
+                    onClick={(e) => startRename(conv, e)}
+                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition"
+                  >
+                    <Edit2 className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
+                    <span>重命名</span>
+                  </button>
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpenId(isMenuOpen ? null : conv.id);
-                }}
-                className="p-1 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
-                title="更多操作"
-              >
-                <MoreVertical className="w-3.5 h-3.5" />
-              </button>
+                  <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
 
-              {isMenuOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-30"
-                    onClick={(e) => {
-                      e.stopPropagation();
+                  {/* 2. 置顶聊天 / 取消置顶 */}
+                  <button
+                    onClick={() => {
+                      onTogglePin?.(conv.id);
                       setMenuOpenId(null);
                     }}
-                  />
-                  <div
-                    className="absolute right-0 top-6 w-36 bg-white dark:bg-neutral-900 rounded-xl shadow-lg border border-neutral-200 dark:border-neutral-800 py-1.5 z-40 text-xs"
-                    onClick={(e) => e.stopPropagation()}
+                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition"
                   >
-                    <button
-                      onClick={(e) => startRename(conv, e)}
-                      className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" /> 重命名
-                    </button>
+                    <Pin className={`w-3.5 h-3.5 ${conv.isPinned ? 'text-amber-500 fill-current' : 'text-neutral-600 dark:text-neutral-400'}`} />
+                    <span>{conv.isPinned ? '取消置顶' : '置顶聊天'}</span>
+                  </button>
+
+                  {/* 3. 归档 (非项目内) / 离档 (项目内) */}
+                  {isInProject || conv.projectId ? (
                     <button
                       onClick={() => {
-                        onExportConversation(conv);
+                        onUnarchiveConversation(conv.id);
                         setMenuOpenId(null);
                       }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                      className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition"
+                      title="移出此项目并恢复为普通聊天"
                     >
-                      <Share2 className="w-3.5 h-3.5" /> 导出记录
+                      <FolderMinus className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
+                      <span>离档</span>
                     </button>
-                    <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+                  ) : (
                     <button
                       onClick={() => {
+                        onArchiveConversation(conv);
+                        setMenuOpenId(null);
+                      }}
+                      className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition"
+                      title="将此聊天移入指定项目中集中管理"
+                    >
+                      <Archive className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
+                      <span>归档</span>
+                    </button>
+                  )}
+
+                  <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+
+                  {/* 4. 删除 */}
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`确定要删除对话「${conv.title || '新对话'}」及其记录吗？`)) {
                         onDeleteConversation(conv.id);
-                        setMenuOpenId(null);
-                      }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center gap-2"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" /> 删除对话
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+                      }
+                      setMenuOpenId(null);
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center gap-2.5 font-medium transition"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>删除</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -248,7 +306,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }`}
       >
         {/* Top Header */}
-        <div className="p-3.5 flex items-center justify-between border-b border-neutral-200/70 dark:border-neutral-800/70">
+        <div className="p-3 flex items-center justify-between border-b border-neutral-200/70 dark:border-neutral-800/70">
           <button
             type="button"
             onClick={onNewChat}
@@ -269,14 +327,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Quick Search & Tools Bar */}
-        <div className="px-3 pt-2.5 pb-1 flex items-center gap-1.5">
+        <div className="px-3 pt-2 pb-1 flex items-center gap-1.5">
           <button
             type="button"
             onClick={onOpenSearch}
-            className="flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-neutral-200/50 dark:bg-neutral-800/50 hover:bg-neutral-200/80 dark:hover:bg-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 transition"
+            className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-neutral-200/50 dark:bg-neutral-800/50 hover:bg-neutral-200/80 dark:hover:bg-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 transition"
           >
             <Search className="w-3.5 h-3.5" />
-            <span>搜索聊天记录...</span>
+            <span>搜索聊天...</span>
             <kbd className="ml-auto text-[10px] font-mono opacity-60 bg-neutral-300/40 dark:bg-neutral-700/40 px-1 py-0.5 rounded">⌘K</kbd>
           </button>
 
@@ -290,78 +348,326 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Conversation List Scrollable */}
-        <div className="flex-1 overflow-y-auto px-2 py-2 space-y-4">
-          {conversations.length === 0 ? (
-            <div className="py-12 px-4 text-center">
-              <MessageSquare className="w-8 h-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2 opacity-50" />
-              <p className="text-xs text-neutral-400">暂无历史记录</p>
-              <p className="text-[11px] text-neutral-400/80 mt-1">点击上方“+ 新聊天”开启对话</p>
+        {/* Main Scrollable Categories: 项目 & 聊天 (Matching Image 2) */}
+        <div className="flex-1 overflow-y-auto px-2 py-1 space-y-4">
+          
+          {/* ========================================================
+              CATEGORY 1: 项目 (Projects Section)
+              ======================================================== */}
+          <div className="space-y-1">
+            {/* Header: 项目 with + and ... */}
+            <div className="flex items-center justify-between px-2 py-1 text-neutral-500 dark:text-neutral-400">
+              <span className="text-sm font-semibold tracking-wide text-neutral-700 dark:text-neutral-200">
+                项目
+              </span>
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={onCreateProjectClick}
+                  className="p-1 hover:text-neutral-900 dark:hover:text-white rounded-md hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition"
+                  title="创建新项目"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setProjectSectionMenuOpen(!projectSectionMenuOpen)}
+                    className="p-1 hover:text-neutral-900 dark:hover:text-white rounded-md hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition"
+                    title="项目选项"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+
+                  {projectSectionMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setProjectSectionMenuOpen(false)} />
+                      <div className="absolute right-0 top-6 w-36 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1 z-40 text-xs">
+                        <button
+                          onClick={() => {
+                            setProjectSectionMenuOpen(false);
+                            onCreateProjectClick();
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                        >
+                          <FolderPlus className="w-3.5 h-3.5" /> 创建新项目
+                        </button>
+                        {projects.length > 0 && (
+                          <button
+                            onClick={() => {
+                              setProjectSectionMenuOpen(false);
+                              // Expand all projects
+                              setExpandedProjectIds(new Set(projects.map(p => p.id)));
+                            }}
+                            className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                          >
+                            展开所有项目
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
-          ) : (
-            <>
-              {/* Favorites Section */}
-              {favorites.length > 0 && (
-                <div>
-                  <div className="px-2 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1 uppercase tracking-wider">
-                    <Star className="w-3 h-3 fill-current" />
-                    <span>收藏 ({favorites.length})</span>
-                  </div>
-                  <div className="space-y-0.5 mt-1">
-                    {favorites.map(renderConversationItem)}
-                  </div>
-                </div>
-              )}
 
-              {/* Today */}
-              {groups.today.length > 0 && (
-                <div>
-                  <div className="px-2 py-1 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                    今天
-                  </div>
-                  <div className="space-y-0.5 mt-1">
-                    {groups.today.map(renderConversationItem)}
-                  </div>
-                </div>
-              )}
+            {/* Content: 没有项目 vs List of Projects */}
+            {projects.length === 0 ? (
+              <div className="px-3 py-1 text-xs text-neutral-400 dark:text-neutral-500 font-normal">
+                没有项目
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {projects.map((project) => {
+                  const projectChats = conversations.filter(c => c.projectId === project.id);
+                  const isExpanded = expandedProjectIds.has(project.id);
+                  const isProjectMenuOpen = projectMenuOpenId === project.id;
 
-              {/* Yesterday */}
-              {groups.yesterday.length > 0 && (
-                <div>
-                  <div className="px-2 py-1 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                    昨天
-                  </div>
-                  <div className="space-y-0.5 mt-1">
-                    {groups.yesterday.map(renderConversationItem)}
-                  </div>
-                </div>
-              )}
+                  // Sort project chats: pinned first, then by updatedAt
+                  const sortedProjectChats = [...projectChats].sort((a, b) => {
+                    if (a.isPinned && !b.isPinned) return -1;
+                    if (!a.isPinned && b.isPinned) return 1;
+                    return b.updatedAt - a.updatedAt;
+                  });
 
-              {/* Last 7 Days */}
-              {groups.last7Days.length > 0 && (
-                <div>
-                  <div className="px-2 py-1 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                    最近 7 天
-                  </div>
-                  <div className="space-y-0.5 mt-1">
-                    {groups.last7Days.map(renderConversationItem)}
-                  </div>
-                </div>
-              )}
+                  return (
+                    <div key={project.id} className="rounded-xl overflow-hidden bg-neutral-100/40 dark:bg-neutral-800/30 border border-neutral-200/50 dark:border-neutral-800/50">
+                      {/* Project Header Row */}
+                      <div
+                        onClick={(e) => toggleProjectExpand(project.id, e)}
+                        className="group flex items-center justify-between px-2.5 py-2 cursor-pointer hover:bg-neutral-200/50 dark:hover:bg-neutral-800/60 transition text-xs font-medium text-neutral-800 dark:text-neutral-200"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200">
+                            {isExpanded ? (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            )}
+                          </span>
+                          <Folder className="w-4 h-4 text-amber-500/90 shrink-0" />
+                          <span className="truncate text-sm font-medium" title={project.name}>
+                            {project.name}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-neutral-200/80 dark:bg-neutral-700/80 text-neutral-500 dark:text-neutral-400 shrink-0">
+                            {projectChats.length}
+                          </span>
+                        </div>
 
-              {/* Earlier */}
-              {groups.earlier.length > 0 && (
-                <div>
-                  <div className="px-2 py-1 text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
-                    更早之前
-                  </div>
-                  <div className="space-y-0.5 mt-1">
-                    {groups.earlier.map(renderConversationItem)}
-                  </div>
+                        {/* Project actions */}
+                        <div className="flex items-center gap-0.5 opacity-60 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => onNewChatInProject?.(project.id)}
+                            className="p-1 hover:text-neutral-900 dark:hover:text-white rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition"
+                            title="在此项目中新建聊天"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProjectMenuOpenId(isProjectMenuOpen ? null : project.id);
+                                setMenuOpenId(null);
+                              }}
+                              className="p-1 hover:text-neutral-900 dark:hover:text-white rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition"
+                              title="项目菜单"
+                            >
+                              <MoreHorizontal className="w-3.5 h-3.5" />
+                            </button>
+
+                            {isProjectMenuOpen && (
+                              <>
+                                <div className="fixed inset-0 z-30" onClick={() => setProjectMenuOpenId(null)} />
+                                <div className="absolute right-0 top-6 w-36 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1.5 z-40 text-xs">
+                                  <button
+                                    onClick={() => {
+                                      setProjectMenuOpenId(null);
+                                      onNewChatInProject?.(project.id);
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" /> 新建聊天
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setProjectMenuOpenId(null);
+                                      onEditProjectClick?.(project);
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" /> 编辑项目
+                                  </button>
+                                  <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+                                  <button
+                                    onClick={() => {
+                                      setProjectMenuOpenId(null);
+                                      if (confirm(`确定要删除项目「${project.name}」吗？项目内的聊天将自动恢复为普通聊天。`)) {
+                                        onDeleteProject?.(project.id);
+                                      }
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center gap-2"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" /> 删除项目
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Chats Inside this Project */}
+                      {isExpanded && (
+                        <div className="pl-3 pr-1 py-1 space-y-0.5 border-t border-neutral-200/40 dark:border-neutral-800/40 bg-white/40 dark:bg-neutral-900/30">
+                          {sortedProjectChats.length === 0 ? (
+                            <div className="py-2 px-3 text-[11px] text-neutral-400 dark:text-neutral-500 italic">
+                              暂无聊天，点击 + 新建或归档聊天至此
+                            </div>
+                          ) : (
+                            sortedProjectChats.map(c => renderConversationItem(c, true))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ========================================================
+              CATEGORY 2: 聊天 (Chats Section)
+              ======================================================== */}
+          <div className="space-y-1 pt-1">
+            {/* Header: 聊天 with edit icon and ... */}
+            <div className="flex items-center justify-between px-2 py-1 text-neutral-500 dark:text-neutral-400">
+              <span className="text-sm font-semibold tracking-wide text-neutral-700 dark:text-neutral-200">
+                聊天
+              </span>
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={onNewChat}
+                  className="p-1 hover:text-neutral-900 dark:hover:text-white rounded-md hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition"
+                  title="新建普通聊天"
+                >
+                  <SquarePen className="w-4 h-4" />
+                </button>
+
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setChatSectionMenuOpen(!chatSectionMenuOpen)}
+                    className="p-1 hover:text-neutral-900 dark:hover:text-white rounded-md hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition"
+                    title="聊天选项"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+
+                  {chatSectionMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-30" onClick={() => setChatSectionMenuOpen(false)} />
+                      <div className="absolute right-0 top-6 w-36 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1 z-40 text-xs">
+                        <button
+                          onClick={() => {
+                            setChatSectionMenuOpen(false);
+                            onNewChat();
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                        >
+                          <SquarePen className="w-3.5 h-3.5" /> 新建聊天
+                        </button>
+                        <button
+                          onClick={() => {
+                            setChatSectionMenuOpen(false);
+                            onOpenBatchManage();
+                          }}
+                          className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                        >
+                          <CheckSquare className="w-3.5 h-3.5" /> 批量管理
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            </div>
+
+            {/* List of normal chats */}
+            {normalConversations.length === 0 ? (
+              <div className="py-6 px-4 text-center">
+                <p className="text-xs text-neutral-400">暂无独立聊天记录</p>
+                <p className="text-[11px] text-neutral-400/80 mt-1">点击右上角图标开启对话</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Pinned Chats */}
+                {pinnedNormal.length > 0 && (
+                  <div>
+                    <div className="px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1 uppercase tracking-wider">
+                      <Pin className="w-3 h-3 fill-current rotate-45" />
+                      <span>置顶聊天 ({pinnedNormal.length})</span>
+                    </div>
+                    <div className="space-y-0.5 mt-1">
+                      {pinnedNormal.map(c => renderConversationItem(c, false))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Today */}
+                {groups.today.length > 0 && (
+                  <div>
+                    <div className="px-2 py-0.5 text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                      今天
+                    </div>
+                    <div className="space-y-0.5 mt-0.5">
+                      {groups.today.map(c => renderConversationItem(c, false))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Yesterday */}
+                {groups.yesterday.length > 0 && (
+                  <div>
+                    <div className="px-2 py-0.5 text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                      昨天
+                    </div>
+                    <div className="space-y-0.5 mt-0.5">
+                      {groups.yesterday.map(c => renderConversationItem(c, false))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Last 7 Days */}
+                {groups.last7Days.length > 0 && (
+                  <div>
+                    <div className="px-2 py-0.5 text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                      最近 7 天
+                    </div>
+                    <div className="space-y-0.5 mt-0.5">
+                      {groups.last7Days.map(c => renderConversationItem(c, false))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Earlier */}
+                {groups.earlier.length > 0 && (
+                  <div>
+                    <div className="px-2 py-0.5 text-[10px] font-semibold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider">
+                      更早之前
+                    </div>
+                    <div className="space-y-0.5 mt-0.5">
+                      {groups.earlier.map(c => renderConversationItem(c, false))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Sidebar Footer */}
@@ -369,12 +675,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center justify-between text-[11px] text-neutral-400 px-1 py-0.5">
             <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>数据本地运行</span>
+              <span>数据本地存储</span>
             </span>
             <span className="text-[10px] text-neutral-400/80">IndexedDB</span>
           </div>
 
-          {/* Dedicated AI Model Configuration Button */}
+          {/* AI Model Configuration Button */}
           {onOpenModelConfig && (
             <button
               type="button"

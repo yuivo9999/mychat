@@ -1,5 +1,11 @@
 import { ChatContext, Message, ToolCallExecution, DiagnosisContext } from '../types';
 
+export interface WorkspaceIntent {
+  shouldAccessWorkspace: boolean;
+  type?: 'read' | 'search' | 'inspect' | 'modify';
+  targetHint?: string;
+}
+
 // Initialize a clean, independent ChatContext for a single chat
 export function createDefaultChatContext(): ChatContext {
   return {
@@ -7,6 +13,120 @@ export function createDefaultChatContext(): ChatContext {
     importantDecisions: [],
     recentChanges: [],
     lastModifiedFiles: [],
+  };
+}
+
+// Detect whether the user's message explicitly requests workspace access (Strictly Conservative)
+export function detectWorkspaceIntent(
+  userText: string,
+  chatContext?: ChatContext
+): WorkspaceIntent {
+  const text = (userText || '').trim();
+  const lower = text.toLowerCase();
+
+  if (!text) {
+    return { shouldAccessWorkspace: false };
+  }
+
+  // 1. General chat and greetings explicitly bypass workspace context
+  const isGeneralGreetingOrChat =
+    /^(你好|您好|hi|hello|hey|在吗|早安|晚安|嗨|早上好|晚上好)([!！。~～\s]|$)/i.test(text) ||
+    /^(聊一下|谈谈|讨论一下|讲个|写篇|作首|写一首|翻译|总结下这篇|创作|讲故事)/.test(text);
+
+  if (isGeneralGreetingOrChat && !text.includes('工作区') && !lower.includes('workspace') && !text.includes('项目文件') && !text.includes('项目代码')) {
+    return { shouldAccessWorkspace: false };
+  }
+
+  // 2. Explicit workspace / project file references
+  const hasExplicitWorkspaceKeyword =
+    text.includes('工作区') ||
+    lower.includes('workspace') ||
+    text.includes('项目文件') ||
+    text.includes('项目目录') ||
+    text.includes('工程目录') ||
+    text.includes('项目代码') ||
+    text.includes('工程代码') ||
+    text.includes('当前项目') ||
+    text.includes('整个项目');
+
+  // 3. Explicit action verbs targeting workspace
+  // A. Modify / Repair in workspace
+  const modifyKeywords = [
+    '修改工作区', '修复工作区', '改写工作区', '更新工作区', '重构工作区',
+    '在工作区创建', '在工作区新建', '在工作区删除', '从工作区删除', '重命名工作区',
+    '把工作区里的', '把工作区的', '修改项目里的', '修复项目里的', '改一下工作区',
+    '修复它', '应用修复', '按照建议修改', '开始修复', '应用刚才的建议'
+  ];
+  if (modifyKeywords.some(k => text.includes(k))) {
+    return {
+      shouldAccessWorkspace: true,
+      type: 'modify',
+      targetHint: text.slice(0, 100),
+    };
+  }
+
+  // B. Search in workspace
+  const searchKeywords = [
+    '搜索工作区', '在工作区查找', '在工作区搜索', '在工作区搜', '工作区里找', '工作区里搜',
+    '帮我在工作区找', '在项目里面搜索', '在项目中搜索', '搜索项目代码', '查找项目文件',
+    '搜索项目中的', '在工程中搜索', 'search workspace', 'search_code'
+  ];
+  if (searchKeywords.some(k => text.includes(k))) {
+    return {
+      shouldAccessWorkspace: true,
+      type: 'search',
+      targetHint: text.slice(0, 100),
+    };
+  }
+
+  // C. Read / Inspect / Diagnose workspace
+  const readInspectKeywords = [
+    '查看工作区', '看看工作区', '读取工作区', '打开工作区', '浏览工作区',
+    '工作区有什么', '工作区里面有什么', '工作区目录', '工作区文件', '工作区结构', '工作区代码',
+    '检查工作区', '诊断工作区', '审查工作区', '排查工作区', '分析工作区',
+    '检查项目里的', '审查项目里的', '诊断项目里的', '读取项目中的', '查看项目文件',
+    'list_files', 'get_workspace_tree', 'read_file', 'get_workspace_diff', 'get_file_diff'
+  ];
+  if (readInspectKeywords.some(k => text.includes(k))) {
+    const isInspect = text.includes('检查') || text.includes('诊断') || text.includes('审查') || text.includes('排查') || text.includes('分析');
+    return {
+      shouldAccessWorkspace: true,
+      type: isInspect ? 'inspect' : 'read',
+      targetHint: text.slice(0, 100),
+    };
+  }
+
+  // D. If explicit workspace keyword is present alongside action verbs
+  if (hasExplicitWorkspaceKeyword) {
+    if (text.includes('改') || text.includes('修') || text.includes('写') || text.includes('创') || text.includes('删') || text.includes('换')) {
+      return { shouldAccessWorkspace: true, type: 'modify', targetHint: text.slice(0, 100) };
+    }
+    if (text.includes('搜') || text.includes('找') || text.includes('查') || text.includes('检索')) {
+      return { shouldAccessWorkspace: true, type: 'search', targetHint: text.slice(0, 100) };
+    }
+    if (text.includes('看') || text.includes('读') || text.includes('析') || text.includes('开') || text.includes('览')) {
+      const isInspect = text.includes('析') || text.includes('检') || text.includes('排');
+      return { shouldAccessWorkspace: true, type: isInspect ? 'inspect' : 'read', targetHint: text.slice(0, 100) };
+    }
+    return { shouldAccessWorkspace: true, type: 'read', targetHint: text.slice(0, 100) };
+  }
+
+  // E. Explicit continuation referencing workspace specifically
+  const isExplicitWorkspaceContinuation =
+    (text.includes('继续看刚才') || text.includes('继续检查刚才') || text.includes('继续修改刚才') || text.includes('继续排查刚才')) &&
+    (text.includes('文件') || text.includes('代码') || text.includes('工作区') || text.includes('项目'));
+
+  if (isExplicitWorkspaceContinuation && chatContext?.lastModifiedFiles && chatContext.lastModifiedFiles.length > 0) {
+    return {
+      shouldAccessWorkspace: true,
+      type: text.includes('修') || text.includes('改') ? 'modify' : 'inspect',
+      targetHint: text.slice(0, 100),
+    };
+  }
+
+  // Default: Conservative rejection (Keep context purely in chat)
+  return {
+    shouldAccessWorkspace: false,
   };
 }
 

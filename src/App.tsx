@@ -14,7 +14,9 @@ import {
   Workspace,
   WorkspaceFile,
   ChatContext,
-  ToolCallExecution
+  ToolCallExecution,
+  Project,
+  ProjectMemoryMode
 } from './types';
 import { 
   getWorkspaces,
@@ -28,7 +30,9 @@ import {
 import { 
   updateChatContext, 
   prepareChatHistoryWithLocalCompaction,
-  detectDiagnosisIntent
+  detectDiagnosisIntent,
+  detectWorkspaceIntent,
+  formatChatContextPrompt
 } from './services/chatContextService';
 import { 
   buildAgentSystemPrompt, 
@@ -56,8 +60,12 @@ import {
   getUserSettings,
   saveUserSettings,
   resetAllData,
-  DEFAULT_SETTINGS
+  DEFAULT_SETTINGS,
+  getProjects,
+  saveProject,
+  deleteProject
 } from './services/db';
+import { formatProjectMemoryPrompt, updateProjectCollectiveMemory } from './services/projectMemoryService';
 import { getAdapterForProvider } from './services/adapters';
 import { performWebSearch, buildWebSearchContext } from './services/webSearch';
 import { Sidebar } from './components/Sidebar';
@@ -70,6 +78,8 @@ import { ExportModal } from './components/ExportModal';
 import { BatchManageModal } from './components/BatchManageModal';
 import { ParametersModal } from './components/ParametersModal';
 import { AiModelConfigModal } from './components/AiModelConfigModal';
+import { CreateProjectModal } from './components/CreateProjectModal';
+import { ArchiveProjectModal } from './components/ArchiveProjectModal';
 
 const DEFAULT_PARAMETERS: ModelParameters = {
   enableReasoning: false,
@@ -123,6 +133,13 @@ export default function App() {
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [agentMode, setAgentMode] = useState(true);
 
+  // Projects State (Image 1, 2, 3: 项目分类与多会话共享记忆管理)
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [isArchiveModalOpen, setIsArchiveModalOpen] = useState(false);
+  const [conversationToArchive, setConversationToArchive] = useState<Conversation | null>(null);
+
   // Layout & Responsive
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -170,7 +187,7 @@ export default function App() {
   useEffect(() => {
     async function init() {
       try {
-        const [settingsResult, providersResult, modelsResult, keysResult, conversationsResult, workspacesResult] =
+        const [settingsResult, providersResult, modelsResult, keysResult, conversationsResult, workspacesResult, projectsResult] =
           await Promise.allSettled([
             getUserSettings(),
             getProviders(),
@@ -178,6 +195,7 @@ export default function App() {
             getApiKeys(),
             getConversations(),
             getWorkspaces(),
+            getProjects(),
           ]);
 
         const loadedSettings = settingsResult.status === 'fulfilled' ? settingsResult.value : DEFAULT_SETTINGS;
@@ -186,6 +204,7 @@ export default function App() {
         const loadedKeys = keysResult.status === 'fulfilled' ? keysResult.value : [];
         const loadedConversations = conversationsResult.status === 'fulfilled' ? conversationsResult.value : [];
         let loadedWorkspaces: Workspace[] = workspacesResult.status === 'fulfilled' ? (workspacesResult.value as Workspace[]) : [];
+        const loadedProjects: Project[] = projectsResult.status === 'fulfilled' ? (projectsResult.value as Project[]) : [];
 
         // If no workspace exists yet, create an initial clean project workspace
         if (loadedWorkspaces.length === 0) {
@@ -201,6 +220,7 @@ export default function App() {
         setConversations(loadedConversations);
         setWorkspaces(loadedWorkspaces);
         setActiveWorkspaceId(loadedWorkspaces[0]?.id);
+        setProjects(loadedProjects);
 
         const initialModel =
           loadedModels.find(m => m.id === loadedSettings.defaultModelId) || loadedModels[0];
@@ -347,6 +367,114 @@ export default function App() {
       saveConversation(updated);
       setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
     }
+  };
+
+  // Project CRUD & Collective Memory Handlers (Image 1, 2, 3)
+  const handleCreateProject = async (name: string, memoryMode: ProjectMemoryMode) => {
+    const newProject: Project = {
+      id: `proj_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      name,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      memoryMode,
+      sharedMemory: {
+        keyPoints: [],
+      },
+    };
+    await saveProject(newProject);
+    setProjects(prev => [newProject, ...prev]);
+
+    // If there was a conversation pending archive to this newly created project
+    if (conversationToArchive) {
+      handleArchiveConversationToProject(conversationToArchive.id, newProject.id);
+      setConversationToArchive(null);
+    }
+  };
+
+  const handleUpdateProject = async (project: Project) => {
+    await saveProject(project);
+    setProjects(prev => prev.map(p => p.id === project.id ? project : p));
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+    await deleteProject(projectId);
+    setProjects(prev => prev.filter(p => p.id !== projectId));
+    // When deleting a project, move all its chats back to the general chat list (unarchive)
+    setConversations(prev => {
+      return prev.map(c => {
+        if (c.projectId === projectId) {
+          const updated = { ...c, projectId: undefined, updatedAt: Date.now() };
+          saveConversation(updated);
+          return updated;
+        }
+        return c;
+      });
+    });
+  };
+
+  const handleNewChatInProject = (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    const newConv: Conversation = {
+      id: `conv_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      title: '新对话',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      modelId: selectedModelId,
+      providerId: currentModel?.providerId || DEFAULT_SETTINGS.defaultProviderId,
+      apiKeyId: selectedApiKeyId,
+      parameters: parameters,
+      webAccessEnabled: false,
+      projectId,
+      messages: [],
+    };
+
+    setConversations(prev => [newConv, ...prev]);
+    setActiveConversationId(newConv.id);
+    setWebAccessEnabled(false);
+    saveConversation(newConv);
+
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  };
+
+  const handleTogglePinConversation = (convId: string) => {
+    setConversations(prev => {
+      return prev.map(c => {
+        if (c.id === convId) {
+          const updated = { ...c, isPinned: !c.isPinned, updatedAt: Date.now() };
+          saveConversation(updated);
+          return updated;
+        }
+        return c;
+      });
+    });
+  };
+
+  const handleArchiveConversationToProject = (convId: string, projectId: string) => {
+    setConversations(prev => {
+      return prev.map(c => {
+        if (c.id === convId) {
+          const updated = { ...c, projectId, updatedAt: Date.now() };
+          saveConversation(updated);
+          return updated;
+        }
+        return c;
+      });
+    });
+  };
+
+  const handleUnarchiveConversationFromProject = (convId: string) => {
+    setConversations(prev => {
+      return prev.map(c => {
+        if (c.id === convId) {
+          const updated = { ...c, projectId: undefined, updatedAt: Date.now() };
+          saveConversation(updated);
+          return updated;
+        }
+        return c;
+      });
+    });
   };
 
   // Toggle Web Access (默认关闭)
@@ -630,24 +758,47 @@ export default function App() {
 
       let wsToOperate: Workspace | null = currentWorkspace ? JSON.parse(JSON.stringify(currentWorkspace)) : null;
 
-      // Detect Code Diagnosis intent vs Code repair / Normal task
-      const diagIntent = detectDiagnosisIntent(text, targetConv.chatContext);
-      const isDiagnosisMode = diagIntent.isDiagnosis;
+      // 1. Detect Workspace Intent (Strictly Conservative: workspace is on-demand, NOT default context!)
+      const workspaceIntent = detectWorkspaceIntent(text, targetConv.chatContext);
+      const workspaceContextEnabled = !!wsToOperate && workspaceIntent.shouldAccessWorkspace;
+      const workspaceAgentEnabled = agentMode && workspaceContextEnabled;
 
-      // If Agent Mode is enabled, inject workspace tools protocol and THIS chat's isolated context
-      if (agentMode && wsToOperate) {
+      // 2. Detect Code Diagnosis intent vs Normal task (only valid when workspace context is enabled)
+      const diagIntent = detectDiagnosisIntent(text, targetConv.chatContext);
+      const isDiagnosisMode = workspaceContextEnabled && (diagIntent.isDiagnosis || workspaceIntent.type === 'inspect');
+
+      // 3. System Prompt: ONLY inject Workspace Summary, Tools Protocol & Diagnosis Protocol when Workspace Context is explicitly requested!
+      if (workspaceContextEnabled) {
         effectiveSystemPrompt = buildAgentSystemPrompt(
           wsToOperate,
           targetConv.chatContext,
           effectiveSystemPrompt,
           isDiagnosisMode
         );
+      } else {
+        // Pure chat mode: only append chat's own private memory if present, ZERO workspace info or tools protocol
+        const chatMemory = formatChatContextPrompt(targetConv.chatContext);
+        if (chatMemory) {
+          effectiveSystemPrompt = effectiveSystemPrompt ? `${effectiveSystemPrompt}\n\n${chatMemory}` : chatMemory;
+        }
+      }
+
+      // 4. Project Collective Memory (Multiple chats inside same project share project memory)
+      if (targetConv.projectId) {
+        const currentProj = projects.find(p => p.id === targetConv.projectId);
+        if (currentProj) {
+          const projConvs = conversations.filter(c => c.projectId === currentProj.id);
+          const projPrompt = formatProjectMemoryPrompt(currentProj, projConvs, targetConv.id);
+          if (projPrompt) {
+            effectiveSystemPrompt = effectiveSystemPrompt ? `${effectiveSystemPrompt}\n\n${projPrompt}` : projPrompt;
+          }
+        }
       }
 
       setStatusMessage(
         isDiagnosisMode 
           ? 'Agent 正在执行 10 步静态代码诊断与调用链分析...' 
-          : (agentMode ? 'Agent 正在分析任务与工作区...' : 'AI 正在组织回答...')
+          : (workspaceAgentEnabled ? 'Agent 正在分析任务与工作区...' : 'AI 正在组织回答...')
       );
 
       const executedToolCalls: ToolCallExecution[] = [];
@@ -670,7 +821,7 @@ export default function App() {
       }
 
       let turn = 0;
-      const maxAgentTurns = agentMode && wsToOperate ? 8 : 1;
+      const maxAgentTurns = workspaceAgentEnabled ? 8 : 1;
       let finalFullText = '';
 
       while (turn < maxAgentTurns) {
@@ -730,8 +881,8 @@ export default function App() {
 
         finalFullText = turnAccumulatedText;
 
-        // Check if response contains tool calls
-        if (agentMode && wsToOperate) {
+        // Check if response contains tool calls (Protected by workspaceAgentEnabled)
+        if (workspaceAgentEnabled && wsToOperate) {
           const detectedToolCalls = extractToolCallsFromResponse(turnAccumulatedText);
 
           if (detectedToolCalls.length > 0) {
@@ -813,7 +964,7 @@ export default function App() {
       }
 
       // If files were modified in workspace, create a version snapshot (v2, v3...)
-      if (wsToOperate && modifiedPaths.size > 0) {
+      if (workspaceAgentEnabled && wsToOperate && modifiedPaths.size > 0) {
         wsToOperate = createWorkspaceSnapshot(
           wsToOperate,
           `AI修改: ${text.slice(0, 24) || '批量代码修改'}`,
@@ -867,6 +1018,19 @@ export default function App() {
         saveConversation(finalConv);
         return finalConv;
       }));
+
+      // Update project collective memory if part of a project
+      if (targetConv.projectId) {
+        const proj = projects.find(p => p.id === targetConv.projectId);
+        if (proj) {
+          const allProjConvs = conversations
+            .map(c => c.id === targetConv.id ? { ...c, chatContext: updatedChatContext } : c)
+            .filter(c => c.projectId === proj.id);
+          const updatedProj = updateProjectCollectiveMemory(proj, allProjConvs);
+          saveProject(updatedProj);
+          setProjects(prev => prev.map(p => p.id === updatedProj.id ? updatedProj : p));
+        }
+      }
 
       setConnectionStatus('success');
       setStatusMessage('响应完成');
@@ -1621,7 +1785,7 @@ export default function App() {
         }}
         onNewChat={handleNewChat}
         onDeleteConversation={handleDeleteConversation}
-        onToggleFavorite={handleToggleFavorite}
+        onTogglePin={handleTogglePinConversation}
         onRenameConversation={handleRenameConversation}
         onExportConversation={() => setIsExportOpen(true)}
         onOpenSettings={() => {
@@ -1633,6 +1797,22 @@ export default function App() {
         onOpenBatchManage={() => setIsBatchOpen(true)}
         models={models}
         isMobile={isMobile}
+        projects={projects}
+        onCreateProjectClick={() => {
+          setProjectToEdit(null);
+          setIsCreateProjectOpen(true);
+        }}
+        onEditProjectClick={(proj) => {
+          setProjectToEdit(proj);
+          setIsCreateProjectOpen(true);
+        }}
+        onDeleteProject={handleDeleteProject}
+        onNewChatInProject={handleNewChatInProject}
+        onArchiveConversation={(conv) => {
+          setConversationToArchive(conv);
+          setIsArchiveModalOpen(true);
+        }}
+        onUnarchiveConversation={handleUnarchiveConversationFromProject}
       />
 
       {/* Main Content Area */}
@@ -1643,6 +1823,11 @@ export default function App() {
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onNewChat={handleNewChat}
           currentConversation={currentConversation}
+          projectName={
+            currentConversation?.projectId
+              ? projects.find(p => p.id === currentConversation.projectId)?.name
+              : undefined
+          }
           models={models}
           providers={providers}
           apiKeys={apiKeys}
@@ -1812,6 +1997,38 @@ export default function App() {
         onDeleteWorkspace={handleDeleteWorkspaceSafe}
         onSendAiMessage={(prompt) => handleSendMessage(prompt, [])}
         aiStatusText={isGenerating ? (statusMessage || 'AI 正在处理...') : undefined}
+      />
+
+      {/* Create / Edit Project Modal (Image 1) */}
+      <CreateProjectModal
+        isOpen={isCreateProjectOpen}
+        onClose={() => {
+          setIsCreateProjectOpen(false);
+          setProjectToEdit(null);
+        }}
+        onCreate={handleCreateProject}
+        projectToEdit={projectToEdit}
+        onUpdate={handleUpdateProject}
+      />
+
+      {/* Archive Chat to Project Modal */}
+      <ArchiveProjectModal
+        isOpen={isArchiveModalOpen}
+        onClose={() => {
+          setIsArchiveModalOpen(false);
+          setConversationToArchive(null);
+        }}
+        conversation={conversationToArchive}
+        projects={projects}
+        conversations={conversations}
+        onSelectProject={(projectId) => {
+          if (conversationToArchive) {
+            handleArchiveConversationToProject(conversationToArchive.id, projectId);
+          }
+        }}
+        onCreateNewProject={() => {
+          setIsCreateProjectOpen(true);
+        }}
       />
     </div>
   );
