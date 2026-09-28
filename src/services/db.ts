@@ -1009,20 +1009,45 @@ export async function deleteProvider(id: string): Promise<void> {
 
 // Settings Operations
 export async function getUserSettings(): Promise<UserSettings> {
-  const db = await openDB();
-  return new Promise((resolve) => {
-    const transaction = db.transaction('settings', 'readonly');
-    const store = transaction.objectStore('settings');
-    const request = store.get('user_settings');
+  // 1. Instant synchronous read from localStorage cache
+  let cached: UserSettings | null = null;
+  try {
+    const raw = localStorage.getItem('omnichat_settings_cache');
+    if (raw) {
+      cached = JSON.parse(raw);
+    }
+  } catch {}
 
-    request.onsuccess = () => {
-      resolve({ ...DEFAULT_SETTINGS, ...(request.result || {}) });
-    };
-    request.onerror = () => resolve(DEFAULT_SETTINGS);
-  });
+  // 2. Fetch from IndexedDB and update cache
+  try {
+    const db = await openDB();
+    const result = await new Promise<UserSettings>((resolve) => {
+      const transaction = db.transaction('settings', 'readonly');
+      const store = transaction.objectStore('settings');
+      const request = store.get('user_settings');
+
+      request.onsuccess = () => {
+        resolve({ ...DEFAULT_SETTINGS, ...(request.result || {}) });
+      };
+      request.onerror = () => resolve(cached || DEFAULT_SETTINGS);
+    });
+
+    try {
+      localStorage.setItem('omnichat_settings_cache', JSON.stringify(result));
+    } catch {}
+    return result;
+  } catch {
+    return cached || DEFAULT_SETTINGS;
+  }
 }
 
 export async function saveUserSettings(settings: UserSettings): Promise<void> {
+  // 1. Synchronously write to localStorage cache for 0ms instant UI update
+  try {
+    localStorage.setItem('omnichat_settings_cache', JSON.stringify(settings));
+  } catch {}
+
+  // 2. Asynchronously persist into IndexedDB
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('settings', 'readwrite');
