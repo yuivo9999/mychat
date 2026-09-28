@@ -50,7 +50,11 @@ export async function sendOpenAIResponses(options: AdapterOptions, callbacks?: S
     input,
     stream: callbacks != null && (parameters?.stream !== false),
   };
-  const sys = systemPrompt || model.systemPrompt;
+  let sys = systemPrompt || model.systemPrompt;
+  if (parameters?.enableReasoning) {
+    const reasoningInstruction = '【深度推理模式开启】请在最终回答前，进行严密、深刻且步骤详尽的逻辑推导与思考分析。';
+    sys = sys ? `${sys}\n\n${reasoningInstruction}` : reasoningInstruction;
+  }
   if (sys?.trim()) body.instructions = sys.trim();
   if (typeof parameters?.maxTokens === 'number' && parameters.maxTokens > 0) body.max_output_tokens = parameters.maxTokens;
 

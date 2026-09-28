@@ -1,4 +1,4 @@
-import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch } from './base';
+import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch, safeExtractText } from './base';
 import { ApiKeyConfig } from '../../types';
 import { extractAttachmentText } from '../fileParser';
 import { isGeminiNativeFileModel, resolveGoogleNativeMimeType, supportsGoogleNativeFileMime } from '../googleFileSupport';
@@ -80,7 +80,11 @@ export class GeminiAdapter implements BaseAdapter {
     }
 
     const bodyPayload: any = { contents, generationConfig: {} };
-    const sys = systemPrompt || model.systemPrompt;
+    let sys = systemPrompt || model.systemPrompt;
+    if (parameters?.enableReasoning) {
+      const reasoningInstruction = '【深度推理模式开启】请在最终回答前，进行严密、深刻且步骤详尽的逻辑推导与思考分析。';
+      sys = sys ? `${sys}\n\n${reasoningInstruction}` : reasoningInstruction;
+    }
     if (sys && sys.trim()) bodyPayload.systemInstruction = { parts: [{ text: sys.trim() }] };
 
     const effectiveTemp = parameters?.temperature ?? temperature ?? model.temperature;
@@ -92,7 +96,12 @@ export class GeminiAdapter implements BaseAdapter {
     if (typeof parameters?.presencePenalty === 'number' && parameters.presencePenalty !== 0) bodyPayload.generationConfig.presencePenalty = parameters.presencePenalty;
     if (typeof parameters?.frequencyPenalty === 'number' && parameters.frequencyPenalty !== 0) bodyPayload.generationConfig.frequencyPenalty = parameters.frequencyPenalty;
     if (parameters?.stop && parameters.stop.trim()) bodyPayload.generationConfig.stopSequences = [parameters.stop.trim()];
-    if (parameters?.enableReasoning) bodyPayload.generationConfig.thinkingConfig = { thinkingBudget: 2048 };
+
+    if (parameters?.enableReasoning) {
+      bodyPayload.generationConfig.thinkingConfig = { thinkingBudget: 2048 };
+    } else if (parameters?.enableReasoning === false) {
+      bodyPayload.generationConfig.thinkingConfig = { thinkingBudget: 0 };
+    }
 
     const controller = new AbortController();
     const timeout = (timeoutSeconds || 60) * 1000;
@@ -144,9 +153,10 @@ export class GeminiAdapter implements BaseAdapter {
               const parsed = JSON.parse(trimmed.slice(5).trim());
               const parts = parsed.candidates?.[0]?.content?.parts || [];
               for (const part of parts) {
-                if (part.text) {
-                  fullContent += part.text;
-                  callbacks?.onChunk(part.text);
+                const txt = safeExtractText(part.text || part);
+                if (txt) {
+                  fullContent += txt;
+                  callbacks?.onChunk(txt);
                 }
               }
             } catch {}

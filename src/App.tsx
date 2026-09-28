@@ -73,6 +73,7 @@ import {
 } from './services/db';
 import { formatProjectMemoryPrompt, updateProjectCollectiveMemory } from './services/projectMemoryService';
 import { getAdapterForProvider } from './services/adapters';
+import { safeExtractText } from './services/adapters/base';
 import { performWebSearch, buildWebSearchContext } from './services/webSearch';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
@@ -933,8 +934,10 @@ export default function App() {
             timeoutSeconds: settings.requestTimeout,
           },
           settings.enableStreaming ? {
-            onChunk: (chunk: string) => {
-              turnAccumulatedText += chunk;
+            onChunk: (chunk: string | any) => {
+              const textChunk = safeExtractText(chunk);
+              if (!textChunk) return;
+              turnAccumulatedText += textChunk;
               const displayContent = cleanResponseText(turnAccumulatedText);
               const completedSteps = currentThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
 

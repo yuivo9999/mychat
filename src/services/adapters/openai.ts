@@ -1,4 +1,4 @@
-import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch } from './base';
+import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch, safeExtractText } from './base';
 import { ApiKeyConfig } from '../../types';
 import { extractAttachmentText } from '../fileParser';
 import { sendOpenAIResponses } from './openaiResponses';
@@ -178,7 +178,15 @@ export class OpenAIAdapter implements BaseAdapter {
       bodyPayload.seed = parameters.seed;
     }
     if (parameters?.enableReasoning) {
-      bodyPayload.reasoning_effort = 'medium';
+      // Only attach native reasoning_effort for OpenAI reasoning models or OpenRouter to prevent 400 error on third-party providers (DeepSeek/Qwen/Groq/Ollama/etc.)
+      const isNativeReasoningModel = 
+        apiKeyConfig.providerId === 'openai' || 
+        apiKeyConfig.providerId === 'openrouter' ||
+        /^(o1|o3|reasoner|r1)/i.test(model.id);
+
+      if (isNativeReasoningModel) {
+        bodyPayload.reasoning_effort = 'medium';
+      }
     }
 
     // Timeout controller
@@ -256,7 +264,8 @@ export class OpenAIAdapter implements BaseAdapter {
               const jsonStr = trimmed.slice(5).trim();
               try {
                 const parsed = JSON.parse(jsonStr);
-                const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.text || '';
+                const rawDelta = parsed.choices?.[0]?.delta?.content ?? parsed.choices?.[0]?.text ?? '';
+                const delta = safeExtractText(rawDelta);
                 if (delta) {
                   fullContent += delta;
                   callbacks?.onChunk(delta);
@@ -274,7 +283,8 @@ export class OpenAIAdapter implements BaseAdapter {
           if (jsonStr && jsonStr !== '[DONE]') {
             try {
               const parsed = JSON.parse(jsonStr);
-              const delta = parsed.choices?.[0]?.delta?.content || '';
+              const rawDelta = parsed.choices?.[0]?.delta?.content ?? '';
+              const delta = safeExtractText(rawDelta);
               if (delta) {
                 fullContent += delta;
                 callbacks?.onChunk(delta);

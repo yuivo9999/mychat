@@ -37,6 +37,23 @@ export async function executeFetch(
   return fetch(targetUrl, init);
 }
 
+export function safeExtractText(val: any): string {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (Array.isArray(val)) {
+    return val.map(item => safeExtractText(item)).join('');
+  }
+  if (typeof val === 'object') {
+    if (typeof val.text === 'string') return val.text;
+    if (typeof val.content === 'string') return val.content;
+    if (typeof val.reasoning_content === 'string') return val.reasoning_content;
+    if (Array.isArray(val.content)) return safeExtractText(val.content);
+    if (Array.isArray(val.parts)) return safeExtractText(val.parts);
+  }
+  return '';
+}
+
 export function parseHttpError(status: number, errorData: any, statusText: string): string {
   let detail = '';
   let reason = '';
