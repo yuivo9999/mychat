@@ -36,7 +36,7 @@ interface SidebarProps {
   onTogglePin?: (id: string) => void;
   onRenameConversation: (id: string, newTitle: string) => void;
   onExportConversation: (conv: Conversation) => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (initialTab?: string) => void;
   onOpenModelConfig?: () => void;
   onOpenSearch: () => void;
   onOpenBatchManage: () => void;
@@ -638,8 +638,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <button
             type="button"
-            onClick={onOpenSettings}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition"
+            onClick={() => onOpenSettings('appearance')}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition cursor-pointer"
           >
             <Settings className="w-4 h-4 text-neutral-500" />
             <span>通用与外观设置</span>

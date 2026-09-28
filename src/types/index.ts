@@ -150,7 +150,7 @@ export interface Conversation {
 }
 
 export interface UserSettings {
-  theme: 'light' | 'dark' | 'system' | 'classic1' | 'classic2' | string;
+  theme: 'light' | 'dark' | 'system' | 'classic1' | 'classic2' | 'modern1' | 'jadewater' | string;
   fontSize: 'compact' | 'standard' | 'spacious';
   enterToSend: boolean;
   autoScroll: boolean;

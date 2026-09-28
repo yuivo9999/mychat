@@ -429,9 +429,9 @@ export const TopBar: React.FC<TopBarProps> = ({
                 <button
                   onClick={() => {
                     setMoreMenuOpen(false);
-                    onOpenSettings('chat');
+                    onOpenSettings('appearance');
                   }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300 cursor-pointer"
                 >
                   <Settings className="w-4 h-4" /> 通用与外观设置
                 </button>
