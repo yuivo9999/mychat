@@ -497,3 +497,276 @@ html.theme-modern1,
 .theme-modern1 .border-indigo-500 {
   border-color: #1e64b4 !important;
 }
+
+/* ==========================================================================
+   「绛笺织影」—— Warm Vermilion Textile Theme
+   温暖宣纸 × 米黄织物 × 朱砂红 × 细密斜向缝线纹理
+   ========================================================================== */
+html.theme-vermilion-textile {
+  --vt-bg: #F3E4C5;
+  --vt-surface: #F8EED9;
+  --vt-surface-2: #EBD7AE;
+  --vt-surface-3: #E2C995;
+  --vt-text: #33251D;
+  --vt-text-soft: #6E5949;
+  --vt-text-muted: #927B67;
+  --vt-line: #D2BA91;
+  --vt-line-strong: #B99A6A;
+  --vt-vermilion: #A52C28;
+  --vt-vermilion-dark: #81211E;
+  --vt-vermilion-soft: #E8B5A6;
+  --vt-ink: #3D3027;
+  --vt-success: #6E7D50;
+  --vt-warning: #A66B2D;
+  --vt-danger: #9C3029;
+}
+
+html.theme-vermilion-textile,
+.theme-vermilion-textile body {
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", "KaiTi", Georgia, serif !important;
+  background-color: #F3E4C5 !important;
+  background-image: 
+    linear-gradient(135deg, rgba(120, 83, 42, 0.038) 1px, transparent 1px),
+    linear-gradient(45deg, rgba(120, 83, 42, 0.025) 1px, transparent 1px) !important;
+  background-size: 24px 24px, 24px 24px !important;
+  color: #33251D !important;
+}
+
+/* 1. Custom Scrollbar for Vermilion Textile */
+.theme-vermilion-textile ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.theme-vermilion-textile ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.theme-vermilion-textile ::-webkit-scrollbar-thumb {
+  background: rgba(185, 154, 106, 0.35);
+  border-radius: 9999px;
+}
+.theme-vermilion-textile ::-webkit-scrollbar-thumb:hover {
+  background: rgba(165, 44, 40, 0.45);
+}
+
+/* 2. Text Selection */
+.theme-vermilion-textile ::selection {
+  background: rgba(165, 44, 40, 0.18) !important;
+  color: #33251D !important;
+}
+
+/* 3. Surface & Card Overrides */
+.theme-vermilion-textile .bg-white,
+.theme-vermilion-textile .bg-white\/90,
+.theme-vermilion-textile .bg-white\/80,
+.theme-vermilion-textile .bg-white\/60,
+.theme-vermilion-textile .bg-neutral-900,
+.theme-vermilion-textile .bg-neutral-950,
+.theme-vermilion-textile .bg-neutral-800,
+.theme-vermilion-textile .bg-slate-900,
+.theme-vermilion-textile .bg-slate-950 {
+  background-color: #F8EED9 !important;
+  color: #33251D !important;
+}
+
+.theme-vermilion-textile .bg-neutral-50,
+.theme-vermilion-textile .bg-neutral-100,
+.theme-vermilion-textile .bg-neutral-200,
+.theme-vermilion-textile .bg-neutral-300,
+.theme-vermilion-textile .bg-neutral-50\/50,
+.theme-vermilion-textile .bg-neutral-50\/70,
+.theme-vermilion-textile .bg-neutral-50\/30,
+.theme-vermilion-textile .bg-neutral-900\/50,
+.theme-vermilion-textile .bg-neutral-900\/60,
+.theme-vermilion-textile .bg-neutral-900\/90,
+.theme-vermilion-textile .bg-neutral-950\/20,
+.theme-vermilion-textile .bg-neutral-800\/30,
+.theme-vermilion-textile .bg-neutral-800\/40,
+.theme-vermilion-textile .bg-neutral-800\/80,
+.theme-vermilion-textile .bg-slate-100,
+.theme-vermilion-textile .bg-slate-200 {
+  background-color: #EBD7AE !important;
+}
+
+.theme-vermilion-textile .bg-indigo-50,
+.theme-vermilion-textile .bg-indigo-50\/80,
+.theme-vermilion-textile .bg-indigo-50\/50,
+.theme-vermilion-textile .bg-indigo-100,
+.theme-vermilion-textile .bg-amber-50,
+.theme-vermilion-textile .bg-amber-100,
+.theme-vermilion-textile .bg-sky-50 {
+  background-color: #F1DEC1 !important;
+}
+
+/* 4. Fine Borders & Dividers */
+.theme-vermilion-textile .border-neutral-200,
+.theme-vermilion-textile .border-neutral-800,
+.theme-vermilion-textile .border-neutral-300,
+.theme-vermilion-textile .border-neutral-700,
+.theme-vermilion-textile .border-neutral-100,
+.theme-vermilion-textile .border-neutral-800\/80,
+.theme-vermilion-textile .border-neutral-800\/60,
+.theme-vermilion-textile .border-neutral-700\/60,
+.theme-vermilion-textile .border-neutral-700\/80,
+.theme-vermilion-textile .border-neutral-200\/80,
+.theme-vermilion-textile .border-indigo-200 {
+  border-color: #D2BA91 !important;
+}
+
+/* 5. Typography */
+.theme-vermilion-textile .text-neutral-900,
+.theme-vermilion-textile .text-neutral-800,
+.theme-vermilion-textile .text-neutral-100,
+.theme-vermilion-textile .text-neutral-200,
+.theme-vermilion-textile .text-neutral-700,
+.theme-vermilion-textile .text-neutral-300,
+.theme-vermilion-textile .text-white,
+.theme-vermilion-textile h1,
+.theme-vermilion-textile h2,
+.theme-vermilion-textile h3,
+.theme-vermilion-textile h4,
+.theme-vermilion-textile label,
+.theme-vermilion-textile span,
+.theme-vermilion-textile p {
+  color: #33251D !important;
+}
+
+.theme-vermilion-textile .text-neutral-500,
+.theme-vermilion-textile .text-neutral-400,
+.theme-vermilion-textile .text-neutral-600 {
+  color: #6E5949 !important;
+}
+
+/* 6. Vermilion Primary Accents & Buttons */
+.theme-vermilion-textile .bg-indigo-600,
+.theme-vermilion-textile .bg-indigo-500,
+.theme-vermilion-textile .bg-emerald-600,
+.theme-vermilion-textile .bg-neutral-900:not(.theme-vermilion-textile) {
+  background-color: #A52C28 !important;
+  color: #FAF6EE !important;
+}
+
+.theme-vermilion-textile .bg-indigo-600:hover,
+.theme-vermilion-textile .bg-indigo-500:hover,
+.theme-vermilion-textile .bg-neutral-900:hover {
+  background-color: #81211E !important;
+  color: #FAF6EE !important;
+}
+
+.theme-vermilion-textile .text-indigo-600,
+.theme-vermilion-textile .text-indigo-500,
+.theme-vermilion-textile .text-indigo-400,
+.theme-vermilion-textile .text-emerald-500,
+.theme-vermilion-textile .text-[#84cc16] {
+  color: #A52C28 !important;
+}
+
+.theme-vermilion-textile .border-indigo-600,
+.theme-vermilion-textile .border-indigo-500 {
+  border-color: #A52C28 !important;
+}
+
+/* 7. Inputs, Textareas, and Select Fields */
+.theme-vermilion-textile input,
+.theme-vermilion-textile select,
+.theme-vermilion-textile textarea,
+.theme-vermilion-textile option {
+  background-color: #F8EED9 !important;
+  color: #33251D !important;
+  border-color: #D2BA91 !important;
+}
+
+.theme-vermilion-textile input::placeholder,
+.theme-vermilion-textile textarea::placeholder {
+  color: #927B67 !important;
+}
+
+.theme-vermilion-textile input:focus,
+.theme-vermilion-textile textarea:focus,
+.theme-vermilion-textile select:focus {
+  border-color: #A52C28 !important;
+  outline-color: #A52C28 !important;
+  box-shadow: 0 0 0 3px rgba(165, 44, 40, 0.12) !important;
+}
+
+/* 8. Hover Interactions */
+.theme-vermilion-textile .hover\:bg-neutral-100:hover,
+.theme-vermilion-textile .hover\:bg-neutral-200:hover,
+.theme-vermilion-textile .hover\:bg-neutral-800:hover,
+.theme-vermilion-textile .hover\:bg-neutral-700:hover,
+.theme-vermilion-textile .hover\:bg-indigo-50:hover,
+.theme-vermilion-textile .hover\:bg-indigo-100:hover {
+  background-color: rgba(165, 44, 40, 0.08) !important;
+  color: #33251D !important;
+}
+
+/* 9. Markdown Book-Page Styling */
+.theme-vermilion-textile .markdown-body {
+  color: #33251D !important;
+}
+
+.theme-vermilion-textile .markdown-body h1 {
+  border-bottom: 2px solid #A52C28;
+  padding-bottom: 4px;
+  display: inline-block;
+  color: #33251D !important;
+}
+
+.theme-vermilion-textile .markdown-body blockquote {
+  border-left: 3px solid #A52C28 !important;
+  background-color: rgba(235, 215, 174, 0.45) !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 0 8px 8px 0;
+  color: #6E5949 !important;
+}
+
+.theme-vermilion-textile .markdown-body code:not(pre code) {
+  font-family: 'JetBrains Mono', monospace !important;
+  background-color: #E7D4AD !important;
+  color: #81211E !important;
+  border: 1px solid rgba(185, 154, 106, 0.4);
+}
+
+.theme-vermilion-textile pre,
+.theme-vermilion-textile pre code {
+  background-color: #30261F !important;
+  color: #F1E5CF !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+.theme-vermilion-textile .markdown-body hr {
+  background-color: #D2BA91 !important;
+}
+
+/* 10. Agent Tool Call Slip Styling */
+.theme-vermilion-textile .agent-tool-slip {
+  background-color: #E7D4AD !important;
+  border-left: 3px solid #A52C28 !important;
+  border-color: #D2BA91 !important;
+}
+
+/* 11. Modal Box Shadows (Soft warm earth shadow) */
+.theme-vermilion-textile .shadow-2xl,
+.theme-vermilion-textile .shadow-xl {
+  box-shadow: 0 18px 55px rgba(73, 49, 28, 0.16) !important;
+}
+
+.theme-vermilion-textile .shadow-lg,
+.theme-vermilion-textile .shadow-md,
+.theme-vermilion-textile .shadow-sm {
+  box-shadow: 0 6px 24px rgba(73, 49, 28, 0.09) !important;
+}
+
+/* 12. Diff Viewer (Olive green add, Vermilion delete, Warm gold edit) */
+.theme-vermilion-textile .diff-added {
+  background-color: #E8EBD8 !important;
+  color: #3D4A27 !important;
+}
+.theme-vermilion-textile .diff-deleted {
+  background-color: #F4DDD8 !important;
+  color: #8A2420 !important;
+}
+.theme-vermilion-textile .diff-modified {
+  background-color: #F5E8C8 !important;
+  color: #6E4E18 !important;
+}
+

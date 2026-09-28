@@ -174,9 +174,11 @@ export default function App() {
   // Theme synchronization
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove('dark', 'theme-classic1', 'theme-classic2', 'theme-modern1');
+    root.classList.remove('dark', 'theme-classic1', 'theme-classic2', 'theme-modern1', 'theme-vermilion-textile');
 
-    if (settings.theme === 'classic1') {
+    if (settings.theme === 'vermilion-textile') {
+      root.classList.add('theme-vermilion-textile');
+    } else if (settings.theme === 'classic1') {
       root.classList.add('theme-classic1');
     } else if (settings.theme === 'classic2') {
       root.classList.add('theme-classic2');

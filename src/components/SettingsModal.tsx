@@ -426,11 +426,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-3 w-full">
+                  {/* 绛笺织影 主题 */}
+                  <button
+                    type="button"
+                    onClick={() => onSaveSettings({ ...settings, theme: 'vermilion-textile' })}
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
+                      settings.theme === 'vermilion-textile'
+                        ? 'border-[#A52C28] bg-[#F8EED9] ring-2 ring-[#A52C28]/25 shadow-sm'
+                        : 'border-neutral-200 dark:border-neutral-800 hover:border-[#D2BA91] bg-neutral-50/50 dark:bg-neutral-800/30'
+                    }`}
+                  >
+                    <div className="flex flex-col justify-center font-serif">
+                      <div className="text-xs font-bold text-[#33251D] dark:text-[#33251D] flex items-center gap-2 leading-snug">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#A52C28] shrink-0" />
+                        <span>绛笺织影 (Warm Vermilion Textile)</span>
+                        <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-[#A52C28]/10 text-[#A52C28] border border-[#A52C28]/20">
+                          全新设计
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[#6E5949] leading-snug mt-1">
+                        温暖宣纸 × 米黄织物 × 朱砂红 × 细密斜向缝线织纹，安静留白与手作质感
+                      </div>
+                    </div>
+                    {settings.theme === 'vermilion-textile' && (
+                      <span className="text-xs font-semibold text-[#A52C28] flex items-center gap-1 shrink-0 ml-3 font-serif">
+                        <Check className="w-4 h-4" /> 当前已使用
+                      </span>
+                    )}
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => onSaveSettings({ ...settings, theme: 'light' })}
                     className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
-                      settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1'
+                      settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && settings.theme !== 'vermilion-textile'
                         ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20'
                         : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
                     }`}
@@ -439,7 +468,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug">默认皮肤</div>
                       <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">现代极简设计，黑白灰无衬线视觉风格</div>
                     </div>
-                    {settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && (
+                    {settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && settings.theme !== 'vermilion-textile' && (
                       <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 shrink-0 ml-3">
                         <Check className="w-4 h-4" /> 当前已使用
                       </span>

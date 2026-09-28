@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Plus, 
   Search, 
@@ -77,13 +78,78 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onArchiveConversation,
   onUnarchiveConversation,
 }) => {
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [projectMenuOpenId, setProjectMenuOpenId] = useState<string | null>(null);
+  const [menuDropdown, setMenuDropdown] = useState<{
+    type: 'conversation';
+    conv: Conversation;
+    isInProject: boolean;
+    position: { top?: number; bottom?: number; left?: number };
+  } | {
+    type: 'project';
+    project: Project;
+    position: { top?: number; bottom?: number; left?: number };
+  } | null>(null);
+
   const [projectSectionMenuOpen, setProjectSectionMenuOpen] = useState(false);
   const [chatSectionMenuOpen, setChatSectionMenuOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(new Set(projects.map(p => p.id)));
+
+  // Close floating menus on scroll or resize
+  useEffect(() => {
+    const handleScrollOrResize = () => {
+      if (menuDropdown) setMenuDropdown(null);
+    };
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [menuDropdown]);
+
+  const handleOpenConvMenu = (e: React.MouseEvent, conv: Conversation, isInProject: boolean) => {
+    e.stopPropagation();
+    if (menuDropdown?.type === 'conversation' && menuDropdown.conv.id === conv.id) {
+      setMenuDropdown(null);
+      return;
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUpward = spaceBelow < 220; // If less than 220px below, pop UPWARD to prevent footer clipping!
+    
+    setMenuDropdown({
+      type: 'conversation',
+      conv,
+      isInProject,
+      position: {
+        top: openUpward ? undefined : rect.bottom + 4,
+        bottom: openUpward ? window.innerHeight - rect.top + 4 : undefined,
+        left: Math.max(8, rect.right - 144),
+      },
+    });
+  };
+
+  const handleOpenProjectMenu = (e: React.MouseEvent, project: Project) => {
+    e.stopPropagation();
+    if (menuDropdown?.type === 'project' && menuDropdown.project.id === project.id) {
+      setMenuDropdown(null);
+      return;
+    }
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUpward = spaceBelow < 180;
+    
+    setMenuDropdown({
+      type: 'project',
+      project,
+      position: {
+        top: openUpward ? undefined : rect.bottom + 4,
+        bottom: openUpward ? window.innerHeight - rect.top + 4 : undefined,
+        left: Math.max(8, rect.right - 144),
+      },
+    });
+  };
 
   const toggleProjectExpand = (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -99,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     e.stopPropagation();
     setEditingId(conv.id);
     setEditTitle(conv.title);
-    setMenuOpenId(null);
+    setMenuDropdown(null);
   };
 
   const submitRename = (id: string) => {
@@ -138,7 +204,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const renderConversationItem = (conv: Conversation, isInProject = false) => {
     const isActive = conv.id === activeConversationId;
     const isEditing = editingId === conv.id;
-    const isMenuOpen = menuOpenId === conv.id;
+    const isMenuOpen = menuDropdown?.type === 'conversation' && menuDropdown.conv.id === conv.id;
 
     return (
       <div
@@ -185,105 +251,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Vertical 3-dots button and context menu matching Image 3 */}
+        {/* Vertical 3-dots button with smart non-clipped menu */}
         {!isEditing && (
           <div className="relative shrink-0 flex items-center">
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpenId(isMenuOpen ? null : conv.id);
-                setProjectMenuOpenId(null);
-              }}
-              className={`p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition ${
+              onClick={(e) => handleOpenConvMenu(e, conv, isInProject)}
+              className={`p-1 rounded-md text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200/60 dark:hover:bg-neutral-700/60 transition cursor-pointer ${
                 isMenuOpen ? 'opacity-100 bg-neutral-200/80 dark:bg-neutral-700/80 text-neutral-800 dark:text-neutral-100' : 'opacity-60 group-hover:opacity-100'
               }`}
               title="操作菜单"
             >
               <MoreVertical className="w-3.5 h-3.5" />
             </button>
-
-            {isMenuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-30"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpenId(null);
-                  }}
-                />
-                <div
-                  className="absolute right-0 top-6 w-36 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-800 py-1.5 z-40 text-xs select-none animate-in fade-in zoom-in-95 duration-150"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* 1. 重命名 */}
-                  <button
-                    onClick={(e) => startRename(conv, e)}
-                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition"
-                  >
-                    <Edit2 className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
-                    <span>重命名</span>
-                  </button>
-
-                  <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
-
-                  {/* 2. 置顶聊天 / 取消置顶 */}
-                  <button
-                    onClick={() => {
-                      onTogglePin?.(conv.id);
-                      setMenuOpenId(null);
-                    }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition"
-                  >
-                    <Pin className={`w-3.5 h-3.5 ${conv.isPinned ? 'text-amber-500 fill-current' : 'text-neutral-600 dark:text-neutral-400'}`} />
-                    <span>{conv.isPinned ? '取消置顶' : '置顶聊天'}</span>
-                  </button>
-
-                  {/* 3. 归档 (非项目内) / 离档 (项目内) */}
-                  {isInProject || conv.projectId ? (
-                    <button
-                      onClick={() => {
-                        onUnarchiveConversation(conv.id);
-                        setMenuOpenId(null);
-                      }}
-                      className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition"
-                      title="移出此项目并恢复为普通聊天"
-                    >
-                      <FolderMinus className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
-                      <span>离档</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        onArchiveConversation(conv);
-                        setMenuOpenId(null);
-                      }}
-                      className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition"
-                      title="将此聊天移入指定项目中集中管理"
-                    >
-                      <Archive className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
-                      <span>归档</span>
-                    </button>
-                  )}
-
-                  <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
-
-                  {/* 4. 删除 */}
-                  <button
-                    onClick={() => {
-                      if (window.confirm(`确定要删除对话「${conv.title || '新对话'}」及其记录吗？`)) {
-                        onDeleteConversation(conv.id);
-                      }
-                      setMenuOpenId(null);
-                    }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center gap-2.5 font-medium transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>删除</span>
-                  </button>
-                </div>
-              </>
-            )}
           </div>
         )}
       </div>
@@ -349,7 +329,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Main Scrollable Categories: 项目 & 聊天 (Matching Image 2) */}
-        <div className="flex-1 overflow-y-auto px-2 py-1 space-y-4">
+        <div className="flex-1 overflow-y-auto px-2 py-1 space-y-4 pb-16">
           
           {/* ========================================================
               CATEGORY 1: 项目 (Projects Section)
@@ -422,7 +402,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {projects.map((project) => {
                   const projectChats = conversations.filter(c => c.projectId === project.id);
                   const isExpanded = expandedProjectIds.has(project.id);
-                  const isProjectMenuOpen = projectMenuOpenId === project.id;
+                  const isProjectMenuOpen = menuDropdown?.type === 'project' && menuDropdown.project.id === project.id;
 
                   // Sort project chats: pinned first, then by updatedAt
                   const sortedProjectChats = [...projectChats].sort((a, b) => {
@@ -469,53 +449,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           <div className="relative">
                             <button
                               type="button"
-                              onClick={() => {
-                                setProjectMenuOpenId(isProjectMenuOpen ? null : project.id);
-                                setMenuOpenId(null);
-                              }}
-                              className="p-1 hover:text-neutral-900 dark:hover:text-white rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition"
+                              onClick={(e) => handleOpenProjectMenu(e, project)}
+                              className="p-1 hover:text-neutral-900 dark:hover:text-white rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition cursor-pointer"
                               title="项目菜单"
                             >
                               <MoreHorizontal className="w-3.5 h-3.5" />
                             </button>
-
-                            {isProjectMenuOpen && (
-                              <>
-                                <div className="fixed inset-0 z-30" onClick={() => setProjectMenuOpenId(null)} />
-                                <div className="absolute right-0 top-6 w-36 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1.5 z-40 text-xs">
-                                  <button
-                                    onClick={() => {
-                                      setProjectMenuOpenId(null);
-                                      onNewChatInProject?.(project.id);
-                                    }}
-                                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
-                                  >
-                                    <Plus className="w-3.5 h-3.5" /> 新建聊天
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setProjectMenuOpenId(null);
-                                      onEditProjectClick?.(project);
-                                    }}
-                                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" /> 编辑项目
-                                  </button>
-                                  <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
-                                  <button
-                                    onClick={() => {
-                                      setProjectMenuOpenId(null);
-                                      if (confirm(`确定要删除项目「${project.name}」吗？项目内的聊天将自动恢复为普通聊天。`)) {
-                                        onDeleteProject?.(project.id);
-                                      }
-                                    }}
-                                    className="w-full text-left px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center gap-2"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" /> 删除项目
-                                  </button>
-                                </div>
-                              </>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -707,6 +646,149 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
       </aside>
+
+      {/* Portal-rendered floating context menu (Never clipped by overflow or footer) */}
+      {menuDropdown && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-9998"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuDropdown(null);
+            }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              top: menuDropdown.position.top !== undefined ? `${menuDropdown.position.top}px` : 'auto',
+              bottom: menuDropdown.position.bottom !== undefined ? `${menuDropdown.position.bottom}px` : 'auto',
+              left: menuDropdown.position.left !== undefined ? `${menuDropdown.position.left}px` : 'auto',
+            }}
+            className="z-9999 w-36 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-800 py-1.5 text-xs select-none animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {menuDropdown.type === 'conversation' && (
+              <>
+                {/* 1. 重命名 */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    startRename(menuDropdown.conv, e);
+                    setMenuDropdown(null);
+                  }}
+                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition cursor-pointer"
+                >
+                  <Edit2 className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
+                  <span>重命名</span>
+                </button>
+
+                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+
+                {/* 2. 置顶聊天 / 取消置顶 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onTogglePin?.(menuDropdown.conv.id);
+                    setMenuDropdown(null);
+                  }}
+                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition cursor-pointer"
+                >
+                  <Pin className={`w-3.5 h-3.5 ${menuDropdown.conv.isPinned ? 'text-amber-500 fill-current' : 'text-neutral-600 dark:text-neutral-400'}`} />
+                  <span>{menuDropdown.conv.isPinned ? '取消置顶' : '置顶聊天'}</span>
+                </button>
+
+                {/* 3. 归档 (非项目内) / 离档 (项目内) */}
+                {menuDropdown.isInProject || menuDropdown.conv.projectId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onUnarchiveConversation(menuDropdown.conv.id);
+                      setMenuDropdown(null);
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition cursor-pointer"
+                    title="移出此项目并恢复为普通聊天"
+                  >
+                    <FolderMinus className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
+                    <span>离档</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onArchiveConversation(menuDropdown.conv);
+                      setMenuDropdown(null);
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-800 dark:text-neutral-200 font-medium transition cursor-pointer"
+                    title="将此聊天移入指定项目中集中管理"
+                  >
+                    <Archive className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
+                    <span>归档</span>
+                  </button>
+                )}
+
+                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+
+                {/* 4. 删除 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`确定要删除对话「${menuDropdown.conv.title || '新对话'}」及其记录吗？`)) {
+                      onDeleteConversation(menuDropdown.conv.id);
+                    }
+                    setMenuDropdown(null);
+                  }}
+                  className="w-full text-left px-3.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center gap-2.5 font-medium transition cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>删除</span>
+                </button>
+              </>
+            )}
+
+            {menuDropdown.type === 'project' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const projId = menuDropdown.project.id;
+                    setMenuDropdown(null);
+                    onNewChatInProject?.(projId);
+                  }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> 新建聊天
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const proj = menuDropdown.project;
+                    setMenuDropdown(null);
+                    onEditProjectClick?.(proj);
+                  }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300 cursor-pointer"
+                >
+                  <Edit2 className="w-3.5 h-3.5" /> 编辑项目
+                </button>
+                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const proj = menuDropdown.project;
+                    setMenuDropdown(null);
+                    if (confirm(`确定要删除项目「${proj.name}」吗？项目内的聊天将自动恢复为普通聊天。`)) {
+                      onDeleteProject?.(proj.id);
+                    }
+                  }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center gap-2 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> 删除项目
+                </button>
+              </>
+            )}
+          </div>
+        </>,
+        document.body
+      )}
     </>
   );
 };
