@@ -238,8 +238,38 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
   return (
     <div className="w-full max-w-4xl mx-auto px-3 md:px-6 pb-4 pt-1 shrink-0 relative select-none">
+      {/* Soft Ink Wave Pattern shifted up by another half text height (~8px) (淡墨色波浪纹/山水涟漪) */}
+      <div className="ink-wave-layer absolute inset-x-0 -top-5 sm:-top-4 md:-top-3 h-14 sm:h-16 md:h-18 pointer-events-none overflow-hidden z-10 opacity-90 dark:opacity-40 transition-opacity">
+        <svg
+          className="w-full h-full text-neutral-600 dark:text-neutral-400"
+          viewBox="0 0 1200 120"
+          preserveAspectRatio="none"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Layer 1: Back soft ink wave */}
+          <path
+            d="M0 62 C 200 22, 400 78, 600 42 C 800 8, 1000 58, 1200 28 L1200 120 L0 120 Z"
+            fill="currentColor"
+            fillOpacity="0.08"
+          />
+          {/* Layer 2: Middle soft ink wave */}
+          <path
+            d="M0 80 C 180 46, 380 92, 580 56 C 780 22, 980 70, 1200 46 L1200 120 L0 120 Z"
+            fill="currentColor"
+            fillOpacity="0.10"
+          />
+          {/* Layer 3: Front soft ink wave */}
+          <path
+            d="M0 96 C 220 66, 440 106, 660 74 C 880 44, 1060 88, 1200 66 L1200 120 L0 120 Z"
+            fill="currentColor"
+            fillOpacity="0.14"
+          />
+        </svg>
+      </div>
+
       {/* Right-aligned small, flat model name display area above input box */}
-      <div className="flex items-center justify-end px-1 mb-1.5 min-h-[26px]">
+      <div className="flex items-center justify-end px-1 mb-1.5 min-h-[26px] relative z-20">
         <div className="relative">
           <button
             type="button"
@@ -333,7 +363,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative flex flex-col rounded-2xl border bg-white dark:bg-neutral-900 transition-all shadow-md ${
+        className={`relative z-10 flex flex-col rounded-2xl border bg-white dark:bg-neutral-900 transition-all shadow-md ${
           isDragging 
             ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/20 dark:bg-indigo-950/20' 
             : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700'

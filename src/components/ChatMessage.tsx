@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { 
   User, 
-  Bot, 
   Copy, 
   Check, 
   RotateCw, 
@@ -128,24 +127,20 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   return (
     <div
       onClick={handleContainerClick}
-      className={`group relative flex gap-3 px-3 py-4 md:px-6 md:py-5 transition-colors ${
+      className={`group relative flex gap-3 transition-colors ${
         isUser
-          ? 'bg-transparent'
-          : 'bg-neutral-100/60 dark:bg-neutral-900/50 border-y border-neutral-200/50 dark:border-neutral-800/40'
+          ? 'bg-transparent px-3 py-4 md:px-6 md:py-5'
+          : 'assistant-message bg-neutral-100/60 dark:bg-neutral-900/50 border-y border-neutral-200/50 dark:border-neutral-800/40 px-3.5 py-3.5 sm:px-4 sm:py-4'
       }`}
     >
-      {/* Avatar */}
-      <div className="shrink-0 pt-0.5">
-        {isUser ? (
+      {/* Avatar (Only for user messages; removed for AI reply box as requested) */}
+      {isUser && (
+        <div className="shrink-0 pt-0.5">
           <div className="w-8 h-8 rounded-xl bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 flex items-center justify-center shadow-xs">
             <User className="w-4 h-4" />
           </div>
-        ) : (
-          <div className="w-8 h-8 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white flex items-center justify-center shadow-xs">
-            <Bot className="w-4 h-4" />
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Main Message Body */}
       <div className="flex-1 min-w-0 space-y-2">
