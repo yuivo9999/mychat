@@ -794,7 +794,7 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
         {/* File Manager Card Panel (Pure file list area, no code editor pane) */}
         <div
           onClick={(e) => e.stopPropagation()}
-          className="workspace-drawer w-full max-w-2xl h-[680px] max-h-[90vh] bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl border border-neutral-200 dark:border-neutral-800 flex flex-col overflow-hidden animate-in zoom-in-95"
+          className="workspace-drawer w-full max-w-2xl h-[680px] max-h-[90vh] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800 flex flex-col overflow-hidden animate-in zoom-in-95"
         >
           {/* Header Bar */}
           <div className="px-5 py-3 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between shrink-0 bg-neutral-50/50 dark:bg-neutral-900/50 gap-3">
