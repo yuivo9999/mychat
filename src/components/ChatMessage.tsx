@@ -22,6 +22,7 @@ import { renderMarkdown, getFileExtensionForLang } from '../services/markdown';
 import { formatFileSize } from '../services/fileParser';
 import { ThinkingSteps } from './ThinkingSteps';
 import { AgentToolCallsViewer } from './AgentToolCallsViewer';
+import { ThinkingLogViewer, parseThinkingContent } from './ThinkingLogViewer';
 
 interface ChatMessageProps {
   message: Message;
@@ -54,12 +55,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const [editText, setEditText] = useState(message.content);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+  const { thinkingText, mainContent } = useMemo(() => {
+    if (isUser) return { thinkingText: '', mainContent: message.content };
+    return parseThinkingContent(message.content);
+  }, [message.content, isUser]);
+
   const htmlContent = useMemo(() => {
     if (isUser || !settings.enableMarkdown) {
       return '';
     }
-    return renderMarkdown(message.content);
-  }, [message.content, isUser, settings.enableMarkdown]);
+    return renderMarkdown(mainContent);
+  }, [mainContent, isUser, settings.enableMarkdown]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
@@ -310,8 +316,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           </div>
         ) : (
           <div className="text-neutral-900 dark:text-neutral-100 text-sm leading-relaxed overflow-hidden">
+            {/* Thinking Log (Collapsible reasoning steps for DeepSeek R1 / Reasoning models) */}
+            {!isUser && thinkingText && (
+              <ThinkingLogViewer
+                thinkingText={thinkingText}
+                isStreaming={message.status === 'streaming'}
+              />
+            )}
+
             {isUser || !settings.enableMarkdown ? (
-              <div className="whitespace-pre-wrap font-sans">{message.content}</div>
+              <div className="whitespace-pre-wrap font-sans">{mainContent}</div>
             ) : (
               <div 
                 className="markdown-body" 
