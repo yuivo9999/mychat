@@ -1,7 +1,7 @@
 import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch } from './base';
 import { ApiKeyConfig } from '../../types';
 import { extractAttachmentText } from '../fileParser';
-import { supportsGoogleNativeFileMime } from '../googleFileSupport';
+import { isGeminiNativeFileModel, resolveGoogleNativeMimeType, supportsGoogleNativeFileMime } from '../googleFileSupport';
 
 export class GeminiAdapter implements BaseAdapter {
   private normalizeModelId(modelId: string): string {
@@ -56,13 +56,23 @@ export class GeminiAdapter implements BaseAdapter {
           if (att.type.startsWith('image/') && model.supportsVision && att.dataUrl) {
             const matches = att.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
             if (matches) parts.push({ inlineData: { mimeType: matches[1], data: matches[2] } });
-          } else if (att.base64Data && supportsGoogleNativeFileMime(att.type)) {
-            // Native Google file input is selected by the centralized provider policy.
-            // Model IDs do not need their own duplicated MIME capability list.
-            parts.push({ inlineData: { mimeType: att.type, data: att.base64Data } });
           } else if (att.base64Data) {
-            // Only unsupported file inputs reach the local text fallback.
-            parts.push({ text: `[附件文本: ${att.name}]\n${extractAttachmentText(att)}` });
+            const isNativeModel = isGeminiNativeFileModel(model.id) || model.supportsFiles;
+            const nativeMime = isNativeModel ? resolveGoogleNativeMimeType(att) : null;
+
+            if (nativeMime) {
+              // TXT and native document files are sent as independent Gemini inlineData parts.
+              // Never serialized into prompt text; never duplicated.
+              parts.push({
+                inlineData: {
+                  mimeType: nativeMime,
+                  data: att.base64Data,
+                },
+              });
+            } else {
+              // Only unsupported binary documents (e.g. DOCX) fall back to local text extraction.
+              parts.push({ text: `[附件文本: ${att.name}]\n${extractAttachmentText(att)}` });
+            }
           }
         }
       }
