@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   X, 
   Layers, 
@@ -77,12 +77,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onResetAllData,
 }) => {
   const [activeTab, setActiveTab] = useState(['chat', 'appearance', 'data', 'advanced'].includes(initialTab) ? initialTab : 'chat');
-
-  useEffect(() => {
-    if (isOpen && initialTab && ['chat', 'appearance', 'data', 'advanced'].includes(initialTab)) {
-      setActiveTab(initialTab);
-    }
-  }, [initialTab, isOpen]);
 
   // API Key Form State
   const [editingKeyId, setEditingKeyId] = useState<string | null>(null);
@@ -432,23 +426,64 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-3 w-full">
-                  {/* 1. 碧潭流光 (新主题置顶推荐) */}
                   <button
                     type="button"
-                    onClick={() => onSaveSettings({ ...settings, theme: 'jadewater' })}
-                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
-                      settings.theme === 'jadewater'
-                        ? 'border-teal-500 bg-teal-950/40 ring-2 ring-teal-500/30'
-                        : 'border-neutral-200 dark:border-neutral-800 hover:border-teal-500/50 bg-neutral-50/50 dark:bg-neutral-800/30'
+                    onClick={() => onSaveSettings({ ...settings, theme: 'light' })}
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
+                      settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && settings.theme !== 'jadewater' && settings.theme !== 'mist-glass'
+                        ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20'
+                        : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
+                    }`}
+                  >
+                    <div className="flex flex-col justify-center">
+                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug">默认皮肤</div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">现代极简设计，黑白灰无衬线视觉风格</div>
+                    </div>
+                    {settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && settings.theme !== 'jadewater' && settings.theme !== 'mist-glass' && (
+                      <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 shrink-0 ml-3">
+                        <Check className="w-4 h-4" /> 当前已使用
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSaveSettings({ ...settings, theme: 'mist-glass' })}
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
+                      settings.theme === 'mist-glass'
+                        ? 'border-[#5e9da0] bg-[#5e9da0]/15 ring-2 ring-[#5e9da0]/30'
+                        : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
                     }`}
                   >
                     <div className="flex flex-col justify-center">
                       <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-teal-400 border border-teal-200 shrink-0 shadow-xs" />
-                        <span>碧潭流光</span>
-                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">全新上线 · Jadewater</span>
+                        <span>雾青琉璃</span>
+                        <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-[#5e9da0]/15 text-[#477f82] dark:text-[#75b9bb] border border-[#5e9da0]/30">Mist Glass</span>
                       </div>
-                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400 leading-snug mt-1">深青黑底水面渐变、碧玉青主色与暖金点缀，半透明浮岛玻璃质感</div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">冷青灰玻璃、半透明雾面、柔和蓝青高光与低对比度阴影</div>
+                    </div>
+                    {settings.theme === 'mist-glass' && (
+                      <span className="text-xs font-semibold text-[#477f82] dark:text-[#75b9bb] flex items-center gap-1 shrink-0 ml-3">
+                        <Check className="w-4 h-4" /> 当前已使用
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSaveSettings({ ...settings, theme: 'jadewater' })}
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
+                      settings.theme === 'jadewater'
+                        ? 'border-teal-500 bg-teal-950/40 ring-2 ring-teal-500/30'
+                        : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
+                    }`}
+                  >
+                    <div className="flex flex-col justify-center">
+                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug flex items-center gap-2">
+                        <span>碧潭流光</span>
+                        <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-teal-500/15 text-teal-400 border border-teal-500/30">Jadewater Luminous</span>
+                      </div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">深青黑底水面渐变、碧玉青主色与暖金点缀，半透明浮岛玻璃质感</div>
                     </div>
                     {settings.theme === 'jadewater' && (
                       <span className="text-xs font-semibold text-teal-400 flex items-center gap-1 shrink-0 ml-3">
@@ -457,46 +492,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     )}
                   </button>
 
-                  {/* 2. 默认皮肤 */}
-                  <button
-                    type="button"
-                    onClick={() => onSaveSettings({ ...settings, theme: 'light' })}
-                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
-                      settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && settings.theme !== 'jadewater'
-                        ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20'
-                        : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
-                    }`}
-                  >
-                    <div className="flex flex-col justify-center">
-                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-indigo-500 border border-indigo-200 shrink-0 shadow-xs" />
-                        <span>默认皮肤</span>
-                      </div>
-                      <div className="text-[11px] text-neutral-500 leading-snug mt-1">现代极简设计，黑白灰无衬线视觉风格</div>
-                    </div>
-                    {settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && settings.theme !== 'jadewater' && (
-                      <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 shrink-0 ml-3">
-                        <Check className="w-4 h-4" /> 当前已使用
-                      </span>
-                    )}
-                  </button>
-
-                  {/* 3. 现代1 */}
                   <button
                     type="button"
                     onClick={() => onSaveSettings({ ...settings, theme: 'modern1' })}
-                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
                       settings.theme === 'modern1'
                         ? 'border-sky-500 bg-sky-50/70 dark:bg-sky-950/30 ring-2 ring-sky-500/30'
                         : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
                     }`}
                   >
                     <div className="flex flex-col justify-center">
-                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-sky-400 border border-sky-200 shrink-0 shadow-xs" />
-                        <span>现代1</span>
-                      </div>
-                      <div className="text-[11px] text-neutral-500 leading-snug mt-1">冰蓝雾灰清爽底色、深海钢蓝字色与蔚蓝高亮，高效商务排版</div>
+                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug">现代1</div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">冰蓝雾灰清爽底色、深海钢蓝字色与蔚蓝高亮，高效商务排版</div>
                     </div>
                     {settings.theme === 'modern1' && (
                       <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 flex items-center gap-1 shrink-0 ml-3">
@@ -505,22 +512,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     )}
                   </button>
 
-                  {/* 4. 古典1 */}
                   <button
                     type="button"
                     onClick={() => onSaveSettings({ ...settings, theme: 'classic1' })}
-                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
                       settings.theme === 'classic1'
                         ? 'border-amber-700 bg-amber-50/60 ring-2 ring-amber-700/20'
                         : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
                     }`}
                   >
                     <div className="flex flex-col justify-center font-serif">
-                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-amber-700 border border-amber-300 shrink-0 shadow-xs" />
-                        <span>古典1</span>
-                      </div>
-                      <div className="text-[11px] text-neutral-500 leading-snug mt-1">古朴宣纸底色、深褐墨香与朱砂沉淀，配合典雅衬线字体</div>
+                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug">古典1</div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">古朴宣纸底色、深褐墨香与朱砂沉淀，配合典雅衬线字体</div>
                     </div>
                     {settings.theme === 'classic1' && (
                       <span className="text-xs font-semibold text-amber-800 flex items-center gap-1 shrink-0 ml-3 font-serif">
@@ -529,22 +532,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     )}
                   </button>
 
-                  {/* 5. 古典2 */}
                   <button
                     type="button"
                     onClick={() => onSaveSettings({ ...settings, theme: 'classic2' })}
-                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between cursor-pointer ${
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
                       settings.theme === 'classic2'
                         ? 'border-amber-500 bg-amber-950/40 ring-2 ring-amber-500/30'
                         : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
                     }`}
                   >
                     <div className="flex flex-col justify-center font-serif">
-                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full bg-amber-400 border border-amber-200 shrink-0 shadow-xs" />
-                        <span>古典2</span>
-                      </div>
-                      <div className="text-[11px] text-neutral-500 leading-snug mt-1">天下舆图黑金主页底色；模型与参数弹窗全浅古宣色，绝无黑色背景</div>
+                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug">古典2</div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">天下舆图黑金主页底色；模型与参数弹窗全浅古宣色，绝无黑色背景</div>
                     </div>
                     {settings.theme === 'classic2' && (
                       <span className="text-xs font-semibold text-amber-400 flex items-center gap-1 shrink-0 ml-3 font-serif">
