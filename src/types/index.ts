@@ -33,7 +33,8 @@ export interface ApiKeyConfig {
 }
 
 export interface ModelItem {
-  id: string; // e.g. "gpt-4o", "gemini-2.5-flash", "claude-3-5-sonnet-20241022"
+  id: string; // Unique storage ID, e.g. "openai::gpt-4o" or "gemini-3.8-flash"
+  rawModelId?: string; // The raw model ID sent to the provider API, e.g. "gpt-4o"
   name: string;
   providerId: string;
   description?: string;

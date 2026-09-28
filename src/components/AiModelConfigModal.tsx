@@ -29,6 +29,7 @@ import {
 import { getAdapterForProvider } from '../services/adapters';
 import { DEFAULT_MODELS } from '../services/db';
 import { getGroqModelCapabilities } from '../services/groqModelCapabilities';
+import { getRawModelId, buildUniqueModelId } from '../services/modelUtils';
 
 interface AiModelConfigModalProps {
   isOpen: boolean;
@@ -196,7 +197,13 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
   const handleDeleteCurrentGroup = () => {
     if (!currentGroup) return;
     if (confirm(`确定要删除服务商分组「${currentGroup.name}」及其关联设置吗？`)) {
+      // 1. Delete associated keys & models
+      groupKeys.forEach(k => onDeleteApiKey(k.id));
+      groupModels.forEach(m => onDeleteModel(m.id));
+
+      // 2. Delete provider definition
       onDeleteProvider(currentGroup.id);
+
       const remaining = providers.filter(p => p.id !== currentGroup.id);
       if (remaining.length > 0) {
         setSelectedGroupId(remaining[0].id);
@@ -239,13 +246,15 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
   const handleAddModel = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newModelId.trim() || !currentGroup) return;
-    const modelId = newModelId.trim();
+    const rawId = getRawModelId(newModelId.trim());
+    const uniqueId = buildUniqueModelId(currentGroup.id, rawId);
     const groqCapabilities =
-      currentGroup.id === 'groq' ? getGroqModelCapabilities(modelId) : null;
+      currentGroup.id === 'groq' ? getGroqModelCapabilities(rawId) : null;
 
     const newModelItem: ModelItem = {
-      id: modelId,
-      name: modelId,
+      id: uniqueId,
+      rawModelId: rawId,
+      name: rawId,
       providerId: currentGroup.id,
       supportsVision: groqCapabilities?.supportsVision ?? false,
       supportsFiles: groqCapabilities?.supportsFiles ?? true,
@@ -253,6 +262,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
       contextWindow: 131072,
       temperature: 0.7,
       topP: 0.95,
+      isCustom: true,
     };
     onSaveModel(newModelItem);
     setIsAddingModel(false);
@@ -454,7 +464,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
             <div className="space-y-1">
               <div className="text-xs text-neutral-400 flex items-center justify-between flex-wrap gap-1">
                 <span>模型</span>
-                <span className="text-[11px] text-neutral-500 font-mono">发给 AI 的标准代号: <span className="text-orange-400 font-medium">{defaultModelId || '未配置'}</span></span>
+                <span className="text-[11px] text-neutral-500 font-mono">发给 AI 的标准代号: <span className="text-orange-400 font-medium">{getRawModelId(defaultModelId) || '未配置'}</span></span>
               </div>
               <div className="relative">
                 <select
@@ -465,11 +475,14 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   {defaultServiceModels.length === 0 ? (
                     <option value="" className="bg-[#181c26] text-neutral-400">（尚未配置模型）</option>
                   ) : (
-                    defaultServiceModels.map((m) => (
-                      <option key={m.id} value={m.id} className="bg-[#181c26] text-white">
-                        {m.id} {m.name && m.name !== m.id ? `(${m.name})` : ''} {m.id === currentModelId ? '· [现用]' : ''}
-                      </option>
-                    ))
+                    defaultServiceModels.map((m) => {
+                      const raw = getRawModelId(m);
+                      return (
+                        <option key={m.id} value={m.id} className="bg-[#181c26] text-white">
+                          {raw} {m.name && m.name !== raw ? `(${m.name})` : ''} {m.id === currentModelId ? '· [现用]' : ''}
+                        </option>
+                      );
+                    })
                   )}
                 </select>
                 <ChevronDown className="w-4 h-4 text-neutral-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1089,36 +1102,39 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                       </button>
                     </div>
                   ) : (
-                    groupModels.map((m) => (
-                      <div
-                        key={m.id}
-                        className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#12141c] border border-neutral-800/80 text-xs group"
-                      >
-                        <div className="flex flex-col min-w-0 pr-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-medium text-orange-300 truncate">
-                              {m.id}
-                            </span>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 shrink-0">
-                              标准代号
-                            </span>
-                          </div>
-                          {m.name && m.name !== m.id && (
-                            <span className="text-[11px] text-neutral-400 truncate mt-0.5">
-                              别名: {m.name}
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => onDeleteModel(m.id)}
-                          className="px-2 py-0.5 text-xs text-neutral-400 hover:text-red-400 rounded-md hover:bg-red-950/40 transition shrink-0"
-                          title="删除此模型"
+                    groupModels.map((m) => {
+                      const raw = getRawModelId(m);
+                      return (
+                        <div
+                          key={m.id}
+                          className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#12141c] border border-neutral-800/80 text-xs group"
                         >
-                          删
-                        </button>
-                      </div>
-                    ))
+                          <div className="flex flex-col min-w-0 pr-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-medium text-orange-300 truncate">
+                                {raw}
+                              </span>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 shrink-0">
+                                标准代号
+                              </span>
+                            </div>
+                            {m.name && m.name !== raw && (
+                              <span className="text-[11px] text-neutral-400 truncate mt-0.5">
+                                别名: {m.name}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onDeleteModel(m.id)}
+                            className="px-2 py-0.5 text-xs text-neutral-400 hover:text-red-400 rounded-md hover:bg-red-950/40 transition shrink-0"
+                            title="删除此模型"
+                          >
+                            删
+                          </button>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>

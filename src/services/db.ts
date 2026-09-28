@@ -6,6 +6,7 @@ import {
   UserSettings,
   Project
 } from '../types';
+import { getRawModelId, buildUniqueModelId } from './modelUtils';
 
 const DB_NAME = 'OmniChatLocalDB';
 const DB_VERSION = 4;
@@ -818,11 +819,19 @@ export async function getModels(): Promise<ModelItem[]> {
     request.onsuccess = async () => {
       let results = (request.result as ModelItem[]) || [];
       if (results.length === 0) {
-        for (const m of DEFAULT_MODELS) store.put(m);
-        results = [...DEFAULT_MODELS];
+        for (const m of DEFAULT_MODELS) {
+          const raw = getRawModelId(m);
+          const uniqueId = m.id.includes('::') ? m.id : buildUniqueModelId(m.providerId, raw);
+          store.put({ ...m, id: uniqueId, rawModelId: raw });
+        }
+        results = DEFAULT_MODELS.map(m => {
+          const raw = getRawModelId(m);
+          const uniqueId = m.id.includes('::') ? m.id : buildUniqueModelId(m.providerId, raw);
+          return { ...m, id: uniqueId, rawModelId: raw };
+        });
       }
 
-      // Remove the obsolete OpenRouter free slug shipped by older builds.
+      // Remove obsolete slugs
       const staleOpenRouterIds = ['nvidia/nemotron-3-super:free'];
       for (const staleId of staleOpenRouterIds) {
         if (results.some(r => r.id === staleId)) {
@@ -831,30 +840,32 @@ export async function getModels(): Promise<ModelItem[]> {
         }
       }
 
-      // Ensure the fixed built-in model roster is present and keep user custom models.
-      const updatedResults = results.map(r => {
-        const defaultDef = DEFAULT_MODELS.find(dm => dm.id === r.id);
-        if (defaultDef && r.name !== defaultDef.name && !r.isCustom) {
-          const updated = { ...r, name: defaultDef.name, description: defaultDef.description };
-          store.put(updated);
-          return updated;
-        }
-        return r;
+      // Normalize rawModelId
+      const normalizedResults = results.map(r => {
+        const raw = getRawModelId(r);
+        return {
+          ...r,
+          rawModelId: raw,
+        };
       });
 
-      const missingDefaults = DEFAULT_MODELS.filter(dm => !updatedResults.some(r => r.id === dm.id));
+      // Match missing defaults scoped strictly by providerId AND rawModelId
+      const missingDefaults = DEFAULT_MODELS.filter(dm => {
+        const dmRaw = getRawModelId(dm);
+        return !normalizedResults.some(r => r.providerId === dm.providerId && getRawModelId(r) === dmRaw);
+      });
+
       if (missingDefaults.length > 0) {
         for (const m of missingDefaults) {
-          store.put(m);
-          updatedResults.push(m);
+          const raw = getRawModelId(m);
+          const uniqueId = m.id.includes('::') ? m.id : buildUniqueModelId(m.providerId, raw);
+          const normalizedDefault = { ...m, id: uniqueId, rawModelId: raw };
+          store.put(normalizedDefault);
+          normalizedResults.push(normalizedDefault);
         }
       }
 
-      // Return the actual catalog. The previous code referenced an undefined
-      // `withDefaults` variable here, leaving the IndexedDB success callback
-      // with an uncaught ReferenceError and causing the UI to wait forever for
-      // models/groups.
-      resolve(updatedResults);
+      resolve(normalizedResults);
     };
     request.onerror = () => reject(request.error);
   });
@@ -865,16 +876,26 @@ export async function seedDefaultModels(): Promise<void> {
   const transaction = db.transaction('models', 'readwrite');
   const store = transaction.objectStore('models');
   for (const m of DEFAULT_MODELS) {
-    store.put(m);
+    const raw = getRawModelId(m);
+    const uniqueId = m.id.includes('::') ? m.id : buildUniqueModelId(m.providerId, raw);
+    store.put({ ...m, id: uniqueId, rawModelId: raw });
   }
 }
 
 export async function saveModel(model: ModelItem): Promise<void> {
   const db = await openDB();
+  const rawId = getRawModelId(model);
+  const uniqueId = model.id.includes('::') ? model.id : buildUniqueModelId(model.providerId, rawId);
+  const normalizedModel: ModelItem = {
+    ...model,
+    id: uniqueId,
+    rawModelId: rawId,
+  };
+
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('models', 'readwrite');
     const store = transaction.objectStore('models');
-    const request = store.put(model);
+    const request = store.put(normalizedModel);
 
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
