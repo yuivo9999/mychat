@@ -484,16 +484,16 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   type="button"
                   onClick={handleTestConnection}
                   disabled={isTesting}
-                  className="w-full py-2.5 px-4 rounded-xl bg-[#1e2330] hover:bg-[#262c3d] text-neutral-200 border border-neutral-700/80 font-medium text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  className="test-conn-btn w-full py-2.5 px-4 rounded-xl font-medium text-sm transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                 >
                   {isTesting ? (
                     <>
-                      <RefreshCw className="w-4 h-4 animate-spin text-orange-400" />
+                      <RefreshCw className="w-4 h-4 animate-spin text-orange-400 shrink-0" />
                       <span>正在测试...</span>
                     </>
                   ) : (
                     <>
-                      <Activity className="w-4 h-4 text-neutral-400" />
+                      <Activity className="w-4 h-4 shrink-0 opacity-80" />
                       <span>测试连接</span>
                     </>
                   )}

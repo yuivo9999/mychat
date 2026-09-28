@@ -1,4 +1,5 @@
 @import "./themes/mist-glass.css";
+@import "./themes/cinnabar-flow.css";
 @import "tailwindcss";
 
 @layer base {
@@ -217,48 +218,38 @@ html.theme-classic1,
   border-color: #8b2626 !important;
 }
 
-/* 古典1 与 现代1 皮肤：模型设置 (AiModelConfigModal) 与 参数设置 (ParametersModal) 内部暗色文字全量转为纯白色 */
-.theme-classic1 .model-config-modal .text-neutral-400,
-.theme-classic1 .model-config-modal .text-neutral-500,
-.theme-classic1 .model-config-modal .text-neutral-600,
-.theme-classic1 .model-config-modal .text-neutral-300,
-.theme-classic1 .model-config-modal .text-neutral-700,
-.theme-classic1 .model-config-modal label,
-.theme-classic1 .model-config-modal p,
-.theme-classic1 .model-config-modal span,
-.theme-classic1 .model-config-modal select,
-.theme-classic1 .model-config-modal input,
-.theme-classic1 .model-config-modal option,
-.theme-classic1 .parameters-modal .text-neutral-400,
-.theme-classic1 .parameters-modal .text-neutral-500,
-.theme-classic1 .parameters-modal .text-neutral-600,
-.theme-classic1 .parameters-modal .text-neutral-300,
-.theme-classic1 .parameters-modal .text-neutral-700,
-.theme-classic1 .parameters-modal label,
-.theme-classic1 .parameters-modal p,
-.theme-classic1 .parameters-modal span,
-.theme-classic1 .parameters-modal input,
-.theme-modern1 .model-config-modal .text-neutral-400,
-.theme-modern1 .model-config-modal .text-neutral-500,
-.theme-modern1 .model-config-modal .text-neutral-600,
-.theme-modern1 .model-config-modal .text-neutral-300,
-.theme-modern1 .model-config-modal .text-neutral-700,
-.theme-modern1 .model-config-modal label,
-.theme-modern1 .model-config-modal p,
-.theme-modern1 .model-config-modal span,
-.theme-modern1 .model-config-modal select,
-.theme-modern1 .model-config-modal input,
-.theme-modern1 .model-config-modal option,
-.theme-modern1 .parameters-modal .text-neutral-400,
-.theme-modern1 .parameters-modal .text-neutral-500,
-.theme-modern1 .parameters-modal .text-neutral-600,
-.theme-modern1 .parameters-modal .text-neutral-300,
-.theme-modern1 .parameters-modal .text-neutral-700,
-.theme-modern1 .parameters-modal label,
-.theme-modern1 .parameters-modal p,
-.theme-modern1 .parameters-modal span,
-.theme-modern1 .parameters-modal input {
+/* 默认与通用：测试连接按钮样式 */
+.test-conn-btn {
+  background-color: #1e2330 !important;
+  color: #e5e7eb !important;
+  border: 1px solid #374151 !important;
+}
+
+.test-conn-btn:hover {
+  background-color: #262c3d !important;
   color: #ffffff !important;
+}
+
+.test-conn-btn svg {
+  color: #9ca3af !important;
+}
+
+/* 参数设置默认基础暗色高对比度排版 */
+.parameters-modal .param-modal-title,
+.parameters-modal .param-item-label {
+  color: #f4f4f5 !important;
+}
+
+.parameters-modal .param-modal-sub,
+.parameters-modal .param-item-sub,
+.parameters-modal .param-slider-ticks {
+  color: #a1a1aa !important;
+}
+
+.parameters-modal .param-input {
+  background-color: #181818 !important;
+  color: #ffffff !important;
+  border-color: #27272a !important;
 }
 
 .theme-classic1 .model-config-modal select option,

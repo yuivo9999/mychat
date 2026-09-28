@@ -174,7 +174,7 @@ export default function App() {
   // Theme synchronization
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove('dark', 'theme-classic1', 'theme-classic2', 'theme-modern1', 'theme-jadewater', 'theme-mist-glass');
+    root.classList.remove('dark', 'theme-classic1', 'theme-classic2', 'theme-modern1', 'theme-jadewater', 'theme-mist-glass', 'theme-cinnabar-flow');
 
     if (settings.theme === 'classic1') {
       root.classList.add('theme-classic1');
@@ -186,6 +186,8 @@ export default function App() {
       root.classList.add('theme-jadewater');
     } else if (settings.theme === 'mist-glass') {
       root.classList.add('theme-mist-glass');
+    } else if (settings.theme === 'cinnabar-flow') {
+      root.classList.add('theme-cinnabar-flow');
     } else {
       const isDark =
         settings.theme === 'dark' ||

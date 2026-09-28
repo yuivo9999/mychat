@@ -57,18 +57,18 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
 
   return (
     <div className="parameters-modal fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 md:p-4 select-none animate-in fade-in duration-150">
-      <div className="bg-[#121212] text-[#f4f4f5] border border-neutral-800 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+      <div className="parameters-card bg-[#121212] text-[#f4f4f5] border border-neutral-800 rounded-3xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
         {/* Header */}
-        <div className="p-4 md:px-5 border-b border-neutral-800/90 flex items-center justify-between shrink-0 bg-[#161616]">
+        <div className="parameters-header p-4 md:px-5 border-b border-neutral-800/90 flex items-center justify-between shrink-0 bg-[#161616]">
           <div className="flex items-center gap-2.5">
-            <SlidersHorizontal className="w-5 h-5 text-[#84cc16]" />
+            <SlidersHorizontal className="w-5 h-5 text-[#84cc16] param-icon" />
             <div>
-              <h3 className="text-base font-bold tracking-wide flex items-center gap-2 text-white">
-                <span>参数设置</span>
-                <span className="text-xs text-neutral-400 font-mono font-normal">Parameters</span>
+              <h3 className="text-base font-bold tracking-wide flex items-center gap-2 text-white param-modal-heading">
+                <span className="param-modal-title">参数设置</span>
+                <span className="text-xs font-mono font-normal opacity-70 param-modal-sub">Parameters</span>
               </h3>
               {modelName && (
-                <p className="text-[11px] text-neutral-400 truncate max-w-[240px]">
+                <p className="text-[11px] text-neutral-400 truncate max-w-[240px] param-model-target">
                   作用于：{modelName}
                 </p>
               )}
@@ -78,7 +78,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
             <button
               type="button"
               onClick={resetToDefaults}
-              className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800/80 transition"
+              className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800/80 transition cursor-pointer"
               title="重置为默认参数"
             >
               <RotateCcw className="w-4 h-4" />
@@ -86,7 +86,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800/80 transition"
+              className="p-2 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-800/80 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -98,8 +98,8 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
           {/* 1. Stream (流式传输) */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 relative">
-              <span className="text-sm font-semibold text-neutral-200">流式传输</span>
-              <span className="text-xs text-neutral-500 font-mono">Stream</span>
+              <span className="text-sm font-semibold text-neutral-100 param-item-label">流式传输</span>
+              <span className="text-xs text-neutral-400 font-mono param-item-sub">Stream</span>
               <button
                 type="button"
                 onMouseEnter={() => setActiveTooltip('stream')}
@@ -120,7 +120,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
             <button
               type="button"
               onClick={() => updateParam('stream', !(parameters.stream ?? true))}
-              className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
+              className={`w-12 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors param-toggle ${
                 (parameters.stream ?? true) ? 'bg-[#84cc16]' : 'bg-neutral-800'
               }`}
             >
@@ -136,8 +136,8 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 relative">
-                <span className="text-sm font-semibold text-neutral-200">最大生成长度</span>
-                <span className="text-xs text-neutral-500 font-mono">Max Tokens</span>
+                <span className="text-sm font-semibold text-neutral-100 param-item-label">最大生成长度</span>
+                <span className="text-xs text-neutral-400 font-mono param-item-sub">Max Tokens</span>
                 <button
                   type="button"
                   onMouseEnter={() => setActiveTooltip('maxTokens')}
@@ -161,7 +161,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 max={32768}
                 value={parameters.maxTokens ?? 4096}
                 onChange={(e) => updateParam('maxTokens', parseInt(e.target.value) || 1)}
-                className="w-24 text-right bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3 py-1.5 rounded-xl text-sm font-mono outline-hidden"
+                className="w-24 text-right bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3 py-1.5 rounded-xl text-sm font-mono outline-hidden param-input"
               />
             </div>
 
@@ -174,9 +174,9 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 step={1}
                 value={parameters.maxTokens ?? 4096}
                 onChange={(e) => updateParam('maxTokens', parseInt(e.target.value))}
-                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#84cc16]"
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#84cc16] param-slider"
               />
-              <div className="flex justify-between text-[11px] text-neutral-500 font-mono mt-1 select-none">
+              <div className="flex justify-between text-[11px] text-neutral-400 font-mono mt-1 select-none param-slider-ticks">
                 <span>1</span>
                 <span>4096</span>
                 <span>8192</span>
@@ -189,8 +189,8 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 relative">
-                <span className="text-sm font-semibold text-neutral-200">采样温度</span>
-                <span className="text-xs text-neutral-500 font-mono">Temperature</span>
+                <span className="text-sm font-semibold text-neutral-100 param-item-label">采样温度</span>
+                <span className="text-xs text-neutral-400 font-mono param-item-sub">Temperature</span>
                 <button
                   type="button"
                   onMouseEnter={() => setActiveTooltip('temperature')}
@@ -214,7 +214,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 step={0.05}
                 value={parameters.temperature ?? 0.5}
                 onChange={(e) => updateParam('temperature', parseFloat(e.target.value) || 0)}
-                className="w-24 text-right bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3 py-1.5 rounded-xl text-sm font-mono outline-hidden"
+                className="w-24 text-right bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3 py-1.5 rounded-xl text-sm font-mono outline-hidden param-input"
               />
             </div>
 
@@ -226,9 +226,9 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 step={0.05}
                 value={parameters.temperature ?? 0.5}
                 onChange={(e) => updateParam('temperature', parseFloat(e.target.value))}
-                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#84cc16]"
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#84cc16] param-slider"
               />
-              <div className="flex justify-between text-[11px] text-neutral-500 font-mono mt-1 select-none">
+              <div className="flex justify-between text-[11px] text-neutral-400 font-mono mt-1 select-none param-slider-ticks">
                 <span>0</span>
                 <span>0.25</span>
                 <span>0.5</span>
@@ -242,8 +242,8 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 relative">
-                <span className="text-sm font-semibold text-neutral-200">核采样</span>
-                <span className="text-xs text-neutral-500 font-mono">Top P</span>
+                <span className="text-sm font-semibold text-neutral-100 param-item-label">核采样</span>
+                <span className="text-xs text-neutral-400 font-mono param-item-sub">Top P</span>
                 <button
                   type="button"
                   onMouseEnter={() => setActiveTooltip('topP')}
@@ -267,7 +267,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 step={0.05}
                 value={parameters.topP ?? 1}
                 onChange={(e) => updateParam('topP', parseFloat(e.target.value) || 0)}
-                className="w-24 text-right bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3 py-1.5 rounded-xl text-sm font-mono outline-hidden"
+                className="w-24 text-right bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3 py-1.5 rounded-xl text-sm font-mono outline-hidden param-input"
               />
             </div>
 
@@ -279,9 +279,9 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 step={0.05}
                 value={parameters.topP ?? 1}
                 onChange={(e) => updateParam('topP', parseFloat(e.target.value))}
-                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#84cc16]"
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#84cc16] param-slider"
               />
-              <div className="flex justify-between text-[11px] text-neutral-500 font-mono mt-1 select-none">
+              <div className="flex justify-between text-[11px] text-neutral-400 font-mono mt-1 select-none param-slider-ticks">
                 <span>0</span>
                 <span>0.25</span>
                 <span>0.5</span>
@@ -295,8 +295,8 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 relative">
-                <span className="text-sm font-semibold text-neutral-200">频率惩罚</span>
-                <span className="text-xs text-neutral-500 font-mono">Frequency Penalty</span>
+                <span className="text-sm font-semibold text-neutral-100 param-item-label">频率惩罚</span>
+                <span className="text-xs text-neutral-400 font-mono param-item-sub">Frequency Penalty</span>
                 <button
                   type="button"
                   onMouseEnter={() => setActiveTooltip('frequencyPenalty')}
@@ -320,7 +320,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 step={0.1}
                 value={parameters.frequencyPenalty ?? 0}
                 onChange={(e) => updateParam('frequencyPenalty', parseFloat(e.target.value) || 0)}
-                className="w-24 text-right bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3 py-1.5 rounded-xl text-sm font-mono outline-hidden"
+                className="w-24 text-right bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3 py-1.5 rounded-xl text-sm font-mono outline-hidden param-input"
               />
             </div>
 
@@ -332,9 +332,9 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 step={0.1}
                 value={parameters.frequencyPenalty ?? 0}
                 onChange={(e) => updateParam('frequencyPenalty', parseFloat(e.target.value))}
-                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#84cc16]"
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#84cc16] param-slider"
               />
-              <div className="flex justify-between text-[11px] text-neutral-500 font-mono mt-1 select-none">
+              <div className="flex justify-between text-[11px] text-neutral-400 font-mono mt-1 select-none param-slider-ticks">
                 <span>-2</span>
                 <span>-1</span>
                 <span>0</span>
@@ -348,8 +348,8 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 relative">
-                <span className="text-sm font-semibold text-neutral-200">存在惩罚</span>
-                <span className="text-xs text-neutral-500 font-mono">Presence Penalty</span>
+                <span className="text-sm font-semibold text-neutral-100 param-item-label">存在惩罚</span>
+                <span className="text-xs text-neutral-400 font-mono param-item-sub">Presence Penalty</span>
                 <button
                   type="button"
                   onMouseEnter={() => setActiveTooltip('presencePenalty')}
@@ -373,7 +373,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 step={0.1}
                 value={parameters.presencePenalty ?? 0}
                 onChange={(e) => updateParam('presencePenalty', parseFloat(e.target.value) || 0)}
-                className="w-24 text-right bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3 py-1.5 rounded-xl text-sm font-mono outline-hidden"
+                className="w-24 text-right bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3 py-1.5 rounded-xl text-sm font-mono outline-hidden param-input"
               />
             </div>
 
@@ -385,9 +385,9 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 step={0.1}
                 value={parameters.presencePenalty ?? 0}
                 onChange={(e) => updateParam('presencePenalty', parseFloat(e.target.value))}
-                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#84cc16]"
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-[#84cc16] param-slider"
               />
-              <div className="flex justify-between text-[11px] text-neutral-500 font-mono mt-1 select-none">
+              <div className="flex justify-between text-[11px] text-neutral-400 font-mono mt-1 select-none param-slider-ticks">
                 <span>-2</span>
                 <span>-1</span>
                 <span>0</span>
@@ -400,8 +400,8 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
           {/* 7. Stop Sequences (停止词) */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5 relative">
-              <span className="text-sm font-semibold text-neutral-200">停止词</span>
-              <span className="text-xs text-neutral-500 font-mono">Stop</span>
+              <span className="text-sm font-semibold text-neutral-100 param-item-label">停止词</span>
+              <span className="text-xs text-neutral-400 font-mono param-item-sub">Stop</span>
               <button
                 type="button"
                 onMouseEnter={() => setActiveTooltip('stop')}
@@ -423,15 +423,15 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
               placeholder="输入停止标记词，例如: <|im_end|> 或 END"
               value={parameters.stop || ''}
               onChange={(e) => updateParam('stop', e.target.value)}
-              className="w-full bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3.5 py-2.5 rounded-xl text-xs font-mono outline-hidden placeholder-neutral-600"
+              className="w-full bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3.5 py-2.5 rounded-xl text-xs font-mono outline-hidden placeholder-neutral-500 param-input"
             />
           </div>
 
           {/* 8. Seed (随机种子) */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5 relative">
-              <span className="text-sm font-semibold text-neutral-200">随机种子</span>
-              <span className="text-xs text-neutral-500 font-mono">Seed</span>
+              <span className="text-sm font-semibold text-neutral-100 param-item-label">随机种子</span>
+              <span className="text-xs text-neutral-400 font-mono param-item-sub">Seed</span>
               <button
                 type="button"
                 onMouseEnter={() => setActiveTooltip('seed')}
@@ -456,7 +456,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 const val = e.target.value.trim();
                 updateParam('seed', val === '' ? undefined : parseInt(val));
               }}
-              className="w-full bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3.5 py-2.5 rounded-xl text-xs font-mono outline-hidden placeholder-neutral-600"
+              className="w-full bg-[#181818] border border-neutral-800 focus:border-[#84cc16] text-white px-3.5 py-2.5 rounded-xl text-xs font-mono outline-hidden placeholder-neutral-500 param-input"
             />
           </div>
         </div>

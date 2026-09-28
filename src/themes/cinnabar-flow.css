@@ -1,0 +1,646 @@
+/* ==========================================================================
+   朱砂流年 · Cinnabar Chronicle
+   mychat 东方纸章单文件主题
+   ========================================================================== */
+
+/* 01. 主题变量 */
+html.theme-cinnabar-flow {
+  --cinnabar-paper: #f4efe3;
+  --cinnabar-paper-deep: #ebe2d2;
+
+  --cinnabar-red: #d9583f;
+  --cinnabar-red-dark: #b84432;
+  --cinnabar-red-light: #e9785e;
+
+  --cinnabar-ink: #302b27;
+  --cinnabar-ink-soft: #665d55;
+  --cinnabar-muted: #968c81;
+
+  --cinnabar-line: #d7c9b8;
+  --cinnabar-line-strong: #c9b6a0;
+
+  --cinnabar-card: rgba(255, 255, 255, 0.62);
+  --cinnabar-card-strong: rgba(255, 255, 255, 0.82);
+
+  --cinnabar-gold: #b89563;
+
+  --cinnabar-shadow:
+    0 8px 24px rgba(88, 65, 45, 0.10);
+
+  --cinnabar-shadow-small:
+    0 3px 12px rgba(88, 65, 45, 0.07);
+
+  --cinnabar-radius: 15px;
+  --cinnabar-radius-small: 10px;
+
+  color-scheme: light;
+}
+
+/* 02. 页面背景与全局字体 */
+html.theme-cinnabar-flow,
+html.theme-cinnabar-flow body {
+  background:
+    radial-gradient(
+      circle at 10% 8%,
+      rgba(224, 212, 194, 0.35),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 90% 12%,
+      rgba(217, 88, 63, 0.035),
+      transparent 30%
+    ),
+    var(--cinnabar-paper) !important;
+
+  color: var(--cinnabar-ink) !important;
+  min-height: 100vh;
+}
+
+.theme-cinnabar-flow {
+  font-family:
+    Inter,
+    "PingFang SC",
+    "Microsoft YaHei",
+    "Noto Sans SC",
+    sans-serif !important;
+}
+
+/* 内容标题采用典雅衬线 */
+.theme-cinnabar-flow h1,
+.theme-cinnabar-flow h2,
+.theme-cinnabar-flow h3,
+.theme-cinnabar-flow .font-serif,
+.theme-cinnabar-flow .markdown-body h1,
+.theme-cinnabar-flow .markdown-body h2,
+.theme-cinnabar-flow .markdown-body h3 {
+  font-family:
+    "Noto Serif SC",
+    "Songti SC",
+    "Source Han Serif SC",
+    STSong,
+    SimSun,
+    serif;
+}
+
+/* 03. 全局文字统一 */
+.theme-cinnabar-flow,
+.theme-cinnabar-flow input,
+.theme-cinnabar-flow textarea,
+.theme-cinnabar-flow select {
+  color: var(--cinnabar-ink);
+}
+
+.theme-cinnabar-flow .test-conn-btn {
+  background-color: #faf5ec !important;
+  color: #302b27 !important;
+  border: 1px solid #d5c5b2 !important;
+}
+
+.theme-cinnabar-flow .test-conn-btn:hover {
+  background-color: #f1e8da !important;
+  color: #b84432 !important;
+}
+
+.theme-cinnabar-flow .test-conn-btn svg {
+  color: #b84432 !important;
+}
+
+.theme-cinnabar-flow .text-neutral-900,
+.theme-cinnabar-flow .text-neutral-800,
+.theme-cinnabar-flow .text-neutral-700 {
+  color: var(--cinnabar-ink) !important;
+}
+
+.theme-cinnabar-flow .text-neutral-600,
+.theme-cinnabar-flow .text-neutral-500 {
+  color: var(--cinnabar-ink-soft) !important;
+}
+
+.theme-cinnabar-flow .text-neutral-400 {
+  color: var(--cinnabar-muted) !important;
+}
+
+.theme-cinnabar-flow .text-white {
+  color: #ffffff;
+}
+
+/* 04. 通用卡片与背景 */
+.theme-cinnabar-flow .bg-white,
+.theme-cinnabar-flow .bg-neutral-50,
+.theme-cinnabar-flow .bg-neutral-100,
+.theme-cinnabar-flow .bg-neutral-800,
+.theme-cinnabar-flow .bg-neutral-900,
+.theme-cinnabar-flow .bg-neutral-950 {
+  background: var(--cinnabar-card-strong) !important;
+  color: var(--cinnabar-ink) !important;
+  border-color: var(--cinnabar-line) !important;
+  box-shadow: var(--cinnabar-shadow-small);
+}
+
+/* 05. 左侧边栏 (Sidebar.tsx) */
+.theme-cinnabar-flow aside {
+  background: #efe7d8 !important;
+  border-right: 1px solid var(--cinnabar-line) !important;
+  box-shadow: 0 5px 20px rgba(80, 60, 40, 0.05);
+}
+
+.theme-cinnabar-flow aside button,
+.theme-cinnabar-flow aside [role="button"] {
+  border-radius: 12px !important;
+  transition:
+    background-color .18s ease,
+    color .18s ease,
+    transform .18s ease;
+}
+
+.theme-cinnabar-flow aside button:hover,
+.theme-cinnabar-flow aside [role="button"]:hover,
+.theme-cinnabar-flow aside .hover\:bg-neutral-100:hover,
+.theme-cinnabar-flow aside .hover\:bg-neutral-800:hover,
+.theme-cinnabar-flow aside .hover\:bg-neutral-200\/60:hover,
+.theme-cinnabar-flow aside .hover\:bg-neutral-700\/60:hover {
+  background: rgba(217, 88, 63, 0.07) !important;
+  color: #403832 !important;
+}
+
+.theme-cinnabar-flow aside button:hover svg,
+.theme-cinnabar-flow aside [role="button"]:hover svg {
+  color: var(--cinnabar-red-dark) !important;
+}
+
+/* 侧栏当前选中会话：左侧 3px 朱砂红竖线 */
+.theme-cinnabar-flow aside .bg-indigo-50,
+.theme-cinnabar-flow aside .bg-indigo-100,
+.theme-cinnabar-flow aside .bg-neutral-100,
+.theme-cinnabar-flow aside .bg-neutral-200\/80,
+.theme-cinnabar-flow aside .bg-neutral-700\/80 {
+  background: rgba(217, 88, 63, 0.11) !important;
+  color: var(--cinnabar-red-dark) !important;
+  border-left: 3px solid var(--cinnabar-red) !important;
+  border-radius: 4px 12px 12px 4px !important;
+}
+
+/* 侧栏新建聊天按钮：朱砂红方砖 */
+.theme-cinnabar-flow aside .bg-indigo-600,
+.theme-cinnabar-flow aside .bg-indigo-500 {
+  background: var(--cinnabar-red) !important;
+  color: #ffffff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 14px rgba(217, 88, 63, 0.28);
+}
+
+.theme-cinnabar-flow aside .bg-indigo-600:hover,
+.theme-cinnabar-flow aside .bg-indigo-500:hover {
+  background: var(--cinnabar-red-dark) !important;
+  transform: translateY(-1px);
+}
+
+/* 06. 顶部栏 (TopBar.tsx) */
+.theme-cinnabar-flow header {
+  background: rgba(244, 239, 227, 0.88) !important;
+  border-bottom: 1px solid var(--cinnabar-line) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.theme-cinnabar-flow header button {
+  border-radius: 10px !important;
+  color: #403832 !important;
+}
+
+.theme-cinnabar-flow header button:hover {
+  background: rgba(217, 88, 63, 0.08) !important;
+  color: var(--cinnabar-red-dark) !important;
+}
+
+.theme-cinnabar-flow header svg {
+  color: var(--cinnabar-red);
+}
+
+/* 07. 主界面 (Main) */
+.theme-cinnabar-flow main {
+  background:
+    radial-gradient(
+      circle at 50% 15%,
+      rgba(217, 88, 63, 0.03),
+      transparent 55%
+    ),
+    transparent !important;
+}
+
+/* 08. 下拉菜单、弹窗与 Portal 悬浮菜单 (Dropdown / Popover / Portal) */
+.theme-cinnabar-flow [role="menu"],
+.theme-cinnabar-flow [role="listbox"],
+.theme-cinnabar-flow .dropdown-menu,
+.theme-cinnabar-flow .popover,
+.theme-cinnabar-flow .z-9999 {
+  background: #f8f3e9 !important;
+  color: #403832 !important;
+  border: 1px solid var(--cinnabar-line) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 12px 30px rgba(70, 50, 35, 0.14) !important;
+}
+
+.theme-cinnabar-flow [role="menuitem"]:hover,
+.theme-cinnabar-flow [role="option"]:hover,
+.theme-cinnabar-flow .z-9999 button:hover {
+  background: rgba(217, 88, 63, 0.09) !important;
+  color: var(--cinnabar-red-dark) !important;
+}
+
+.theme-cinnabar-flow [aria-selected="true"] {
+  background: rgba(217, 88, 63, 0.13) !important;
+  color: #a83d2d !important;
+}
+
+/* 分隔线 */
+.theme-cinnabar-flow hr,
+.theme-cinnabar-flow .border-neutral-100,
+.theme-cinnabar-flow .border-neutral-200,
+.theme-cinnabar-flow .border-neutral-300,
+.theme-cinnabar-flow .border-neutral-700,
+.theme-cinnabar-flow .border-neutral-800 {
+  border-color: var(--cinnabar-line) !important;
+}
+
+/* 09. 通用按钮 */
+.theme-cinnabar-flow button {
+  transition:
+    background-color .18s ease,
+    border-color .18s ease,
+    color .18s ease,
+    box-shadow .18s ease,
+    transform .18s ease;
+}
+
+/* 主按钮：朱砂红 */
+.theme-cinnabar-flow .bg-indigo-600,
+.theme-cinnabar-flow .bg-indigo-500,
+.theme-cinnabar-flow button[type="submit"],
+.theme-cinnabar-flow button[title="发送消息"] {
+  background: var(--cinnabar-red) !important;
+  color: #ffffff !important;
+  border-radius: 12px !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(217, 88, 63, 0.28);
+}
+
+.theme-cinnabar-flow .bg-indigo-600:hover,
+.theme-cinnabar-flow .bg-indigo-500:hover,
+.theme-cinnabar-flow button[type="submit"]:hover,
+.theme-cinnabar-flow button[title="发送消息"]:hover {
+  background: var(--cinnabar-red-dark) !important;
+  transform: translateY(-1px);
+}
+
+/* 10. 输入框 (Inputs) */
+.theme-cinnabar-flow input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.theme-cinnabar-flow textarea,
+.theme-cinnabar-flow select {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border: 1px solid #d5c5b2 !important;
+  color: var(--cinnabar-ink) !important;
+  border-radius: 11px !important;
+}
+
+.theme-cinnabar-flow input:focus,
+.theme-cinnabar-flow textarea:focus,
+.theme-cinnabar-flow select:focus {
+  outline: none !important;
+  border-color: var(--cinnabar-red) !important;
+  box-shadow: 0 0 0 3px rgba(217, 88, 63, 0.12) !important;
+}
+
+.theme-cinnabar-flow input::placeholder,
+.theme-cinnabar-flow textarea::placeholder {
+  color: #a0968b !important;
+}
+
+/* 11. 聊天输入框 (ChatComposer.tsx: 宣纸卡片台) */
+.theme-cinnabar-flow .chat-composer-container,
+.theme-cinnabar-flow form:has(textarea) {
+  background: transparent;
+}
+
+.theme-cinnabar-flow textarea {
+  background: rgba(255, 255, 255, 0.76) !important;
+  border: 1px solid #d5c5b2 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 8px 25px rgba(75, 55, 40, 0.10);
+  color: var(--cinnabar-ink) !important;
+}
+
+.theme-cinnabar-flow textarea:focus {
+  border-color: var(--cinnabar-red) !important;
+  box-shadow: 0 0 0 3px rgba(217, 88, 63, 0.10) !important;
+}
+
+/* 工具栏状态按钮 */
+.theme-cinnabar-flow .text-indigo-600,
+.theme-cinnabar-flow .text-indigo-500,
+.theme-cinnabar-flow .text-indigo-400 {
+  color: var(--cinnabar-red) !important;
+}
+
+.theme-cinnabar-flow .border-indigo-600,
+.theme-cinnabar-flow .border-indigo-500 {
+  border-color: var(--cinnabar-red) !important;
+}
+
+.theme-cinnabar-flow .bg-indigo-50,
+.theme-cinnabar-flow .bg-indigo-100 {
+  background: rgba(217, 88, 63, 0.10) !important;
+}
+
+/* 附件纸签 */
+.theme-cinnabar-flow [class*="attachment"],
+.theme-cinnabar-flow .attachment-item {
+  background: #f5eee2 !important;
+  border: 1px solid #d8c8b6 !important;
+  color: var(--cinnabar-ink-soft) !important;
+  border-radius: 8px !important;
+}
+
+.theme-cinnabar-flow [class*="attachment"] svg {
+  color: var(--cinnabar-red) !important;
+}
+
+/* 12. 消息展示 (MessageList.tsx & ChatMessage.tsx) */
+.theme-cinnabar-flow .markdown-body {
+  color: var(--cinnabar-ink) !important;
+  line-height: 1.78;
+}
+
+/* AI 消息：纸上正文，无大白厚重卡片 */
+.theme-cinnabar-flow .assistant-message {
+  background: rgba(255, 255, 255, 0.26);
+  border: 1px solid rgba(215, 201, 184, 0.35);
+  border-radius: 14px;
+}
+
+/* 用户消息气泡 */
+.theme-cinnabar-flow .user-message,
+.theme-cinnabar-flow .bg-indigo-50,
+.theme-cinnabar-flow .bg-indigo-100,
+.theme-cinnabar-flow .bg-indigo-950\/20,
+.theme-cinnabar-flow .bg-indigo-950\/30 {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid var(--cinnabar-line) !important;
+  border-radius: 14px !important;
+  color: var(--cinnabar-ink) !important;
+}
+
+/* 用户与 AI 头像朱砂印章 */
+.theme-cinnabar-flow .user-message-avatar,
+.theme-cinnabar-flow aside .user-avatar {
+  background: var(--cinnabar-red) !important;
+  color: #fffaf1 !important;
+  border-radius: 8px !important;
+}
+
+.theme-cinnabar-flow .ai-message-avatar {
+  background: rgba(217, 88, 63, 0.12) !important;
+  color: var(--cinnabar-red-dark) !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(217, 88, 63, 0.25) !important;
+}
+
+/* 13. Markdown 排版细节 */
+.theme-cinnabar-flow .markdown-body h1 {
+  color: #40332c !important;
+  border-bottom: 1px solid rgba(181, 68, 50, 0.22) !important;
+  padding-bottom: 6px;
+}
+
+.theme-cinnabar-flow .markdown-body h2 {
+  color: #4a3931 !important;
+  border-bottom: 1px solid rgba(181, 68, 50, 0.15) !important;
+  padding-bottom: 4px;
+}
+
+.theme-cinnabar-flow .markdown-body h3 {
+  color: #59463a !important;
+}
+
+.theme-cinnabar-flow .markdown-body a {
+  color: var(--cinnabar-red-dark) !important;
+  text-decoration-color: rgba(184, 68, 50, 0.4);
+}
+
+.theme-cinnabar-flow .markdown-body blockquote {
+  border-left: 3px solid var(--cinnabar-red) !important;
+  color: var(--cinnabar-ink-soft) !important;
+  background: rgba(217, 88, 63, 0.045) !important;
+  border-radius: 0 8px 8px 0 !important;
+  padding: 8px 14px !important;
+}
+
+.theme-cinnabar-flow .markdown-body code:not(pre code) {
+  background: #ebe1d2 !important;
+  color: #9f3d2e !important;
+  border: 1px solid #d7c5b0 !important;
+  border-radius: 6px !important;
+  padding: 2px 5px !important;
+}
+
+/* 14. 代码块：深墨棕代码纸 */
+.theme-cinnabar-flow .markdown-body pre,
+.theme-cinnabar-flow pre {
+  background: #2f2925 !important;
+  color: #f1e8da !important;
+  border: 1px solid #59483d !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 24px rgba(45, 35, 30, 0.20) !important;
+}
+
+.theme-cinnabar-flow pre .code-header,
+.theme-cinnabar-flow pre > div:first-child {
+  background: #3b312c !important;
+  color: #d8c9b8 !important;
+  border-bottom: 1px solid #59483d !important;
+}
+
+/* 15. 模型设置窗口 (AiModelConfigModal.tsx) */
+.theme-cinnabar-flow .model-config-modal > div,
+.theme-cinnabar-flow .model-config-modal {
+  background: #f6f0e5 !important;
+  border: 1px solid #cdbba6 !important;
+  border-radius: 22px !important;
+  box-shadow: 0 20px 55px rgba(65, 48, 35, 0.18) !important;
+  color: var(--cinnabar-ink) !important;
+}
+
+.theme-cinnabar-flow .model-config-modal h1,
+.theme-cinnabar-flow .model-config-modal h2,
+.theme-cinnabar-flow .model-config-modal h3 {
+  color: #302b27 !important;
+}
+
+.theme-cinnabar-flow .model-config-modal svg {
+  color: var(--cinnabar-red);
+}
+
+.theme-cinnabar-flow .model-config-modal .bg-\[\#151821\],
+.theme-cinnabar-flow .model-config-modal .bg-\[\#181c26\],
+.theme-cinnabar-flow .model-config-modal .bg-\[\#12141a\] {
+  background: rgba(255, 255, 255, 0.65) !important;
+  color: var(--cinnabar-ink) !important;
+  border-color: var(--cinnabar-line) !important;
+}
+
+.theme-cinnabar-flow .model-config-modal input,
+.theme-cinnabar-flow .model-config-modal select {
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: var(--cinnabar-ink) !important;
+  border: 1px solid #d5c5b3 !important;
+}
+
+/* 16. 参数设置 (ParametersModal.tsx: 全浅色宣纸) */
+.theme-cinnabar-flow .parameters-card {
+  background: #f6f0e5 !important;
+  border: 1px solid #cdbba6 !important;
+  border-radius: 22px !important;
+  box-shadow: 0 20px 55px rgba(65, 48, 35, 0.18) !important;
+  color: var(--cinnabar-ink) !important;
+}
+
+.theme-cinnabar-flow .parameters-header {
+  background: #efe7d8 !important;
+  border-bottom: 1px solid var(--cinnabar-line) !important;
+}
+
+.theme-cinnabar-flow .param-modal-title,
+.theme-cinnabar-flow .param-item-label {
+  color: #302b27 !important;
+}
+
+.theme-cinnabar-flow .param-modal-sub,
+.theme-cinnabar-flow .param-item-sub,
+.theme-cinnabar-flow .param-slider-ticks,
+.theme-cinnabar-flow .param-model-target {
+  color: #665d55 !important;
+}
+
+.theme-cinnabar-flow .param-icon {
+  color: var(--cinnabar-red) !important;
+}
+
+.theme-cinnabar-flow .param-slider {
+  accent-color: var(--cinnabar-red) !important;
+  background-color: #dfd1bf !important;
+}
+
+.theme-cinnabar-flow .param-input {
+  background: rgba(255, 255, 255, 0.75) !important;
+  border: 1px solid var(--cinnabar-line) !important;
+  color: var(--cinnabar-ink) !important;
+}
+
+.theme-cinnabar-flow .param-toggle.bg-\[\#84cc16\] {
+  background-color: var(--cinnabar-red) !important;
+}
+
+/* 17. 客户端系统设置 (SettingsModal.tsx) */
+.theme-cinnabar-flow .settings-modal {
+  background: #f6f0e5 !important;
+  border: 1px solid #cdbba6 !important;
+  border-radius: 22px !important;
+  box-shadow: 0 20px 55px rgba(65, 48, 35, 0.18) !important;
+  color: var(--cinnabar-ink) !important;
+}
+
+.theme-cinnabar-flow .settings-modal nav button.bg-neutral-100,
+.theme-cinnabar-flow .settings-modal nav button.bg-neutral-200,
+.theme-cinnabar-flow .settings-modal nav button.bg-indigo-50 {
+  background: rgba(217, 88, 63, 0.12) !important;
+  border-left: 3px solid var(--cinnabar-red) !important;
+  color: var(--cinnabar-red-dark) !important;
+}
+
+.theme-cinnabar-flow input[type="checkbox"] {
+  accent-color: var(--cinnabar-red) !important;
+}
+
+/* 18. 工作区 (WorkspaceDrawer.tsx: 宣纸文件盒) */
+.theme-cinnabar-flow .workspace-drawer {
+  background: #f6f0e5 !important;
+  border: 1px solid #d2c0aa !important;
+  box-shadow: 0 22px 60px rgba(70, 50, 35, 0.18) !important;
+  color: var(--cinnabar-ink) !important;
+}
+
+.theme-cinnabar-flow .workspace-drawer [role="button"]:hover {
+  background: rgba(217, 88, 63, 0.07) !important;
+}
+
+.theme-cinnabar-flow .workspace-drawer .file-action-menu {
+  background: #f8f3e9 !important;
+  border: 1px solid #d4c3af !important;
+}
+
+/* 19. 状态标签 (已就绪、异常、未配置) */
+.theme-cinnabar-flow .text-emerald-500,
+.theme-cinnabar-flow .text-emerald-600,
+.theme-cinnabar-flow .text-green-500,
+.theme-cinnabar-flow .text-green-600 {
+  color: #588c73 !important;
+}
+
+.theme-cinnabar-flow .text-amber-500,
+.theme-cinnabar-flow .text-orange-500 {
+  color: var(--cinnabar-gold) !important;
+}
+
+.theme-cinnabar-flow .text-red-500,
+.theme-cinnabar-flow .text-red-600 {
+  color: var(--cinnabar-red-dark) !important;
+}
+
+.theme-cinnabar-flow .bg-red-500,
+.theme-cinnabar-flow .bg-red-600 {
+  background: var(--cinnabar-red-dark) !important;
+  color: #ffffff !important;
+}
+
+/* 20. 细滚动条 (5px) */
+.theme-cinnabar-flow ::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.theme-cinnabar-flow ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.theme-cinnabar-flow ::-webkit-scrollbar-thumb {
+  background: #cdbba6;
+  border-radius: 999px;
+}
+
+.theme-cinnabar-flow ::-webkit-scrollbar-thumb:hover {
+  background: #b99f83;
+}
+
+/* 21. 统一暖棕色半透明遮罩 */
+.theme-cinnabar-flow .fixed.inset-0.bg-black\/60,
+.theme-cinnabar-flow .fixed.inset-0.bg-black\/75,
+.theme-cinnabar-flow .fixed.inset-0.bg-black\/80 {
+  background: rgba(48, 38, 30, 0.46) !important;
+  backdrop-filter: blur(4px);
+}
+
+/* 22. 移动端适配 */
+@media (max-width: 767px) {
+  .theme-cinnabar-flow .model-config-modal,
+  .theme-cinnabar-flow .parameters-modal,
+  .theme-cinnabar-flow .settings-modal,
+  .theme-cinnabar-flow .workspace-drawer {
+    width: calc(100vw - 20px) !important;
+    max-width: none !important;
+    border-radius: 16px !important;
+  }
+
+  .theme-cinnabar-flow textarea {
+    border-radius: 14px !important;
+  }
+}

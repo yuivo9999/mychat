@@ -4,6 +4,7 @@ import App from './App.tsx';
 import './index.css';
 import './theme-jadewater.css';
 import './themes/mist-glass.css';
+import './themes/cinnabar-flow.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

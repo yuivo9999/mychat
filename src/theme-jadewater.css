@@ -85,11 +85,25 @@ html.theme-jadewater body::before {
    ========================================================================== */
 
 .theme-jadewater,
-.theme-jadewater button,
 .theme-jadewater input,
 .theme-jadewater textarea,
 .theme-jadewater select {
   color: var(--jw-text);
+}
+
+.theme-jadewater .test-conn-btn {
+  background-color: #09201e !important;
+  color: #e4f5f0 !important;
+  border: 1px solid var(--jw-border-strong) !important;
+}
+
+.theme-jadewater .test-conn-btn:hover {
+  background-color: #0f302d !important;
+  color: #55cbbb !important;
+}
+
+.theme-jadewater .test-conn-btn svg {
+  color: #55cbbb !important;
 }
 
 .theme-jadewater .text-neutral-900,
@@ -532,7 +546,7 @@ html.theme-jadewater body::before {
    十、模型参数窗口 (ParametersModal)
    ========================================================================== */
 
-.theme-jadewater .parameters-modal > div {
+.theme-jadewater .parameters-card {
   background:
     linear-gradient(
       145deg,
@@ -548,23 +562,48 @@ html.theme-jadewater body::before {
 
   box-shadow:
     0 30px 90px rgba(0,0,0,.48) !important;
+  color: var(--jw-text) !important;
 }
 
-.theme-jadewater .parameters-modal h3 {
-  color:
-    var(--jw-text) !important;
+.theme-jadewater .parameters-header {
+  background: rgba(7, 26, 24, 0.95) !important;
+  border-bottom: 1px solid var(--jw-border) !important;
 }
 
-.theme-jadewater .parameters-modal input[type="range"] {
-  accent-color:
-    var(--jw-primary);
+.theme-jadewater .param-modal-title,
+.theme-jadewater .param-item-label {
+  color: #e4f5f0 !important;
 }
 
-.theme-jadewater .parameters-modal .text-indigo-500,
-.theme-jadewater .parameters-modal .text-indigo-600,
-.theme-jadewater .parameters-modal .text-emerald-500 {
-  color:
-    var(--jw-primary) !important;
+.theme-jadewater .param-modal-sub,
+.theme-jadewater .param-item-sub,
+.theme-jadewater .param-slider-ticks,
+.theme-jadewater .param-model-target {
+  color: #789892 !important;
+}
+
+.theme-jadewater .param-icon {
+  color: var(--jw-primary) !important;
+}
+
+.theme-jadewater .param-slider {
+  accent-color: var(--jw-primary) !important;
+  background-color: rgba(10, 38, 35, 0.9) !important;
+}
+
+.theme-jadewater .param-input {
+  background: #09201e !important;
+  color: var(--jw-text) !important;
+  border-color: var(--jw-border-strong) !important;
+}
+
+.theme-jadewater .param-toggle.bg-\[\#84cc16\] {
+  background:
+    linear-gradient(
+      135deg,
+      #55cbbb,
+      #2ea998
+    ) !important;
 }
 
 /* ==========================================================================

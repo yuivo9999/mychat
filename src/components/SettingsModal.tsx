@@ -430,7 +430,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     type="button"
                     onClick={() => onSaveSettings({ ...settings, theme: 'light' })}
                     className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
-                      settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && settings.theme !== 'jadewater' && settings.theme !== 'mist-glass'
+                      settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && settings.theme !== 'jadewater' && settings.theme !== 'mist-glass' && settings.theme !== 'cinnabar-flow'
                         ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 ring-2 ring-indigo-500/20'
                         : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
                     }`}
@@ -439,8 +439,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug">默认皮肤</div>
                       <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">现代极简设计，黑白灰无衬线视觉风格</div>
                     </div>
-                    {settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && settings.theme !== 'jadewater' && settings.theme !== 'mist-glass' && (
+                    {settings.theme !== 'classic1' && settings.theme !== 'classic2' && settings.theme !== 'modern1' && settings.theme !== 'jadewater' && settings.theme !== 'mist-glass' && settings.theme !== 'cinnabar-flow' && (
                       <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 shrink-0 ml-3">
+                        <Check className="w-4 h-4" /> 当前已使用
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSaveSettings({ ...settings, theme: 'cinnabar-flow' })}
+                    className={`w-full p-3.5 px-4 rounded-2xl border text-left transition flex items-center justify-between ${
+                      settings.theme === 'cinnabar-flow'
+                        ? 'border-[#d9583f] bg-[#d9583f]/15 ring-2 ring-[#d9583f]/30'
+                        : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30'
+                    }`}
+                  >
+                    <div className="flex flex-col justify-center">
+                      <div className="text-xs font-bold text-neutral-900 dark:text-neutral-100 leading-snug flex items-center gap-2">
+                        <span>朱砂流年</span>
+                        <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-[#d9583f]/15 text-[#b84432] border border-[#d9583f]/30">Cinnabar Chronicle</span>
+                      </div>
+                      <div className="text-[11px] text-neutral-500 leading-snug mt-0.5">米白宣纸、朱砂方砖、墨色排版与细线行迹的东方纸章风格</div>
+                    </div>
+                    {settings.theme === 'cinnabar-flow' && (
+                      <span className="text-xs font-semibold text-[#d9583f] flex items-center gap-1 shrink-0 ml-3 font-medium">
                         <Check className="w-4 h-4" /> 当前已使用
                       </span>
                     )}

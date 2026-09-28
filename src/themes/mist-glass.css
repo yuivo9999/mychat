@@ -77,11 +77,25 @@ html.theme-mist-glass body {
 
 /* 03. 全局文字 */
 .theme-mist-glass,
-.theme-mist-glass button,
 .theme-mist-glass input,
 .theme-mist-glass textarea,
 .theme-mist-glass select {
   color: var(--mist-text);
+}
+
+.theme-mist-glass .test-conn-btn {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  color: #26383b !important;
+  border: 1px solid rgba(94, 157, 160, 0.25) !important;
+}
+
+.theme-mist-glass .test-conn-btn:hover {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  color: #477f82 !important;
+}
+
+.theme-mist-glass .test-conn-btn svg {
+  color: #5e9da0 !important;
 }
 
 .theme-mist-glass .text-neutral-900,
@@ -367,12 +381,12 @@ html.theme-mist-glass body {
 }
 
 /* 13. 参数设置 (ParametersModal.tsx) */
-.theme-mist-glass .parameters-modal > div {
+.theme-mist-glass .parameters-card {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.90),
-      rgba(239, 248, 248, 0.86)
+      rgba(255, 255, 255, 0.92),
+      rgba(239, 248, 248, 0.88)
     ) !important;
   border: 1px solid rgba(94, 157, 160, 0.20) !important;
   border-radius: 22px !important;
@@ -382,26 +396,41 @@ html.theme-mist-glass body {
   color: var(--mist-text) !important;
 }
 
-.theme-mist-glass .parameters-modal h1,
-.theme-mist-glass .parameters-modal h2,
-.theme-mist-glass .parameters-modal h3 {
+.theme-mist-glass .parameters-header {
+  background: rgba(242, 248, 248, 0.85) !important;
+  border-bottom: 1px solid var(--mist-border) !important;
+}
+
+.theme-mist-glass .param-modal-title,
+.theme-mist-glass .param-item-label {
   color: #30494c !important;
 }
 
-.theme-mist-glass input[type="range"] {
-  accent-color: var(--mist-primary);
+.theme-mist-glass .param-modal-sub,
+.theme-mist-glass .param-item-sub,
+.theme-mist-glass .param-slider-ticks,
+.theme-mist-glass .param-model-target {
+  color: #687a7d !important;
 }
 
-.theme-mist-glass .parameters-modal input[type="number"],
-.theme-mist-glass .parameters-modal input[type="text"] {
-  background: rgba(255, 255, 255, 0.58) !important;
+.theme-mist-glass .param-icon {
+  color: var(--mist-primary) !important;
+}
+
+.theme-mist-glass .param-slider {
+  accent-color: var(--mist-primary) !important;
+  background-color: rgba(94, 157, 160, 0.2) !important;
+}
+
+.theme-mist-glass .param-input {
+  background: rgba(255, 255, 255, 0.70) !important;
   border: 1px solid var(--mist-border) !important;
   border-radius: 10px !important;
   color: var(--mist-text) !important;
 }
 
-.theme-mist-glass .parameters-modal section {
-  border-color: var(--mist-border) !important;
+.theme-mist-glass .param-toggle.bg-\[\#84cc16\] {
+  background-color: var(--mist-primary) !important;
 }
 
 /* 14. 客户端系统设置 (SettingsModal.tsx) */
