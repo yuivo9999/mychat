@@ -520,6 +520,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 >
                   <RotateCw className="w-3.5 h-3.5" />
                 </button>
+                <span
+                  className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] text-neutral-400 dark:text-neutral-500 font-mono select-none"
+                  title={`提问共 ${message.content.length} 个字符`}
+                >
+                  {message.content.length.toLocaleString()} 字
+                </span>
               </>
             )}
 
@@ -570,6 +576,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 >
                   <Download className="w-3.5 h-3.5" />
                 </button>
+
+                {/* AI 消息字数统计 */}
+                <span
+                  className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] text-neutral-400 dark:text-neutral-500 font-mono select-none"
+                  title={`当前 AI 回复共 ${(mainContent.length || message.content.length)} 个字符${thinkingText ? `（思考过程 ${thinkingText.length} 字）` : ''}`}
+                >
+                  {(mainContent.length || message.content.length).toLocaleString()} 字
+                </span>
               </>
             )}
 
