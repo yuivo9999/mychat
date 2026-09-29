@@ -16,7 +16,9 @@ import {
   ChevronDown,
   Check,
   Bot,
-  RefreshCw
+  RefreshCw,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { Attachment, ModelItem, ProviderDefinition, ApiKeyConfig, UserSettings, ModelParameters } from '../types';
 import { parseFileToAttachment, formatFileSize } from '../services/fileParser';
@@ -48,6 +50,7 @@ interface ChatComposerProps {
   onClearPendingAttachments?: () => void;
   pendingPrompt?: string | null;
   onClearPendingPrompt?: () => void;
+  onSaveSettings?: (settings: UserSettings) => void;
 }
 
 export const ChatComposer: React.FC<ChatComposerProps> = ({
@@ -62,6 +65,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   selectedModelId,
   onSelectModel,
   settings,
+  onSaveSettings,
   onOpenSettings,
   onOpenModelConfig,
   quotedText,
@@ -248,6 +252,22 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   const hasApiKey = !!currentApiKey?.apiKey?.trim() || currentModel?.providerId === 'ollama';
   const canSend = (content.trim().length > 0 || attachments.length > 0) && !isGenerating && !isProcessingFiles;
 
+  const currentFontSize = settings.chatFontSizePx ?? 15;
+
+  const handleIncreaseFontSize = () => {
+    const nextSize = Math.min(32, currentFontSize + 1);
+    if (onSaveSettings) {
+      onSaveSettings({ ...settings, chatFontSizePx: nextSize });
+    }
+  };
+
+  const handleDecreaseFontSize = () => {
+    const nextSize = Math.max(10, currentFontSize - 1);
+    if (onSaveSettings) {
+      onSaveSettings({ ...settings, chatFontSizePx: nextSize });
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto px-3 md:px-6 pb-4 pt-1 shrink-0 relative select-none">
       {/* Soft Ink Wave Pattern shifted up by another half text height (~8px) (淡墨色波浪纹/山水涟漪) */}
@@ -280,8 +300,32 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         </svg>
       </div>
 
-      {/* Right-aligned small, flat model name display area above input box */}
-      <div className="flex items-center justify-end px-1 mb-1.5 min-h-[26px] relative z-20">
+      {/* Top row: Font Size adjustment buttons on left, Model Name display on right */}
+      <div className="flex items-center justify-between px-1 mb-1.5 min-h-[26px] relative z-20">
+        {/* Left: Font size adjuster buttons with circular ○ backgrounds */}
+        <div className="flex items-center gap-1.5 select-none">
+          <button
+            type="button"
+            onClick={handleIncreaseFontSize}
+            className="w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full flex items-center justify-center bg-white/90 dark:bg-neutral-900/90 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200/80 dark:border-neutral-800 shadow-2xs transition active:scale-90 cursor-pointer"
+            title={`增大聊天字体 (+1px, 当前: ${currentFontSize}px)`}
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleDecreaseFontSize}
+            className="w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full flex items-center justify-center bg-white/90 dark:bg-neutral-900/90 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200/80 dark:border-neutral-800 shadow-2xs transition active:scale-90 cursor-pointer"
+            title={`减小聊天字体 (-1px, 当前: ${currentFontSize}px)`}
+          >
+            <Minus className="w-3.5 h-3.5" />
+          </button>
+          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-mono pl-0.5">
+            {currentFontSize}px
+          </span>
+        </div>
+
+        {/* Right-aligned model pill button */}
         <div className="relative">
           <button
             type="button"

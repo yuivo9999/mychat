@@ -452,6 +452,7 @@ export const DEFAULT_MODELS: ModelItem[] = [
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'system',
   fontSize: 'standard',
+  chatFontSizePx: 15,
   enterToSend: true,
   autoScroll: true,
   showTimestamps: true,

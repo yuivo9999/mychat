@@ -59,6 +59,10 @@ export const MessageList: React.FC<MessageListProps> = ({
       ref={containerRef}
       onScroll={handleScroll}
       className={`flex-1 overflow-y-auto relative flex flex-col ${settings.compactMode ? 'compact-mode' : ''}`}
+      style={{
+        '--chat-font-size': `${settings.chatFontSizePx ?? 15}px`,
+        fontSize: `${settings.chatFontSizePx ?? 15}px`,
+      } as React.CSSProperties}
     >
       {messages.length === 0 ? (
         <div className="flex-1" />

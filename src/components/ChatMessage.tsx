@@ -494,7 +494,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             </div>
           </div>
         ) : (
-          <div className="text-neutral-900 dark:text-neutral-100 text-sm leading-relaxed overflow-hidden">
+          <div 
+            className="text-neutral-900 dark:text-neutral-100 leading-relaxed overflow-hidden"
+            style={{ fontSize: 'var(--chat-font-size, 15px)' }}
+          >
             {/* Thinking Log (Collapsible reasoning steps for DeepSeek R1 / Reasoning models) */}
             {!isUser && thinkingText && (
               <ThinkingLogViewer

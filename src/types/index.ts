@@ -154,6 +154,7 @@ export interface Conversation {
 export interface UserSettings {
   theme: 'light' | 'dark' | 'system' | 'classic1' | 'classic2' | 'modern1' | 'sangtian-shanhe' | string;
   fontSize: 'compact' | 'standard' | 'spacious';
+  chatFontSizePx?: number; // 聊天回复区域字体大小（以 px 为单位）
   enterToSend: boolean;
   autoScroll: boolean;
   showTimestamps: boolean;

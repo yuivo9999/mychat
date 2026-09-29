@@ -2033,6 +2033,7 @@ export default function App() {
           selectedModelId={selectedModelId}
           onSelectModel={handleSelectModel}
           settings={settings}
+          onSaveSettings={handleSaveSettingsObj}
           onOpenSettings={(tab) => {
             if (tab) setSettingsTab(tab);
             setIsSettingsOpen(true);

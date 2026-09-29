@@ -33,7 +33,7 @@
 /* Markdown Typography styling */
 .markdown-body {
   line-height: 1.7;
-  font-size: 0.95rem;
+  font-size: var(--chat-font-size, 0.95rem);
   word-break: break-word;
 }
 
