@@ -341,12 +341,13 @@ export class OpenAIAdapter implements BaseAdapter {
         headers['Authorization'] = `Bearer ${rawKey}`;
       }
 
+      const rawModelId = getRawModelId(modelId);
       // Keep the connection probe to OpenRouter's standard headers only.
       const res = await executeFetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          model: modelId,
+          model: (apiKeyConfig.providerId === 'groq' || apiKeyConfig.providerId === 'cerebras') ? rawModelId.replace(/^(groq|cerebras)\//, '') : rawModelId,
           messages: [{ role: 'user', content: 'Ping' }],
           max_tokens: 5,
         }),

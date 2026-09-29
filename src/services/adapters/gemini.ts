@@ -2,14 +2,13 @@ import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFe
 import { ApiKeyConfig } from '../../types';
 import { extractAttachmentText } from '../fileParser';
 import { isGeminiNativeFileModel, resolveGoogleNativeMimeType, supportsGoogleNativeFileMime } from '../googleFileSupport';
+import { getRawModelId } from '../modelUtils';
 
 export class GeminiAdapter implements BaseAdapter {
   private normalizeModelId(modelId: string): string {
     const m = (modelId || '').trim();
-    // Do not silently rewrite valid/legacy model IDs. Google controls model
-    // availability; rewriting a user-selected model can turn a valid request
-    // into a request for a different model.
-    return m || 'gemini-3.8-flash';
+    const raw = getRawModelId(m);
+    return raw || 'gemini-3.8-flash';
   }
 
   private cleanKey(rawKey?: string): string {
