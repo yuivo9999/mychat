@@ -320,6 +320,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                   ) : (
                     models
                       .filter(m => {
+                        // Ensure the model belongs to an active, registered provider group
+                        const providerExists = providers.some(p => p.id === m.providerId);
+                        if (!providerExists) return false;
+
                         if (!searchModelQuery) return true;
                         const q = searchModelQuery.toLowerCase();
                         return m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q) || m.providerId.toLowerCase().includes(q);

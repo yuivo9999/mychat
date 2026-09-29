@@ -1802,9 +1802,38 @@ export default function App() {
   };
 
   const handleDeleteProviderDef = async (id: string) => {
-    await deleteProvider(id);
-    const updated = await getProviders();
-    setProviders(updated);
+    if (confirm('确认删除此服务商组？注意：这将一并清空其下的所有 API Key 与模型清单配置！')) {
+      await deleteProvider(id);
+      
+      // Clean up all models belonging to this deleted provider
+      const modelsToDelete = models.filter(m => m.providerId === id);
+      for (const m of modelsToDelete) {
+        await deleteModel(m.id);
+      }
+
+      // Clean up all api keys belonging to this deleted provider
+      const keysToDelete = apiKeys.filter(k => k.providerId === id);
+      for (const k of keysToDelete) {
+        await deleteApiKey(k.id);
+      }
+
+      const [updatedProviders, updatedModels, updatedKeys] = await Promise.all([
+        getProviders(),
+        getModels(),
+        getApiKeys(),
+      ]);
+      setProviders(updatedProviders);
+      setModels(updatedModels);
+      setApiKeys(updatedKeys);
+
+      // Reset selection if active model or key was deleted
+      if (selectedModelId && !updatedModels.some(m => m.id === selectedModelId)) {
+        const fallbackModel = updatedModels[0];
+        if (fallbackModel) {
+          handleSelectModel(fallbackModel.id);
+        }
+      }
+    }
   };
 
   const handleRestoreDefaultProviders = async () => {
