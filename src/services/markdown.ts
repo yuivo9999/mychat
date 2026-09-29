@@ -205,9 +205,40 @@ export function renderMarkdown(content: string, options: MarkdownOptions = {}): 
             </div>
           `;
         },
-        link({ href, title, text }: { href: string; title?: string | null; text: string }) {
-          const t = title ? ` title="${escapeHtml(title)}"` : '';
-          return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"${t}>${text}<svg class="w-3 h-3 inline-block ml-0.5 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg></a>`;
+        heading({ text, depth }: { text: string; depth: number }) {
+          const hashes = '#'.repeat(depth);
+          return `<div class="my-2.5 font-sans">${hashes} ${text}</div>`;
+        },
+        blockquote({ text }: { text: string }) {
+          return `<div class="my-2 pl-3.5 border-l-2 border-neutral-300 dark:border-neutral-700 text-neutral-500 font-sans">${text}</div>`;
+        },
+        strong({ text }: { text: string }) {
+          return `**${text}**`;
+        },
+        em({ text }: { text: string }) {
+          return `*${text}*`;
+        },
+        codespan({ text }: { text: string }) {
+          return `<code class="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded text-[12.5px]">${text}</code>`;
+        },
+        link({ href, text }: { href: string; text: string }) {
+          if (href === text) return href;
+          return `${text} (${href})`;
+        },
+        image({ href, text }: { href: string; text: string }) {
+          return `![${text}](${href})`;
+        },
+        list({ items, ordered, start }: { items: any[]; ordered: boolean; start: number }) {
+          return `<div class="my-2.5 space-y-1 pl-1 font-sans">${items.map((item, i) => {
+            const prefix = ordered ? `${(start || 1) + i}. ` : '• ';
+            return `<div>${prefix}${item.text || item}</div>`;
+          }).join('')}</div>`;
+        },
+        listitem({ text }: { text: string }) {
+          return text;
+        },
+        paragraph({ text }: { text: string }) {
+          return `<div class="my-2 leading-relaxed font-sans">${text}</div>`;
         }
       } as any
     });

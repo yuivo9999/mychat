@@ -429,15 +429,15 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   />
                 </label>
 
-                {/* Markdown 解析 */}
+                {/* Markdown 表格解析 */}
                 <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
                       <FileText className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">Markdown 解析</span>
+                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">Markdown 表格解析</span>
                     </div>
                     <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
-                      格式化标题、表格、粗体与富文本
+                      仅完美格式化呈现数据表格，其余多余富文本样式一律保持原生纯文本展示
                     </span>
                   </div>
                   <input

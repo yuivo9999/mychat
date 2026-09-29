@@ -15,7 +15,8 @@ import {
   Globe,
   ChevronDown,
   Check,
-  Bot
+  Bot,
+  RefreshCw
 } from 'lucide-react';
 import { Attachment, ModelItem, ProviderDefinition, ApiKeyConfig, UserSettings, ModelParameters } from '../types';
 import { parseFileToAttachment, formatFileSize } from '../services/fileParser';
@@ -203,11 +204,17 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
       return;
     }
 
+    if (isProcessingFiles) {
+      alert('正在解析上传的文件，请稍候...');
+      return;
+    }
+
     const trimmed = content.trim();
     if (!trimmed && attachments.length === 0) return;
 
-    // Check API Key
-    if (!currentApiKey || !currentApiKey.apiKey?.trim()) {
+    // Check API Key (Exclude local Ollama since it doesn't use keys)
+    const isOllama = currentModel?.providerId === 'ollama';
+    if (!isOllama && (!currentApiKey || !currentApiKey.apiKey?.trim())) {
       alert('未检测到有效的 API Key！请点击底部或右上角设置并填入对应模型的 API Key。');
       onOpenSettings('keys');
       return;
@@ -222,6 +229,9 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 1. Prevent sending if Chinese/Japanese/Korean input IME is active and composing
+    if (e.nativeEvent.isComposing) return;
+
     if (settings.enterToSend) {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
@@ -235,8 +245,8 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     }
   };
 
-  const hasApiKey = !!currentApiKey?.apiKey?.trim();
-  const canSend = (content.trim().length > 0 || attachments.length > 0) && !isGenerating;
+  const hasApiKey = !!currentApiKey?.apiKey?.trim() || currentModel?.providerId === 'ollama';
+  const canSend = (content.trim().length > 0 || attachments.length > 0) && !isGenerating && !isProcessingFiles;
 
   return (
     <div className="w-full max-w-4xl mx-auto px-3 md:px-6 pb-4 pt-1 shrink-0 relative select-none">
@@ -602,9 +612,13 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                     ? 'bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:hover:bg-white text-white dark:text-neutral-900 active:scale-95 cursor-pointer'
                     : 'bg-neutral-200 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600 cursor-not-allowed'
                 }`}
-                title={canSend ? '发送消息' : '请输入内容'}
+                title={isProcessingFiles ? '正在解析上传文件...' : (canSend ? '发送消息' : '请输入内容')}
               >
-                <ArrowUp className="w-6 h-6 stroke-[2.2]" />
+                {isProcessingFiles ? (
+                  <RefreshCw className="w-6 h-6 stroke-[2.2] animate-spin text-neutral-400 dark:text-neutral-500" />
+                ) : (
+                  <ArrowUp className="w-6 h-6 stroke-[2.2]" />
+                )}
               </button>
             )}
           </div>
