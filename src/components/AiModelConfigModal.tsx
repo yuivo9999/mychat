@@ -371,11 +371,11 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
   return (
     <div className="model-config-modal fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
-        className="relative w-full max-w-xl bg-[#12141a] text-neutral-100 rounded-2xl shadow-2xl border border-neutral-800 flex flex-col max-h-[92vh] overflow-hidden"
+        className="relative w-full max-w-xl bg-neutral-950 text-neutral-100 rounded-2xl shadow-2xl border border-neutral-800 flex flex-col max-h-[92vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800/80 bg-[#151821]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800/80 bg-neutral-900">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400">
               <Server className="w-4 h-4" />
@@ -395,7 +395,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 text-sm scrollbar-thin scrollbar-thumb-neutral-700">
           
           {/* 1. 默认模型服务 (置顶区域) */}
-          <div className="bg-[#181c26] border border-neutral-800 rounded-xl p-4 space-y-3.5 shadow-md">
+          <div className="bg-neutral-800 border border-neutral-800 rounded-xl p-4 space-y-3.5 shadow-md">
             <div className="font-semibold text-neutral-200 flex items-center justify-between">
               <span>默认模型服务</span>
             </div>
@@ -422,13 +422,13 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                       setDefaultKeyId('');
                     }
                   }}
-                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
+                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-neutral-950 border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
                 >
                   {providers.length === 0 ? (
-                    <option value="" className="bg-[#181c26] text-neutral-400">（暂无服务组）</option>
+                    <option value="" className="bg-neutral-800 text-neutral-400">（暂无服务组）</option>
                   ) : (
                     providers.map((p) => (
-                      <option key={p.id} value={p.id} className="bg-[#181c26] text-white">
+                      <option key={p.id} value={p.id} className="bg-neutral-800 text-white">
                         {p.name}
                       </option>
                     ))
@@ -445,13 +445,13 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                 <select
                   value={defaultKeyId}
                   onChange={(e) => setDefaultKeyId(e.target.value)}
-                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
+                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-neutral-950 border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8"
                 >
-                  <option value="" className="bg-[#181c26] text-neutral-400">
+                  <option value="" className="bg-neutral-800 text-neutral-400">
                     {defaultServiceKeys.length === 0 ? '（尚未配置 API Key）' : '（使用服务商默认 Key）'}
                   </option>
                   {defaultServiceKeys.map((k) => (
-                    <option key={k.id} value={k.id} className="bg-[#181c26] text-white">
+                    <option key={k.id} value={k.id} className="bg-neutral-800 text-white">
                       Key ({k.apiKey.slice(0, 6)}...{k.apiKey.slice(-4)})
                     </option>
                   ))}
@@ -470,15 +470,15 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                 <select
                   value={defaultModelId}
                   onChange={(e) => setDefaultModelId(e.target.value)}
-                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8 font-mono"
+                  className="w-full appearance-none px-3 py-2 text-xs rounded-xl bg-neutral-950 border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 pr-8 font-mono"
                 >
                   {defaultServiceModels.length === 0 ? (
-                    <option value="" className="bg-[#181c26] text-neutral-400">（尚未配置模型）</option>
+                    <option value="" className="bg-neutral-800 text-neutral-400">（尚未配置模型）</option>
                   ) : (
                     defaultServiceModels.map((m) => {
                       const raw = getRawModelId(m);
                       return (
-                        <option key={m.id} value={m.id} className="bg-[#181c26] text-white">
+                        <option key={m.id} value={m.id} className="bg-neutral-800 text-white">
                           {raw} {m.name && m.name !== raw ? `(${m.name})` : ''} {m.id === currentModelId ? '· [现用]' : ''}
                         </option>
                       );
@@ -657,7 +657,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
 
             {/* Group List Cards */}
             {providers.length === 0 ? (
-              <div className="p-5 rounded-xl bg-[#181c26]/60 border border-dashed border-neutral-800 text-center space-y-3">
+              <div className="p-5 rounded-xl bg-neutral-800/60 border border-dashed border-neutral-800 text-center space-y-3">
                 <p className="text-xs text-neutral-400">暂无服务商分组，已全部删空</p>
                 <div className="flex items-center justify-center gap-2.5 flex-wrap">
                   {onRestoreDefaultProviders && (
@@ -673,7 +673,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsAddingGroup(true)}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 font-medium inline-flex items-center gap-1.5 transition cursor-pointer"
+                    className="px-3 py-1.5 text-xs rounded-lg bg-neutral-850 hover:bg-neutral-750 text-neutral-200 border border-neutral-700 font-medium inline-flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5 text-orange-400" />
                     <span>添加自定义组</span>
@@ -686,7 +686,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   const isSelected = p.id === selectedGroupId;
                   const pKeys = apiKeys.filter(k => k.providerId === p.id);
                   const pModels = models.filter(m => m.providerId === p.id);
-
+ 
                   return (
                     <button
                       key={p.id}
@@ -694,8 +694,8 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                       onClick={() => handleSelectGroup(p.id)}
                       className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition text-left ${
                         isSelected
-                          ? 'bg-[#221c1f] border-orange-500/60 shadow-xs shadow-orange-950/20'
-                          : 'bg-[#181c26]/80 hover:bg-[#1f2430] border-neutral-800/90 text-neutral-300'
+                          ? 'bg-neutral-800 border-orange-500/60 shadow-xs shadow-orange-950/20'
+                          : 'bg-neutral-900/80 hover:bg-neutral-800 border-neutral-800/90 text-neutral-300'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -716,10 +716,10 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                 })}
               </div>
             )}
-
+ 
             {/* Add Group Inline Modal/Card */}
             {isAddingGroup && (
-              <form onSubmit={handleCreateGroup} className="p-3 bg-[#1c212e] rounded-xl border border-orange-500/30 space-y-2.5 mt-2 animate-in fade-in">
+              <form onSubmit={handleCreateGroup} className="p-3 bg-neutral-900 rounded-xl border border-orange-500/30 space-y-2.5 mt-2 animate-in fade-in">
                 <div className="text-xs font-bold text-orange-300 flex items-center justify-between">
                   <span>新建服务商分组</span>
                   <button type="button" onClick={() => setIsAddingGroup(false)} className="text-neutral-400 hover:text-white">
@@ -732,7 +732,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                     placeholder="服务商名称 (如: 智谱 GLM, 零一万物, Local LLM)"
                     value={newGroupName}
                     onChange={(e) => setNewGroupName(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-[#13161f] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-neutral-950 border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
                     required
                   />
                   <input
@@ -740,7 +740,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                     placeholder="接口地址 Base URL (如: https://api.example.com/v1)"
                     value={newGroupUrl}
                     onChange={(e) => setNewGroupUrl(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-[#13161f] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-neutral-950 border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
@@ -764,13 +764,13 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
 
           {/* 2. 服务商详情卡片 */}
           {!currentGroup && providers.length === 0 ? (
-            <div className="bg-[#181c26]/60 border border-dashed border-neutral-800 rounded-xl p-6 text-center space-y-2">
+            <div className="bg-neutral-800/60 border border-dashed border-neutral-800 rounded-xl p-6 text-center space-y-2">
               <Server className="w-8 h-8 text-neutral-600 mx-auto" />
               <div className="text-xs font-medium text-neutral-400">目前没有配置任何服务商分组</div>
               <p className="text-[11px] text-neutral-500">点击上方「新增组」按钮创建服务商后即可添加对应的 API Key 与模型清单</p>
             </div>
           ) : currentGroup ? (
-            <div className="bg-[#181c26] border border-neutral-800 rounded-xl p-4 space-y-3.5">
+            <div className="bg-neutral-800 border border-neutral-800 rounded-xl p-4 space-y-3.5">
               {/* Card Header with +账号, +模型, 删组 */}
               <div className="flex items-center justify-between pb-2 border-b border-neutral-800/80">
                 <div className="font-semibold text-neutral-200">
@@ -819,14 +819,14 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                     onChange={(e) => setGroupBaseUrl(e.target.value)}
                     onBlur={handleSaveGroupUrl}
                     placeholder="https://integrate.api.nvidia.com/v1"
-                    className="w-full px-3 py-2 text-xs font-mono rounded-xl bg-[#12141c] border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 transition"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-xl bg-neutral-950 border border-neutral-700/80 text-neutral-200 focus:outline-hidden focus:border-orange-500 transition"
                   />
                 </div>
               </div>
 
               {/* Add Key In-place Form */}
               {isAddingKey && (
-                <form onSubmit={handleAddKey} className="p-3 bg-[#131620] rounded-xl border border-orange-500/40 space-y-2 animate-in fade-in">
+                <form onSubmit={handleAddKey} className="p-3 bg-neutral-900 rounded-xl border border-orange-500/40 space-y-2 animate-in fade-in">
                   <div className="text-xs font-bold text-orange-300 flex items-center justify-between">
                     <span>添加 {currentGroup.name} API Key</span>
                     <button type="button" onClick={() => setIsAddingKey(false)} className="text-neutral-400 hover:text-white">
@@ -838,7 +838,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                     placeholder="输入或粘贴 API Key (如 nvapi-... 或 sk-...)"
                     value={newKeyValue}
                     onChange={(e) => setNewKeyValue(e.target.value)}
-                    className="w-full px-3 py-2 text-xs font-mono rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-lg bg-neutral-950 border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
                     required
                     autoFocus
                   />
@@ -905,7 +905,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   )}
                 </div>
                 {groupKeys.length === 0 ? (
-                  <div className="p-3 rounded-xl bg-[#12141c]/70 border border-neutral-800/80 text-center text-xs text-neutral-500">
+                  <div className="p-3 rounded-xl bg-neutral-950/70 border border-neutral-800/80 text-center text-xs text-neutral-500">
                     暂无已配置账号 (API Key)，点击右上角「+ 账号」添加
                   </div>
                 ) : (
@@ -916,14 +916,14 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
 
                       if (isEditingThis) {
                         return (
-                          <div key={k.id} className="p-2.5 rounded-xl bg-[#131620] border border-orange-500/50 space-y-2 text-xs animate-in fade-in">
+                          <div key={k.id} className="p-2.5 rounded-xl bg-neutral-900 border border-orange-500/50 space-y-2 text-xs animate-in fade-in">
                             <div className="font-bold text-orange-300 text-[11px]">修改 API Key</div>
                             <input
                               type="text"
                               placeholder="输入或粘贴新的 API Key"
                               value={editKeyValue}
                               onChange={(e) => setEditKeyValue(e.target.value)}
-                              className="w-full px-2.5 py-1.5 rounded bg-[#1a1e2b] border border-neutral-700 text-white font-mono text-xs focus:outline-hidden focus:border-orange-500"
+                              className="w-full px-2.5 py-1.5 rounded bg-neutral-950 border border-neutral-700 text-white font-mono text-xs focus:outline-hidden focus:border-orange-500"
                               required
                               autoFocus
                             />
@@ -957,7 +957,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                       return (
                         <div
                           key={k.id}
-                          className="p-2.5 rounded-xl bg-[#12141c] border border-neutral-800/90 text-xs space-y-1"
+                          className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800/90 text-xs space-y-1"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
@@ -1021,7 +1021,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
 
               {/* Add Model In-place Form */}
               {isAddingModel && (
-                <form onSubmit={handleAddModel} className="p-3 bg-[#131620] rounded-xl border border-orange-500/40 space-y-2 animate-in fade-in">
+                <form onSubmit={handleAddModel} className="p-3 bg-neutral-900 rounded-xl border border-orange-500/40 space-y-2 animate-in fade-in">
                   <div className="text-xs font-bold text-orange-300 flex items-center justify-between">
                     <span>添加模型至 {currentGroup.name}</span>
                     <button type="button" onClick={() => setIsAddingModel(false)} className="text-neutral-400 hover:text-white">
@@ -1033,7 +1033,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                     placeholder="输入或粘贴模型 ID (如 deepseek-ai/deepseek-v4.1-flash 或 gpt-4o)"
                     value={newModelId}
                     onChange={(e) => setNewModelId(e.target.value)}
-                    className="w-full px-3 py-2 text-xs font-mono rounded-lg bg-[#1a1e2b] border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
+                    className="w-full px-3 py-2 text-xs font-mono rounded-lg bg-neutral-950 border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
                     required
                     autoFocus
                   />
@@ -1086,7 +1086,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                 </div>
                 <div className="space-y-1 max-h-48 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-neutral-700">
                   {groupModels.length === 0 ? (
-                    <div className="p-3 rounded-xl bg-[#12141c]/70 border border-neutral-800/80 text-center text-xs text-neutral-500 space-y-1.5">
+                    <div className="p-3 rounded-xl bg-neutral-950/70 border border-neutral-800/80 text-center text-xs text-neutral-500 space-y-1.5">
                       <div>暂无模型，点击右上角「+ 模型」或同步官方模型</div>
                       <button
                         type="button"
@@ -1107,7 +1107,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                       return (
                         <div
                           key={m.id}
-                          className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#12141c] border border-neutral-800/80 text-xs group"
+                          className="flex items-center justify-between px-3 py-2 rounded-lg bg-neutral-950 border border-neutral-800/80 text-xs group"
                         >
                           <div className="flex flex-col min-w-0 pr-2">
                             <div className="flex items-center gap-2">

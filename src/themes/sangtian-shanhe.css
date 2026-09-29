@@ -511,16 +511,16 @@ html.theme-sangtian-shanhe body {
   border-bottom: 1px solid #C5A873 !important;
 }
 
-.theme-sangtian-shanhe .param-modal-title,
-.theme-sangtian-shanhe .param-item-label {
+.theme-sangtian-shanhe .parameters-modal .param-modal-title,
+.theme-sangtian-shanhe .parameters-modal .param-item-label {
   color: #30271F !important;
 }
 
-.theme-sangtian-shanhe .param-modal-sub,
-.theme-sangtian-shanhe .param-item-sub,
-.theme-sangtian-shanhe .param-slider-ticks,
-.theme-sangtian-shanhe .param-model-target {
-  color: #6E5C46 !important;
+.theme-sangtian-shanhe .parameters-modal .param-modal-sub,
+.theme-sangtian-shanhe .parameters-modal .param-item-sub,
+.theme-sangtian-shanhe .parameters-modal .param-slider-ticks,
+.theme-sangtian-shanhe .parameters-modal .param-model-target {
+  color: #3d2b1c !important; /* Deeper wood brown for high readability on warm paper bg */
 }
 
 .theme-sangtian-shanhe .param-icon {

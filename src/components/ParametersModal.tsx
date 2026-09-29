@@ -99,21 +99,21 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
 
   return (
     <div className="parameters-modal fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-150">
-      <div className="parameters-card bg-[#121212] text-[#f4f4f5] border border-neutral-800 rounded-2xl sm:rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
+      <div className="parameters-card bg-neutral-900 text-neutral-200 border border-neutral-800 rounded-2xl sm:rounded-3xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden max-h-[90vh]">
         
         {/* Header - Fixed & Compact for Mobile */}
-        <div className="p-3.5 px-4 border-b border-neutral-800/90 flex items-center justify-between shrink-0 bg-[#161616]">
+        <div className="parameters-header p-3.5 px-4 border-b border-neutral-800/90 flex items-center justify-between shrink-0 bg-neutral-900/60">
           <div className="flex items-center gap-2 min-w-0 pr-2">
             <div className="w-7 h-7 rounded-lg bg-lime-500/15 border border-lime-500/30 flex items-center justify-center text-lime-400 shrink-0">
-              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <SlidersHorizontal className="param-icon w-3.5 h-3.5" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-bold tracking-tight text-white whitespace-nowrap">
+              <h3 className="param-modal-title text-sm font-bold tracking-tight text-neutral-100 whitespace-nowrap">
                 运行参数
               </h3>
               {modelName && (
-                <p className="text-[11px] text-neutral-400 truncate max-w-[180px] sm:max-w-[240px]">
-                  模型：<span className="text-lime-400 font-medium">{modelName}</span>
+                <p className="param-modal-sub text-[11px] text-neutral-400 truncate max-w-[180px] sm:max-w-[240px]">
+                  模型：<span className="param-model-target text-lime-400 font-medium">{modelName}</span>
                 </p>
               )}
             </div>
@@ -145,15 +145,15 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
           {/* Section 1: 模型生成参数 */}
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 text-neutral-300 font-bold text-xs pb-1 border-b border-neutral-800/80">
-              <Zap className="w-3.5 h-3.5 text-lime-400" />
-              <span>模型生成参数</span>
+              <Zap className="param-icon w-3.5 h-3.5 text-lime-400" />
+              <span className="param-modal-title">模型生成参数</span>
             </div>
 
             {/* 1. 流式输出 */}
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80">
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80">
               <div className="space-y-0.5 pr-2">
                 <div className="flex items-center gap-1.5 relative">
-                  <span className="text-xs font-semibold text-neutral-100">流式输出</span>
+                  <span className="param-item-label text-xs font-semibold text-neutral-100">流式输出</span>
                   <button
                     type="button"
                     onMouseEnter={() => setActiveTooltip('stream')}
@@ -169,7 +169,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                     </div>
                   )}
                 </div>
-                <p className="text-[11px] text-neutral-400">逐字实时呈现回答</p>
+                <p className="param-item-sub text-[11px] text-neutral-400">逐字实时呈现回答</p>
               </div>
 
               <button
@@ -181,8 +181,8 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                     onSaveSettings({ ...settings, enableStreaming: nextVal });
                   }
                 }}
-                className={`w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors shrink-0 ${
-                  streamVal ? 'bg-lime-500' : 'bg-neutral-800'
+                className={`param-toggle w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors shrink-0 ${
+                  streamVal ? 'bg-[#84cc16] bg-lime-500' : 'bg-neutral-800'
                 }`}
               >
                 <div
@@ -194,10 +194,10 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
             </div>
 
             {/* 2. 采样温度 */}
-            <div className="space-y-2 p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80">
+            <div className="space-y-2 p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 relative">
-                  <span className="text-xs font-semibold text-neutral-200">采样温度</span>
+                  <span className="param-item-label text-xs font-semibold text-neutral-200">采样温度</span>
                   <button
                     type="button"
                     onMouseEnter={() => setActiveTooltip('temperature')}
@@ -221,7 +221,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   step={0.05}
                   value={parameters.temperature ?? 0.7}
                   onChange={(e) => updateParam('temperature', parseFloat(e.target.value) || 0)}
-                  className="w-16 text-right bg-[#121212] border border-neutral-700 focus:border-lime-500 text-white px-2 py-0.5 rounded-lg text-xs font-mono outline-hidden"
+                  className="param-input w-16 text-right bg-neutral-900 border border-neutral-700 focus:border-lime-500 text-white px-2 py-0.5 rounded-lg text-xs font-mono outline-hidden"
                 />
               </div>
 
@@ -233,9 +233,9 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   step={0.05}
                   value={parameters.temperature ?? 0.7}
                   onChange={(e) => updateParam('temperature', parseFloat(e.target.value))}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-lime-400"
+                  className="param-slider w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-lime-400"
                 />
-                <div className="flex justify-between text-[10px] text-neutral-500 font-mono mt-1 select-none">
+                <div className="flex justify-between text-[10px] param-slider-ticks text-neutral-500 font-mono mt-1 select-none">
                   <span>0 (代码/严谨)</span>
                   <span>0.7 (默认)</span>
                   <span>1.0 (创意)</span>
@@ -244,10 +244,10 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
             </div>
 
             {/* 3. 最大生成长度 */}
-            <div className="space-y-2 p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80">
+            <div className="space-y-2 p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 relative">
-                  <span className="text-xs font-semibold text-neutral-200">最大长度</span>
+                  <span className="param-item-label text-xs font-semibold text-neutral-200">最大长度</span>
                   <button
                     type="button"
                     onMouseEnter={() => setActiveTooltip('maxTokens')}
@@ -270,7 +270,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   max={32768}
                   value={parameters.maxTokens ?? 4096}
                   onChange={(e) => updateParam('maxTokens', parseInt(e.target.value) || 1)}
-                  className="w-16 text-right bg-[#121212] border border-neutral-700 focus:border-lime-500 text-white px-2 py-0.5 rounded-lg text-xs font-mono outline-hidden"
+                  className="param-input w-16 text-right bg-neutral-900 border border-neutral-700 focus:border-lime-500 text-white px-2 py-0.5 rounded-lg text-xs font-mono outline-hidden"
                 />
               </div>
 
@@ -282,9 +282,9 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   step={256}
                   value={parameters.maxTokens ?? 4096}
                   onChange={(e) => updateParam('maxTokens', parseInt(e.target.value))}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-lime-400"
+                  className="param-slider w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-lime-400"
                 />
-                <div className="flex justify-between text-[10px] text-neutral-500 font-mono mt-1 select-none">
+                <div className="flex justify-between text-[10px] param-slider-ticks text-neutral-500 font-mono mt-1 select-none">
                   <span>256</span>
                   <span>4096</span>
                   <span>12288</span>
@@ -297,19 +297,19 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
           {settings && onSaveSettings && (
             <div className="space-y-2 pt-2">
               <div className="flex items-center gap-1.5 text-neutral-300 font-bold text-xs pb-1 border-b border-neutral-800/80">
-                <MessageSquare className="w-3.5 h-3.5 text-lime-400" />
-                <span>AI 回复展示与阅读偏好</span>
+                <MessageSquare className="param-icon w-3.5 h-3.5 text-lime-400" />
+                <span className="param-modal-title">AI 回复展示与阅读偏好</span>
               </div>
 
               <div className="space-y-1.5">
                 {/* 1. 🧮 LaTeX 数学与科学公式渲染 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <Calculator className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="text-xs font-semibold text-neutral-200 block">LaTeX 数学与科学公式渲染</span>
+                      <Calculator className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">LaTeX 数学与科学公式渲染</span>
                     </div>
-                    <span className="text-[11px] text-neutral-400 block pl-5">
+                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
                       KaTeX 引擎渲染微积分、矩阵与学术级公式
                     </span>
                   </div>
@@ -322,13 +322,13 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </label>
 
                 {/* 2. 🔢 代码块显示行号 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <ListOrdered className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="text-xs font-semibold text-neutral-200 block">代码块显示行号 (Line Numbers)</span>
+                      <ListOrdered className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">代码块显示行号 (Line Numbers)</span>
                     </div>
-                    <span className="text-[11px] text-neutral-400 block pl-5">
+                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
                       代码左侧附带灰度行号，长代码沟通与对比更清晰
                     </span>
                   </div>
@@ -341,13 +341,13 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </label>
 
                 {/* 3. 📱 长代码块自动限制高度 / 折叠 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <FoldVertical className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="text-xs font-semibold text-neutral-200 block">长代码块自动折叠限制高度</span>
+                      <FoldVertical className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">长代码块自动折叠限制高度</span>
                     </div>
-                    <span className="text-[11px] text-neutral-400 block pl-5">
+                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
                       超长代码自动收起并提供“展开代码”按钮，移动端尤其顺畅
                     </span>
                   </div>
@@ -360,13 +360,13 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </label>
 
                 {/* 4. ▋ 流式输出呼吸光标动画 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <Terminal className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="text-xs font-semibold text-neutral-200 block">流式输出呼吸光标动画</span>
+                      <Terminal className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">流式输出呼吸光标动画</span>
                     </div>
-                    <span className="text-[11px] text-neutral-400 block pl-5">
+                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
                       打字机实时吐字末尾伴随微闪呼吸光标（▋）
                     </span>
                   </div>
@@ -379,13 +379,13 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </label>
 
                 {/* 5. 🔍 紧凑排版模式 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="text-xs font-semibold text-neutral-200 block">紧凑排版模式 (Compact Mode)</span>
+                      <Layers className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">紧凑排版模式 (Compact Mode)</span>
                     </div>
-                    <span className="text-[11px] text-neutral-400 block pl-5">
+                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
                       缩小消息气泡上下边距与行隙，大幅提升单屏信息密度
                     </span>
                   </div>
@@ -398,13 +398,13 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </label>
 
                 {/* Markdown 解析 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="text-xs font-semibold text-neutral-200 block">Markdown 解析</span>
+                      <FileText className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">Markdown 解析</span>
                     </div>
-                    <span className="text-[11px] text-neutral-400 block pl-5">
+                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
                       格式化标题、表格、粗体与富文本
                     </span>
                   </div>
@@ -417,13 +417,13 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </label>
 
                 {/* 代码块语法高亮与工具栏 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <FileCode className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="text-xs font-semibold text-neutral-200 block">代码块语法高亮与工具栏</span>
+                      <FileCode className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">代码块语法高亮与工具栏</span>
                     </div>
-                    <span className="text-[11px] text-neutral-400 block pl-5">
+                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
                       语法高亮、快速复制与代码文件导出/下载
                     </span>
                   </div>
@@ -436,13 +436,13 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </label>
 
                 {/* 会话专属上下文记忆 (默认关闭) */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
                     <div className="flex items-center gap-1.5">
-                      <Brain className="w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="text-xs font-semibold text-neutral-200 block">启用单聊专属上下文记忆</span>
+                      <Brain className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">启用单聊专属上下文记忆</span>
                     </div>
-                    <span className="text-[11px] text-neutral-400 block pl-5">
+                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
                       携带本窗口提取的约定与需求信息。**关闭可大幅节省输入 Token**（默认关闭）
                     </span>
                   </div>
@@ -455,10 +455,10 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </label>
 
                 {/* 通用辅助设置：自动平滑滚动 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
-                    <span className="text-xs font-semibold text-neutral-200 block">自动平滑滚动</span>
-                    <span className="text-[11px] text-neutral-400 block">生成新消息时窗口自动跟滚到底部</span>
+                    <span className="param-item-label text-xs font-semibold text-neutral-200 block">自动平滑滚动</span>
+                    <span className="param-item-sub text-[11px] text-neutral-400 block">生成新消息时窗口自动跟滚到底部</span>
                   </div>
                   <input
                     type="checkbox"
@@ -469,10 +469,10 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </label>
 
                 {/* 通用辅助设置：显示消息时间戳 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
-                    <span className="text-xs font-semibold text-neutral-200 block">显示消息时间戳</span>
-                    <span className="text-[11px] text-neutral-400 block">消息旁显示具体发送与生成时间</span>
+                    <span className="param-item-label text-xs font-semibold text-neutral-200 block">显示消息时间戳</span>
+                    <span className="param-item-sub text-[11px] text-neutral-400 block">消息旁显示具体发送与生成时间</span>
                   </div>
                   <input
                     type="checkbox"

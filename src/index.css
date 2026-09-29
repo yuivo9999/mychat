@@ -306,6 +306,54 @@ html.theme-classic1,
   color: #a1a1aa !important;
 }
 
+/* 古典1 皮肤下参数设置文字与辅助文字高对比度覆写 */
+.theme-classic1 .parameters-modal .param-modal-title,
+.theme-classic1 .parameters-modal .param-item-label {
+  color: #2c221e !important;
+}
+
+.theme-classic1 .parameters-modal .param-modal-sub,
+.theme-classic1 .parameters-modal .param-item-sub,
+.theme-classic1 .parameters-modal .param-slider-ticks,
+.theme-classic1 .parameters-modal .param-model-target {
+  color: #413129 !important;
+}
+
+/* 现代1 皮肤下参数设置文字与辅助文字高对比度覆写 */
+.theme-modern1 .parameters-modal .param-modal-title,
+.theme-modern1 .parameters-modal .param-item-label {
+  color: #1c2d42 !important;
+}
+
+.theme-modern1 .parameters-modal .param-modal-sub,
+.theme-modern1 .parameters-modal .param-item-sub,
+.theme-modern1 .parameters-modal .param-slider-ticks,
+.theme-modern1 .parameters-modal .param-model-target {
+  color: #2d3d4f !important;
+}
+
+/* 古典1 皮肤下 AI 模型配置弹窗内容及辅助小字高对比度优化 */
+.theme-classic1 .model-config-modal label,
+.theme-classic1 .model-config-modal .text-neutral-400,
+.theme-classic1 .model-config-modal .text-neutral-500 {
+  color: #413129 !important; /* Deeper brown ink for crisp readability on warm paper bg */
+}
+
+.theme-classic1 .model-config-modal .text-neutral-300 {
+  color: #2c221e !important;
+}
+
+/* 现代1 皮肤下 AI 模型配置弹窗内容及辅助小字高对比度优化 */
+.theme-modern1 .model-config-modal label,
+.theme-modern1 .model-config-modal .text-neutral-400,
+.theme-modern1 .model-config-modal .text-neutral-500 {
+  color: #2d3d4f !important; /* Deeper navy slate gray for high contrast on ice white bg */
+}
+
+.theme-modern1 .model-config-modal .text-neutral-300 {
+  color: #1c2d42 !important;
+}
+
 .parameters-modal .param-input {
   background-color: #181818 !important;
   color: #ffffff !important;
@@ -462,6 +510,44 @@ html.theme-classic2,
 .theme-classic2 .border-indigo-500,
 .theme-classic2 .border-orange-500 {
   border-color: #dfb15b !important;
+}
+
+/* 6.5 古典2 皮肤主题的 AI 回复气泡背景与文字高对比度优化 */
+.theme-classic2 .assistant-message {
+  background-color: #171310 !important;
+  color: #f0e2cd !important;
+  border-top: 1px solid #2e251e !important;
+  border-bottom: 1px solid #2e251e !important;
+}
+
+.theme-classic2 .assistant-message p,
+.theme-classic2 .assistant-message span,
+.theme-classic2 .assistant-message .markdown-body {
+  color: #f0e2cd !important;
+}
+
+/* 古典2 皮肤代码块、搜索引用与推理提示条背景高对比度 */
+.theme-classic2 .assistant-message pre {
+  background-color: #0c0a08 !important;
+  border-color: #382d24 !important;
+  color: #f3e6d3 !important;
+}
+
+.theme-classic2 .assistant-message pre code {
+  color: #f3e6d3 !important;
+}
+
+.theme-classic2 .assistant-message code:not(pre code) {
+  background-color: #2a221a !important;
+  color: #dfb15b !important;
+  border: 1px solid #4a3e2c;
+}
+
+.theme-classic2 .assistant-message .thinking-steps-container,
+.theme-classic2 .assistant-message .thinking-log-card,
+.theme-classic2 .assistant-message .agent-tool-slip {
+  background-color: #1d1712 !important;
+  border-color: #3d3126 !important;
 }
 
 /* 7. 图标 SVG 规则 */
