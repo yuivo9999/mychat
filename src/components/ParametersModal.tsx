@@ -425,7 +425,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                       <span className="param-item-label text-xs font-semibold text-neutral-200 block">加粗纯文本标题</span>
                     </div>
                     <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
-                      在关闭 Markdown 解析时，自动加粗带有 #, ##, ### 等前缀的结构化标题行
+                      关闭 Markdown 解析时，自动隐藏 # 前缀，并为结构化标题加上自适应高反差色块背景
                     </span>
                   </div>
                   <input

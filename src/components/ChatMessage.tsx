@@ -103,11 +103,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     return (
       <div className="whitespace-pre-wrap font-sans">
         {lines.map((line, idx) => {
-          const headingMatch = line.match(/^(#{1,6}\s+)(.+)$/);
+          const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
           if (headingMatch) {
+            const titleText = headingMatch[2];
             return (
-              <div key={idx} className="font-bold text-neutral-950 dark:text-white">
-                {line}
+              <div key={idx} className="my-2.5">
+                <span className="inline-block px-3 py-1 rounded-xl bg-neutral-200 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100 font-bold border border-neutral-300/20 dark:border-neutral-700/30 shadow-xs">
+                  {titleText}
+                </span>
               </div>
             );
           }
