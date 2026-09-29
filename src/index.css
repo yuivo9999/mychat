@@ -343,6 +343,19 @@ html.theme-classic1,
   color: #2c221e !important;
 }
 
+/* 古典1 下已选中的服务商高对比度背景与文字 */
+.theme-classic1 .model-config-modal .bg-neutral-800 {
+  background-color: #d8caa7 !important; /* Deeper, solid antique gold for selected */
+}
+
+.theme-classic1 .model-config-modal .bg-neutral-900\/80 {
+  background-color: #ede3cd !important; /* Warm light yellow for unselected */
+}
+
+.theme-classic1 .model-config-modal .text-orange-200 {
+  color: #8b2626 !important; /* 朱砂红 for selected text name */
+}
+
 /* 现代1 皮肤下 AI 模型配置弹窗内容及辅助小字高对比度优化 */
 .theme-modern1 .model-config-modal label,
 .theme-modern1 .model-config-modal .text-neutral-400,
@@ -352,6 +365,19 @@ html.theme-classic1,
 
 .theme-modern1 .model-config-modal .text-neutral-300 {
   color: #1c2d42 !important;
+}
+
+/* 现代1 下已选中的服务商高对比度背景与文字 */
+.theme-modern1 .model-config-modal .bg-neutral-800 {
+  background-color: #e0e9f4 !important; /* Cool soft ice blue for selected */
+}
+
+.theme-modern1 .model-config-modal .bg-neutral-900\/80 {
+  background-color: #f4f8fb !important; /* Very light slate gray/white for unselected */
+}
+
+.theme-modern1 .model-config-modal .text-orange-200 {
+  color: #1e64b4 !important; /* 深海蔚蓝色 for selected text name */
 }
 
 .parameters-modal .param-input {
