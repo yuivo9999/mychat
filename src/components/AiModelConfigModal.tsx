@@ -88,6 +88,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
   const [defaultModelId, setDefaultModelId] = useState<string>(
     currentModelId || settings.defaultModelId || 'deepseek-ai/deepseek-v4.1-flash'
   );
+  const [modelToDelete, setModelToDelete] = useState<{ id: string; name: string } | null>(null);
 
   // Add Group Modal/Form state
   const [isAddingGroup, setIsAddingGroup] = useState(false);
@@ -717,49 +718,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
               </div>
             )}
  
-            {/* Add Group Inline Modal/Card */}
-            {isAddingGroup && (
-              <form onSubmit={handleCreateGroup} className="p-3 bg-neutral-900 rounded-xl border border-orange-500/30 space-y-2.5 mt-2 animate-in fade-in">
-                <div className="text-xs font-bold text-orange-300 flex items-center justify-between">
-                  <span>新建服务商分组</span>
-                  <button type="button" onClick={() => setIsAddingGroup(false)} className="text-neutral-400 hover:text-white">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="space-y-1.5">
-                  <input
-                    type="text"
-                    placeholder="服务商名称 (如: 智谱 GLM, 零一万物, Local LLM)"
-                    value={newGroupName}
-                    onChange={(e) => setNewGroupName(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-neutral-950 border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="接口地址 Base URL (如: https://api.example.com/v1)"
-                    value={newGroupUrl}
-                    onChange={(e) => setNewGroupUrl(e.target.value)}
-                    className="w-full px-3 py-1.5 text-xs rounded-lg bg-neutral-950 border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddingGroup(false)}
-                    className="px-2.5 py-1 text-xs rounded-lg text-neutral-400 hover:text-white"
-                  >
-                    取消
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-3 py-1 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white"
-                  >
-                    确认创建
-                  </button>
-                </div>
-              </form>
-            )}
+            {/* Add Group Modal Trigger rendered at modal root */}
           </div>
 
           {/* 2. 服务商详情卡片 */}
@@ -823,35 +782,6 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   />
                 </div>
               </div>
-
-              {/* Add Key In-place Form */}
-              {isAddingKey && (
-                <form onSubmit={handleAddKey} className="p-3 bg-neutral-900 rounded-xl border border-orange-500/40 space-y-2 animate-in fade-in">
-                  <div className="text-xs font-bold text-orange-300 flex items-center justify-between">
-                    <span>添加 {currentGroup.name} API Key</span>
-                    <button type="button" onClick={() => setIsAddingKey(false)} className="text-neutral-400 hover:text-white">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <input
-                    type="password"
-                    placeholder="输入或粘贴 API Key (如 nvapi-... 或 sk-...)"
-                    value={newKeyValue}
-                    onChange={(e) => setNewKeyValue(e.target.value)}
-                    className="w-full px-3 py-2 text-xs font-mono rounded-lg bg-neutral-950 border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
-                    required
-                    autoFocus
-                  />
-                  <div className="flex justify-end gap-2 pt-1">
-                    <button type="button" onClick={() => setIsAddingKey(false)} className="px-2.5 py-1 text-xs text-neutral-400 hover:text-white">
-                      取消
-                    </button>
-                    <button type="submit" className="px-3.5 py-1 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white">
-                      保存 Key
-                    </button>
-                  </div>
-                </form>
-              )}
 
               {/* Google 专属提示卡片与一键内置功能 */}
               {currentGroup.id === 'google' && (
@@ -1019,35 +949,6 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                 )}
               </div>
 
-              {/* Add Model In-place Form */}
-              {isAddingModel && (
-                <form onSubmit={handleAddModel} className="p-3 bg-neutral-900 rounded-xl border border-orange-500/40 space-y-2 animate-in fade-in">
-                  <div className="text-xs font-bold text-orange-300 flex items-center justify-between">
-                    <span>添加模型至 {currentGroup.name}</span>
-                    <button type="button" onClick={() => setIsAddingModel(false)} className="text-neutral-400 hover:text-white">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="输入或粘贴模型 ID (如 deepseek-ai/deepseek-v4.1-flash 或 gpt-4o)"
-                    value={newModelId}
-                    onChange={(e) => setNewModelId(e.target.value)}
-                    className="w-full px-3 py-2 text-xs font-mono rounded-lg bg-neutral-950 border border-neutral-700 text-white focus:outline-hidden focus:border-orange-500"
-                    required
-                    autoFocus
-                  />
-                  <div className="flex justify-end gap-2 pt-1">
-                    <button type="button" onClick={() => setIsAddingModel(false)} className="px-2.5 py-1 text-xs text-neutral-400 hover:text-white">
-                      取消
-                    </button>
-                    <button type="submit" className="px-3.5 py-1 text-xs font-semibold rounded-lg bg-orange-600 hover:bg-orange-500 text-white">
-                      添加模型
-                    </button>
-                  </div>
-                </form>
-              )}
-
               {/* 模型清单 - 支持全部删空与一键载入官方预设 */}
               <div className="space-y-1.5">
                 <div className="text-xs text-neutral-400 flex items-center justify-between flex-wrap gap-1">
@@ -1126,11 +1027,11 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                           </div>
                           <button
                             type="button"
-                            onClick={() => onDeleteModel(m.id)}
-                            className="px-2 py-0.5 text-xs text-neutral-400 hover:text-red-400 rounded-md hover:bg-red-950/40 transition shrink-0"
+                            onClick={() => setModelToDelete({ id: m.id, name: m.name || m.id })}
+                            className="px-2 py-0.5 text-xs text-neutral-400 hover:text-red-400 rounded-md hover:bg-red-950/40 transition shrink-0 cursor-pointer"
                             title="删除此模型"
                           >
-                            删
+                            删除
                           </button>
                         </div>
                       );
@@ -1143,6 +1044,204 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
 
         </div>
       </div>
+
+      {/* Mini Model Delete Confirmation Modal */}
+      {modelToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-2xs p-4 animate-in fade-in duration-150 font-sans">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-2xl max-w-xs w-full text-center space-y-3 animate-in zoom-in-95 duration-150">
+            <div className="w-10 h-10 rounded-full bg-red-500/10 dark:bg-red-500/20 text-red-500 flex items-center justify-center mx-auto">
+              <Trash2 className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                确认删除模型
+              </h4>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 break-words leading-relaxed">
+                你确认需要删除“<span className="font-mono font-medium text-neutral-900 dark:text-neutral-200">{modelToDelete.name || modelToDelete.id}</span>”吗？
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setModelToDelete(null)}
+                className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 transition font-medium cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteModel) onDeleteModel(modelToDelete.id);
+                  setModelToDelete(null);
+                }}
+                className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition cursor-pointer shadow-2xs"
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1. 新建服务商分组 弹窗 Modal */}
+      {isAddingGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-2xs p-4 animate-in fade-in duration-150 font-sans">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-2xl max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-neutral-100">
+                新建服务商分组
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddingGroup(false)}
+                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-neutral-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateGroup} className="space-y-3">
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  placeholder="服务商名称 (如: 智谱 GLM, 零一万物, Local LLM)"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-100 placeholder-neutral-500 focus:outline-hidden focus:border-amber-500/80 transition"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1">
+                <input
+                  type="url"
+                  placeholder="接口地址 Base URL (如: https://api.example.com/v1)"
+                  value={newGroupUrl}
+                  onChange={(e) => setNewGroupUrl(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-100 placeholder-neutral-500 focus:outline-hidden focus:border-amber-500/80 transition"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingGroup(false)}
+                  className="px-4 py-2 text-xs rounded-xl bg-neutral-800/80 hover:bg-neutral-800 text-neutral-300 font-medium transition cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs rounded-xl bg-amber-500/90 hover:bg-amber-500 text-neutral-950 font-bold transition cursor-pointer shadow-sm"
+                >
+                  确认创建
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. 添加账号 弹窗 Modal */}
+      {isAddingKey && currentGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-2xs p-4 animate-in fade-in duration-150 font-sans">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-2xl max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-neutral-100">
+                添加 {currentGroup.name} 账号
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddingKey(false)}
+                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-neutral-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddKey} className="space-y-3">
+              <div className="space-y-1">
+                <input
+                  type="password"
+                  placeholder="输入或粘贴 API Key (如 nvapi-... 或 sk-...)"
+                  value={newKeyValue}
+                  onChange={(e) => setNewKeyValue(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-100 placeholder-neutral-500 focus:outline-hidden focus:border-amber-500/80 transition"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingKey(false)}
+                  className="px-4 py-2 text-xs rounded-xl bg-neutral-800/80 hover:bg-neutral-800 text-neutral-300 font-medium transition cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs rounded-xl bg-amber-500/90 hover:bg-amber-500 text-neutral-950 font-bold transition cursor-pointer shadow-sm"
+                >
+                  确认保存
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 3. 添加模型 弹窗 Modal */}
+      {isAddingModel && currentGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-2xs p-4 animate-in fade-in duration-150 font-sans">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-2xl max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-neutral-100">
+                添加模型至 {currentGroup.name}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddingModel(false)}
+                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-neutral-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddModel} className="space-y-3">
+              <div className="space-y-1">
+                <input
+                  type="text"
+                  placeholder="输入或粘贴模型 ID (如 deepseek-ai/deepseek-v4.1-flash 或 gpt-4o)"
+                  value={newModelId}
+                  onChange={(e) => setNewModelId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-100 placeholder-neutral-500 focus:outline-hidden focus:border-amber-500/80 transition"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingModel(false)}
+                  className="px-4 py-2 text-xs rounded-xl bg-neutral-800/80 hover:bg-neutral-800 text-neutral-300 font-medium transition cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs rounded-xl bg-amber-500/90 hover:bg-amber-500 text-neutral-950 font-bold transition cursor-pointer shadow-sm"
+                >
+                  确认添加
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

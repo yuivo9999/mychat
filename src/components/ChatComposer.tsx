@@ -18,7 +18,8 @@ import {
   Bot,
   RefreshCw,
   Plus,
-  Minus
+  Minus,
+  Trash2
 } from 'lucide-react';
 import { Attachment, ModelItem, ProviderDefinition, ApiKeyConfig, UserSettings, ModelParameters } from '../types';
 import { parseFileToAttachment, formatFileSize } from '../services/fileParser';
@@ -52,6 +53,7 @@ interface ChatComposerProps {
   pendingPrompt?: string | null;
   onClearPendingPrompt?: () => void;
   onSaveSettings?: (settings: UserSettings) => void;
+  onDeleteModel?: (id: string) => void;
 }
 
 export const ChatComposer: React.FC<ChatComposerProps> = ({
@@ -65,6 +67,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   apiKeys = [],
   selectedModelId,
   onSelectModel,
+  onDeleteModel,
   settings,
   onSaveSettings,
   onOpenSettings,
@@ -89,6 +92,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [searchModelQuery, setSearchModelQuery] = useState('');
+  const [modelToDelete, setModelToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -397,14 +401,13 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                       .map((m) => {
                         const isSelected = m.id === currentModel?.id;
                         return (
-                          <button
+                          <div
                             key={m.id}
-                            type="button"
                             onClick={() => {
                               if (onSelectModel) onSelectModel(m.id);
                               setModelDropdownOpen(false);
                             }}
-                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left text-xs transition ${
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left text-xs transition cursor-pointer group/item ${
                               isSelected
                                 ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-medium'
                                 : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
@@ -416,8 +419,23 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                                 <span className="text-[10px] text-neutral-400 truncate block font-sans">{m.name}</span>
                               )}
                             </div>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}
-                          </button>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isSelected && <Check className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}
+                              {onDeleteModel && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setModelToDelete({ id: m.id, name: m.name || m.id });
+                                  }}
+                                  className="p-1 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition shrink-0 cursor-pointer"
+                                  title={`删除模型 ${m.name || m.id}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         );
                       })
                   )}
@@ -427,6 +445,44 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           )}
         </div>
       </div>
+
+      {/* Mini Model Delete Confirmation Modal */}
+      {modelToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-2xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 shadow-2xl max-w-xs w-full text-center space-y-3 font-sans animate-in zoom-in-95 duration-150">
+            <div className="w-10 h-10 rounded-full bg-red-500/10 dark:bg-red-500/20 text-red-500 flex items-center justify-center mx-auto">
+              <Trash2 className="w-5 h-5 stroke-[2]" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                确认删除模型
+              </h4>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400 break-words leading-relaxed">
+                你确认需要删除“<span className="font-mono font-medium text-neutral-900 dark:text-neutral-200">{modelToDelete.name || modelToDelete.id}</span>”吗？
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setModelToDelete(null)}
+                className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 transition font-medium cursor-pointer"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onDeleteModel) onDeleteModel(modelToDelete.id);
+                  setModelToDelete(null);
+                }}
+                className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition cursor-pointer shadow-2xs"
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Composer Box */}
       <div 

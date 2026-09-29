@@ -2220,6 +2220,7 @@ export default function App() {
           apiKeys={apiKeys}
           selectedModelId={selectedModelId}
           onSelectModel={handleSelectModel}
+          onDeleteModel={handleDeleteModelItem}
           settings={settings}
           onSaveSettings={handleSaveSettingsObj}
           onOpenSettings={(tab) => {
