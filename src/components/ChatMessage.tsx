@@ -64,8 +64,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     if (isUser || !settings.enableMarkdown) {
       return '';
     }
-    return renderMarkdown(mainContent);
-  }, [mainContent, isUser, settings.enableMarkdown]);
+    return renderMarkdown(mainContent, {
+      renderLatex: settings.renderLatex ?? true,
+      showLineNumbers: settings.showLineNumbers ?? true,
+      collapseLongCode: settings.collapseLongCode ?? true,
+    });
+  }, [mainContent, isUser, settings.enableMarkdown, settings.renderLatex, settings.showLineNumbers, settings.collapseLongCode]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
@@ -90,7 +94,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     }
   };
 
-  // Delegate click for code block copy & download buttons
+  // Delegate click for code block copy, download, and expand/collapse buttons
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     
@@ -125,6 +129,42 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       URL.revokeObjectURL(url);
       return;
     }
+
+    // Expand / Collapse long code block button
+    const toggleBtn = target.closest('.code-expand-toggle-btn') as HTMLElement;
+    if (toggleBtn) {
+      const wrapper = toggleBtn.closest('.code-block-wrapper');
+      const collapsible = wrapper?.querySelector('.code-collapsible-wrapper') as HTMLElement;
+      const mask = wrapper?.querySelector('.code-collapse-mask') as HTMLElement;
+      const textSpan = toggleBtn.querySelector('.toggle-text') as HTMLElement;
+      const arrow = toggleBtn.querySelector('.toggle-arrow') as SVGElement;
+
+      if (collapsible) {
+        const isExpanded = collapsible.classList.contains('is-expanded');
+        if (isExpanded) {
+          collapsible.classList.remove('is-expanded');
+          collapsible.style.maxHeight = '300px';
+          if (mask) {
+            mask.style.position = 'absolute';
+            mask.style.background = '';
+            mask.style.padding = '';
+          }
+          if (arrow) arrow.style.transform = 'rotate(0deg)';
+          if (textSpan) textSpan.innerText = '展开完整代码';
+        } else {
+          collapsible.classList.add('is-expanded');
+          collapsible.style.maxHeight = 'none';
+          if (mask) {
+            mask.style.position = 'relative';
+            mask.style.background = 'transparent';
+            mask.style.padding = '0.5rem 0';
+          }
+          if (arrow) arrow.style.transform = 'rotate(180deg)';
+          if (textSpan) textSpan.innerText = '收起代码';
+        }
+      }
+      return;
+    }
   };
 
   const versions = message.versions || [];
@@ -133,10 +173,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   return (
     <div
       onClick={handleContainerClick}
-      className={`group relative flex gap-3 transition-colors ${
+      className={`chat-message-row group relative flex gap-3 transition-colors ${
+        settings.compactMode ? 'compact-message' : ''
+      } ${
         isUser
-          ? 'bg-transparent px-3 py-4 md:px-6 md:py-5'
-          : 'assistant-message bg-neutral-100/60 dark:bg-neutral-900/50 border-y border-neutral-200/50 dark:border-neutral-800/40 px-3.5 py-3.5 sm:px-4 sm:py-4'
+          ? `bg-transparent ${settings.compactMode ? 'px-3 py-2.5 md:px-5 md:py-3' : 'px-3 py-4 md:px-6 md:py-5'}`
+          : `assistant-message bg-neutral-100/60 dark:bg-neutral-900/50 border-y border-neutral-200/50 dark:border-neutral-800/40 ${
+              settings.compactMode ? 'px-3 py-2.5 sm:px-3.5 sm:py-2.5' : 'px-3.5 py-3.5 sm:px-4 sm:py-4'
+            }`
       }`}
     >
       {/* Avatar (Only for user messages; removed for AI reply box as requested) */}
@@ -333,8 +377,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               />
             )}
 
-            {/* Streaming Cursor */}
-            {message.status === 'streaming' && (
+            {/* Streaming Breathing Cursor */}
+            {message.status === 'streaming' && (settings.showStreamingCursor ?? true) && (
               <span className="streaming-cursor" />
             )}
           </div>

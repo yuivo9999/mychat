@@ -58,7 +58,7 @@ export const MessageList: React.FC<MessageListProps> = ({
     <div 
       ref={containerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto relative flex flex-col"
+      className={`flex-1 overflow-y-auto relative flex flex-col ${settings.compactMode ? 'compact-mode' : ''}`}
     >
       {messages.length === 0 ? (
         <div className="flex-1" />

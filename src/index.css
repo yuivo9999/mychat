@@ -1,4 +1,5 @@
 @import "./themes/sangtian-shanhe.css";
+@import "katex/dist/katex.min.css";
 @import "tailwindcss";
 
 @layer base {
@@ -124,6 +125,17 @@
   padding: 0.55rem 0.85rem;
 }
 
+/* KaTeX Formula Styling Adjustments */
+.katex-block {
+  margin: 0.85rem 0;
+  padding: 0.5rem 0.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+.katex-display {
+  margin: 0 !important;
+}
+
 /* Syntax Highlighting Base (One Dark / Atom Dark Inspired) */
 .hljs-keyword, .hljs-selector-tag, .hljs-subst { color: #f472b6; font-weight: 500; }
 .hljs-string, .hljs-title, .hljs-section, .hljs-attribute, .hljs-literal, .hljs-template-tag, .hljs-template-variable, .hljs-type, .hljs-addition { color: #34d399; }
@@ -133,21 +145,70 @@
 .hljs-function, .hljs-title.function_ { color: #818cf8; }
 .hljs-built_in, .hljs-class .hljs-title { color: #38bdf8; }
 
-/* Blinking cursor for streaming */
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+/* ▋ 流式输出呼吸光标动画 */
+@keyframes stream-breath {
+  0% {
+    opacity: 0.25;
+    transform: scaleY(0.85);
+    box-shadow: 0 0 2px rgba(132, 204, 22, 0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1.05);
+    box-shadow: 0 0 8px rgba(132, 204, 22, 0.8);
+  }
+  100% {
+    opacity: 0.25;
+    transform: scaleY(0.85);
+    box-shadow: 0 0 2px rgba(132, 204, 22, 0.3);
+  }
 }
 
 .streaming-cursor {
   display: inline-block;
   width: 7px;
   height: 15px;
-  background-color: #6366f1;
-  margin-left: 2px;
+  background: #84cc16;
+  margin-left: 3px;
   vertical-align: -2px;
-  animation: blink 0.9s infinite;
-  border-radius: 1px;
+  border-radius: 2px;
+  animation: stream-breath 1s ease-in-out infinite;
+}
+
+/* 🔍 紧凑排版模式 (Compact Mode) */
+.compact-mode .chat-message-row {
+  padding-top: 0.55rem !important;
+  padding-bottom: 0.55rem !important;
+}
+.compact-mode .markdown-body {
+  font-size: 0.875rem !important;
+  line-height: 1.55 !important;
+}
+.compact-mode .markdown-body p {
+  margin-bottom: 0.4rem !important;
+}
+.compact-mode .markdown-body ul,
+.compact-mode .markdown-body ol {
+  margin-bottom: 0.4rem !important;
+}
+.compact-mode .markdown-body h1 {
+  margin-top: 0.8rem !important;
+  margin-bottom: 0.35rem !important;
+  font-size: 1.25rem !important;
+}
+.compact-mode .markdown-body h2 {
+  margin-top: 0.7rem !important;
+  margin-bottom: 0.3rem !important;
+  font-size: 1.15rem !important;
+}
+.compact-mode .markdown-body h3 {
+  margin-top: 0.6rem !important;
+  margin-bottom: 0.25rem !important;
+  font-size: 1rem !important;
+}
+.compact-mode .code-block-wrapper {
+  margin-top: 0.5rem !important;
+  margin-bottom: 0.5rem !important;
 }
 
 /* 古典1 皮肤主题 - 宣纸底色、书香褐墨与朱砂红 */

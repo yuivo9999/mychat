@@ -2,6 +2,7 @@ import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFe
 import { ApiKeyConfig } from '../../types';
 import { extractAttachmentText } from '../fileParser';
 import { sendOpenAIResponses } from './openaiResponses';
+import { getRawModelId } from '../modelUtils';
 
 export class OpenAIAdapter implements BaseAdapter {
   private getDefaultBaseUrl(providerId: string): string {
@@ -151,19 +152,34 @@ export class OpenAIAdapter implements BaseAdapter {
     // OpenRouter attribution headers are optional. Keep the browser request minimal
     // so the API call only needs the standard Authorization + Content-Type headers.
 
+    const rawModelId = getRawModelId(model);
     const bodyPayload: any = {
-      model: (apiKeyConfig.providerId === 'groq' || apiKeyConfig.providerId === 'cerebras') ? model.id.replace(/^(groq|cerebras)\//, '') : model.id,
+      model: (apiKeyConfig.providerId === 'groq' || apiKeyConfig.providerId === 'cerebras') ? rawModelId.replace(/^(groq|cerebras)\//, '') : rawModelId,
       messages: formattedMessages,
       stream,
     };
 
+    const isReasoningModel = /^(o1|o3|deepseek-reasoner|r1)/i.test(rawModelId);
     const effectiveTemp = parameters?.temperature ?? temperature ?? model.temperature;
     const effectiveMaxTokens = parameters?.maxTokens ?? maxTokens ?? model.maxTokens;
     const effectiveTopP = parameters?.topP ?? topP ?? model.topP;
 
-    if (typeof effectiveTemp === 'number') bodyPayload.temperature = effectiveTemp;
-    if (typeof effectiveMaxTokens === 'number' && effectiveMaxTokens > 0) bodyPayload.max_tokens = effectiveMaxTokens;
-    if (typeof effectiveTopP === 'number') bodyPayload.top_p = effectiveTopP;
+    // Reasoning models (o1, o3-mini, deepseek-reasoner) reject custom temperature or force default
+    if (!isReasoningModel && typeof effectiveTemp === 'number') {
+      bodyPayload.temperature = effectiveTemp;
+    }
+
+    if (typeof effectiveMaxTokens === 'number' && effectiveMaxTokens > 0) {
+      if (isReasoningModel && apiKeyConfig.providerId === 'openai') {
+        bodyPayload.max_completion_tokens = effectiveMaxTokens;
+      } else {
+        bodyPayload.max_tokens = effectiveMaxTokens;
+      }
+    }
+
+    if (!isReasoningModel && typeof effectiveTopP === 'number' && effectiveTopP < 1) {
+      bodyPayload.top_p = effectiveTopP;
+    }
 
     if (typeof parameters?.frequencyPenalty === 'number' && parameters.frequencyPenalty !== 0) {
       bodyPayload.frequency_penalty = parameters.frequencyPenalty;
@@ -178,11 +194,10 @@ export class OpenAIAdapter implements BaseAdapter {
       bodyPayload.seed = parameters.seed;
     }
     if (parameters?.enableReasoning) {
-      // Only attach native reasoning_effort for OpenAI reasoning models or OpenRouter to prevent 400 error on third-party providers (DeepSeek/Qwen/Groq/Ollama/etc.)
       const isNativeReasoningModel = 
         apiKeyConfig.providerId === 'openai' || 
         apiKeyConfig.providerId === 'openrouter' ||
-        /^(o1|o3|reasoner|r1)/i.test(model.id);
+        /^(o1|o3|reasoner|r1)/i.test(rawModelId);
 
       if (isNativeReasoningModel) {
         bodyPayload.reasoning_effort = 'medium';

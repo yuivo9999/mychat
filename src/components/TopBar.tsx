@@ -354,86 +354,52 @@ export const TopBar: React.FC<TopBarProps> = ({
           {moreMenuOpen && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setMoreMenuOpen(false)} />
-              <div className="absolute right-0 top-10 w-48 bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1.5 z-40 text-xs">
+              <div className="absolute right-0 top-10 w-40 bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1.5 z-40 text-xs">
                 <button
                   onClick={() => {
                     setMoreMenuOpen(false);
                     onExportChat();
                   }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors"
                 >
-                  <Download className="w-4 h-4" /> 导出当前对话
+                  <Download className="w-4 h-4 text-neutral-400 shrink-0" />
+                  <span>导出对话</span>
                 </button>
-                {onOpenParameters && (
-                  <button
-                    onClick={() => {
-                      setMoreMenuOpen(false);
-                      onOpenParameters();
-                    }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
-                  >
-                    <SlidersHorizontal className="w-4 h-4 text-neutral-500" /> 高级运行参数
-                  </button>
-                )}
                 <button
                   onClick={() => {
                     setMoreMenuOpen(false);
                     onCopyAllChat();
                   }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
+                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors"
                 >
-                  <Copy className="w-4 h-4" /> 复制对话全文
+                  <Copy className="w-4 h-4 text-neutral-400 shrink-0" />
+                  <span>复制全文</span>
                 </button>
-                <button
-                  onClick={() => {
-                    setMoreMenuOpen(false);
-                    window.open(window.location.href, '_blank');
-                  }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
-                >
-                  <ExternalLink className="w-4 h-4" /> 新窗口独立运行
-                </button>
+
                 <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+
                 <button
                   onClick={() => {
                     setMoreMenuOpen(false);
                     onClearChat();
                   }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 flex items-center gap-2"
+                  className="w-full text-left px-3.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 flex items-center gap-2.5 transition-colors"
                 >
-                  <Trash2 className="w-4 h-4" /> 清空当前消息
+                  <Trash2 className="w-4 h-4 shrink-0" />
+                  <span>清空对话</span>
                 </button>
+
                 <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
-                {onOpenModelConfig && (
-                  <button
-                    onClick={() => {
-                      setMoreMenuOpen(false);
-                      onOpenModelConfig();
-                    }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-orange-600 dark:text-orange-400 font-medium"
-                  >
-                    <Server className="w-4 h-4" /> AI 模型配置
-                  </button>
-                )}
-                {onOpenParameters && (
-                  <button
-                    onClick={() => {
-                      setMoreMenuOpen(false);
-                      onOpenParameters();
-                    }}
-                    className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300"
-                  >
-                    <SlidersHorizontal className="w-4 h-4 text-[#84cc16]" /> 模型运行参数 (Parameters)
-                  </button>
-                )}
+
                 <button
                   onClick={() => {
                     setMoreMenuOpen(false);
                     onOpenSettings('appearance');
                   }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2 text-neutral-700 dark:text-neutral-300 cursor-pointer"
+                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors cursor-pointer"
                 >
-                  <Settings className="w-4 h-4" /> 通用与外观设置
+                  <Settings className="w-4 h-4 text-neutral-400 shrink-0" />
+                  <span>系统设置</span>
                 </button>
               </div>
             </>

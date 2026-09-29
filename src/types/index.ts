@@ -160,6 +160,12 @@ export interface UserSettings {
   enableStreaming: boolean;
   enableMarkdown: boolean;
   enableCodeHighlight: boolean;
+  // 5 Features for AI Reply Presentation & Reading
+  renderLatex?: boolean; // 🧮 LaTeX 数学与科学公式渲染
+  showLineNumbers?: boolean; // 🔢 代码块显示行号
+  collapseLongCode?: boolean; // 📱 长代码块自动限制高度 / 折叠
+  showStreamingCursor?: boolean; // ▋ 流式输出呼吸光标动画
+  compactMode?: boolean; // 🔍 紧凑排版模式
   defaultProviderId: string;
   defaultModelId: string;
   defaultSystemPrompt: string;

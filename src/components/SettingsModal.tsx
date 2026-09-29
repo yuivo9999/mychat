@@ -76,7 +76,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClearAllApiKeys,
   onResetAllData,
 }) => {
-  const [activeTab, setActiveTab] = useState(['chat', 'appearance', 'data', 'advanced'].includes(initialTab) ? initialTab : 'chat');
+  const [activeTab, setActiveTab] = useState(['appearance', 'data', 'advanced'].includes(initialTab) ? initialTab : 'appearance');
 
   // API Key Form State
   const [editingKeyId, setEditingKeyId] = useState<string | null>(null);
@@ -267,7 +267,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const tabs = [
-    { id: 'chat', label: '聊天设置', icon: Sliders },
     { id: 'appearance', label: '外观风格', icon: Palette },
     { id: 'data', label: '数据管理', icon: Database },
     { id: 'advanced', label: '高级设置', icon: ShieldAlert },
@@ -323,97 +322,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* Tab Content Panels */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-            {/* 5. 聊天设置 */}
-            {activeTab === 'chat' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">聊天交互与渲染选项</h3>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    配置消息发送快捷键、渲染行为与排版方式。
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="flex items-center justify-between p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 cursor-pointer">
-                    <div>
-                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block">Enter 键直接发送</span>
-                      <span className="text-[11px] text-neutral-400">开启后按 Enter 发送，Shift + Enter 换行；关闭后按 Ctrl/⌘ + Enter 发送</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.enterToSend}
-                      onChange={(e) => onSaveSettings({ ...settings, enterToSend: e.target.checked })}
-                      className="rounded text-indigo-600 h-4 w-4"
-                    />
-                  </label>
-
-                  <label className="flex items-center justify-between p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 cursor-pointer">
-                    <div>
-                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block">新消息自动平滑滚动</span>
-                      <span className="text-[11px] text-neutral-400">当 AI 生成或接收新消息时，聊天窗口自动跟随滚动到底部</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.autoScroll}
-                      onChange={(e) => onSaveSettings({ ...settings, autoScroll: e.target.checked })}
-                      className="rounded text-indigo-600 h-4 w-4"
-                    />
-                  </label>
-
-                  <label className="flex items-center justify-between p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 cursor-pointer">
-                    <div>
-                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block">启用打字机流式输出 (Streaming)</span>
-                      <span className="text-[11px] text-neutral-400">AI 逐字逐句实时返回结果；若关闭则等待整体生成完毕后一次性呈现</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.enableStreaming}
-                      onChange={(e) => onSaveSettings({ ...settings, enableStreaming: e.target.checked })}
-                      className="rounded text-indigo-600 h-4 w-4"
-                    />
-                  </label>
-
-                  <label className="flex items-center justify-between p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 cursor-pointer">
-                    <div>
-                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block">Markdown 与表格富文本解析</span>
-                      <span className="text-[11px] text-neutral-400">将 AI 输出的标题、加粗、列表与表格格式化为精美样式</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.enableMarkdown}
-                      onChange={(e) => onSaveSettings({ ...settings, enableMarkdown: e.target.checked })}
-                      className="rounded text-indigo-600 h-4 w-4"
-                    />
-                  </label>
-
-                  <label className="flex items-center justify-between p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 cursor-pointer">
-                    <div>
-                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block">代码块语法高亮与工具栏</span>
-                      <span className="text-[11px] text-neutral-400">显示语言标签、一键复制整段代码及直接导出代码文件</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.enableCodeHighlight}
-                      onChange={(e) => onSaveSettings({ ...settings, enableCodeHighlight: e.target.checked })}
-                      className="rounded text-indigo-600 h-4 w-4"
-                    />
-                  </label>
-
-                  <label className="flex items-center justify-between p-3.5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/30 cursor-pointer">
-                    <div>
-                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 block">显示消息发送时间戳</span>
-                      <span className="text-[11px] text-neutral-400">在消息标题旁展示具体的对话时间</span>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.showTimestamps}
-                      onChange={(e) => onSaveSettings({ ...settings, showTimestamps: e.target.checked })}
-                      className="rounded text-indigo-600 h-4 w-4"
-                    />
-                  </label>
-                </div>
-              </div>
-            )}
 
             {/* 外观风格 */}
             {activeTab === 'appearance' && (

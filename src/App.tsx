@@ -1821,7 +1821,28 @@ export default function App() {
     }
   };
 
+  const handleSaveParameters = (newParams: ModelParameters) => {
+    setParameters(newParams);
+    if (newParams.stream !== undefined && newParams.stream !== settings.enableStreaming) {
+      const updatedSettings = { ...settings, enableStreaming: newParams.stream };
+      setSettings(updatedSettings);
+      saveUserSettings(updatedSettings);
+    }
+    if (currentConversation) {
+      const updated = {
+        ...currentConversation,
+        parameters: newParams,
+        updatedAt: Date.now(),
+      };
+      setConversations(prev => prev.map(c => c.id === updated.id ? updated : c));
+      saveConversation(updated);
+    }
+  };
+
   const handleSaveSettingsObj = async (newSettings: UserSettings) => {
+    if (newSettings.enableStreaming !== undefined && newSettings.enableStreaming !== parameters.stream) {
+      setParameters(prev => ({ ...prev, stream: newSettings.enableStreaming }));
+    }
     await saveUserSettings(newSettings);
     setSettings(newSettings);
   };
@@ -2029,7 +2050,9 @@ export default function App() {
         isOpen={isParametersOpen}
         onClose={() => setIsParametersOpen(false)}
         parameters={parameters}
-        onChangeParameters={handleUpdateParameters}
+        onChangeParameters={handleSaveParameters}
+        settings={settings}
+        onSaveSettings={handleSaveSettingsObj}
         modelName={currentModel?.name}
       />
 
