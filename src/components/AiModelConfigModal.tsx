@@ -649,9 +649,9 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
               <button
                 type="button"
                 onClick={() => setIsAddingGroup(true)}
-                className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-neutral-800/80 hover:bg-neutral-700/80 text-neutral-200 border border-neutral-700/60 transition active:scale-95 cursor-pointer"
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-medium shadow-xs transition active:scale-95 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5 text-orange-400" />
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>新增组</span>
               </button>
             </div>
@@ -674,9 +674,9 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsAddingGroup(true)}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-neutral-850 hover:bg-neutral-750 text-neutral-200 border border-neutral-700 font-medium inline-flex items-center gap-1.5 transition cursor-pointer"
+                    className="px-3 py-1.5 text-xs rounded-xl bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-medium inline-flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-xs"
                   >
-                    <Plus className="w-3.5 h-3.5 text-orange-400" />
+                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                     <span>添加自定义组</span>
                   </button>
                 </div>
@@ -755,7 +755,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   <button
                     type="button"
                     onClick={handleDeleteCurrentGroup}
-                    className="px-2.5 py-1 text-xs rounded-lg bg-neutral-800/80 hover:bg-red-950/60 text-red-400 border border-neutral-700/60 transition active:scale-95"
+                    className="px-3 py-1.5 text-xs rounded-xl bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-medium shadow-xs transition active:scale-95 cursor-pointer"
                     title="删除当前服务商组"
                   >
                     删组
