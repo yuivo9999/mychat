@@ -62,6 +62,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   const resetToDefaults = () => {
     onChangeParameters({
       stream: true,
+      limitMaxTokens: false,
       maxTokens: 4096,
       temperature: 0.7,
     });
@@ -247,14 +248,14 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
             {/* 3. 最大生成长度 */}
             <div className="space-y-2 p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 relative">
-                  <span className="param-item-label text-xs font-semibold text-neutral-200">最大长度</span>
+                <div className="flex items-center gap-1.5 relative min-w-0">
+                  <span className="param-item-label text-xs font-semibold text-neutral-200 truncate">最大 Token 限制</span>
                   <button
                     type="button"
                     onMouseEnter={() => setActiveTooltip('maxTokens')}
                     onMouseLeave={() => setActiveTooltip(null)}
                     onClick={() => setActiveTooltip(activeTooltip === 'maxTokens' ? null : 'maxTokens')}
-                    className="text-neutral-500 hover:text-neutral-300"
+                    className="text-neutral-500 hover:text-neutral-300 shrink-0"
                   >
                     <Info className="w-3.5 h-3.5" />
                   </button>
@@ -265,32 +266,62 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   )}
                 </div>
 
-                <input
-                  type="number"
-                  min={1}
-                  max={32768}
-                  value={parameters.maxTokens ?? 4096}
-                  onChange={(e) => updateParam('maxTokens', parseInt(e.target.value) || 1)}
-                  className="param-input w-16 text-right bg-neutral-900 border border-neutral-700 focus:border-lime-500 text-white px-2 py-0.5 rounded-lg text-xs font-mono outline-hidden"
-                />
-              </div>
-
-              <div className="relative pt-1">
-                <input
-                  type="range"
-                  min={256}
-                  max={12288}
-                  step={256}
-                  value={parameters.maxTokens ?? 4096}
-                  onChange={(e) => updateParam('maxTokens', parseInt(e.target.value))}
-                  className="param-slider w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-lime-400"
-                />
-                <div className="flex justify-between text-[10px] param-slider-ticks text-neutral-500 font-mono mt-1 select-none">
-                  <span>256</span>
-                  <span>4096</span>
-                  <span>12288</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] text-neutral-400 font-medium">
+                    {parameters.limitMaxTokens ? '开启限制' : '默认自适应 (无限制)'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updateParam('limitMaxTokens', !parameters.limitMaxTokens)}
+                    className={`param-toggle w-8 h-4 flex items-center rounded-full p-0.5 cursor-pointer transition-colors shrink-0 ${
+                      parameters.limitMaxTokens ? 'bg-[#84cc16] bg-lime-500' : 'bg-neutral-900 border border-neutral-700'
+                    }`}
+                  >
+                    <div
+                      className={`bg-black w-3 h-3 rounded-full shadow-md transform transition-transform ${
+                        parameters.limitMaxTokens ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
+
+              {parameters.limitMaxTokens ? (
+                <div className="space-y-2 pt-1 animate-in fade-in duration-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-neutral-400">限制数值 (Tokens)</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={32768}
+                      value={parameters.maxTokens ?? 4096}
+                      onChange={(e) => updateParam('maxTokens', parseInt(e.target.value) || 1)}
+                      className="param-input w-20 text-right bg-neutral-900 border border-neutral-700 focus:border-lime-500 text-white px-2 py-0.5 rounded-lg text-xs font-mono outline-hidden"
+                    />
+                  </div>
+
+                  <div className="relative pt-1">
+                    <input
+                      type="range"
+                      min={256}
+                      max={12288}
+                      step={256}
+                      value={parameters.maxTokens ?? 4096}
+                      onChange={(e) => updateParam('maxTokens', parseInt(e.target.value))}
+                      className="param-slider w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-lime-400"
+                    />
+                    <div className="flex justify-between text-[10px] param-slider-ticks text-neutral-500 font-mono mt-1 select-none">
+                      <span>256</span>
+                      <span>4096</span>
+                      <span>12288</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-neutral-500 leading-normal pl-1 pt-0.5">
+                  已关闭限制。模型将不受硬性截断，由其内置配置或生成上下文自适应输出。
+                </p>
+              )}
             </div>
           </div>
 

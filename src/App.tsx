@@ -91,6 +91,7 @@ import { ArchiveProjectModal } from './components/ArchiveProjectModal';
 const DEFAULT_PARAMETERS: ModelParameters = {
   enableReasoning: false,
   stream: true,
+  limitMaxTokens: false,
   maxTokens: 4096,
   temperature: 0.5,
   topP: 1,

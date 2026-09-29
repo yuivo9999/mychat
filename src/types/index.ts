@@ -104,6 +104,7 @@ export interface Message {
 export interface ModelParameters {
   enableReasoning?: boolean; // 深度推理 (Reasoning)
   stream?: boolean; // 流式传输 (Stream)
+  limitMaxTokens?: boolean; // 是否限制最大 Token 数限制
   maxTokens?: number; // 最大 Token 数 (Max Tokens)
   temperature?: number; // 温度 / 随机性 (Temperature)
   topP?: number; // 核采样 (Top P)

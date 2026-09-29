@@ -91,7 +91,7 @@ export class GeminiAdapter implements BaseAdapter {
     const effectiveMaxTokens = parameters?.maxTokens ?? maxTokens ?? model.maxTokens;
     const effectiveTopP = parameters?.topP ?? topP ?? model.topP;
     if (typeof effectiveTemp === 'number') bodyPayload.generationConfig.temperature = effectiveTemp;
-    if (typeof effectiveMaxTokens === 'number' && effectiveMaxTokens > 0) bodyPayload.generationConfig.maxOutputTokens = effectiveMaxTokens;
+    if (parameters?.limitMaxTokens && typeof effectiveMaxTokens === 'number' && effectiveMaxTokens > 0) bodyPayload.generationConfig.maxOutputTokens = effectiveMaxTokens;
     if (typeof effectiveTopP === 'number') bodyPayload.generationConfig.topP = effectiveTopP;
     if (typeof parameters?.presencePenalty === 'number' && parameters.presencePenalty !== 0) bodyPayload.generationConfig.presencePenalty = parameters.presencePenalty;
     if (typeof parameters?.frequencyPenalty === 'number' && parameters.frequencyPenalty !== 0) bodyPayload.generationConfig.frequencyPenalty = parameters.frequencyPenalty;

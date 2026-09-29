@@ -469,7 +469,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   defaultProviderId: 'google',
   defaultModelId: 'gemini-3.8-flash',
   defaultSystemPrompt: '',
-  requestTimeout: 60,
+  requestTimeout: 300,
   sidebarOpen: true,
 };
 

@@ -577,7 +577,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       max="300"
                       step="5"
                       value={settings.requestTimeout}
-                      onChange={(e) => onSaveSettings({ ...settings, requestTimeout: parseInt(e.target.value) || 60 })}
+                      onChange={(e) => onSaveSettings({ ...settings, requestTimeout: parseInt(e.target.value) || 300 })}
                       className="w-full accent-indigo-600"
                     />
                     <div className="flex justify-between text-[10px] text-neutral-400 font-mono mt-1">

@@ -169,7 +169,7 @@ export class OpenAIAdapter implements BaseAdapter {
       bodyPayload.temperature = effectiveTemp;
     }
 
-    if (typeof effectiveMaxTokens === 'number' && effectiveMaxTokens > 0) {
+    if (parameters?.limitMaxTokens && typeof effectiveMaxTokens === 'number' && effectiveMaxTokens > 0) {
       if (isReasoningModel && apiKeyConfig.providerId === 'openai') {
         bodyPayload.max_completion_tokens = effectiveMaxTokens;
       } else {
