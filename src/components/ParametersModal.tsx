@@ -10,7 +10,9 @@ import {
   ListOrdered,
   FoldVertical,
   Terminal,
-  Layers
+  Layers,
+  FileText,
+  FileCode
 } from 'lucide-react';
 import { ModelParameters, UserSettings } from '../types';
 
@@ -388,6 +390,44 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                     type="checkbox"
                     checked={settings.compactMode ?? false}
                     onChange={() => handleToggleSetting('compactMode')}
+                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {/* Markdown 解析 */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                  <div className="space-y-0.5 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="text-xs font-semibold text-neutral-200 block">Markdown 解析</span>
+                    </div>
+                    <span className="text-[11px] text-neutral-400 block pl-5">
+                      格式化标题、表格、粗体与富文本
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.enableMarkdown}
+                    onChange={() => handleToggleSetting('enableMarkdown')}
+                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {/* 代码块语法高亮与工具栏 */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                  <div className="space-y-0.5 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <FileCode className="w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="text-xs font-semibold text-neutral-200 block">代码块语法高亮与工具栏</span>
+                    </div>
+                    <span className="text-[11px] text-neutral-400 block pl-5">
+                      语法高亮、快速复制与代码文件导出/下载
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.enableCodeHighlight}
+                    onChange={() => handleToggleSetting('enableCodeHighlight')}
                     className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>
