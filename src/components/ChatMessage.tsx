@@ -177,7 +177,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         settings.compactMode ? 'compact-message' : ''
       } ${
         isUser
-          ? `bg-transparent ${settings.compactMode ? 'px-3 py-2.5 md:px-5 md:py-3' : 'px-3 py-4 md:px-6 md:py-5'}`
+          ? `user-message bg-transparent ${settings.compactMode ? 'px-3 py-2.5 md:px-5 md:py-3' : 'px-3 py-4 md:px-6 md:py-5'}`
           : `assistant-message bg-neutral-100/60 dark:bg-neutral-900/50 border-y border-neutral-200/50 dark:border-neutral-800/40 ${
               settings.compactMode ? 'px-3 py-2.5 sm:px-3.5 sm:py-2.5' : 'px-3.5 py-3.5 sm:px-4 sm:py-4'
             }`

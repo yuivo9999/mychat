@@ -538,12 +538,17 @@ html.theme-classic2,
   border-color: #dfb15b !important;
 }
 
-/* 6.5 古典2 皮肤主题的 AI 回复气泡背景与文字高对比度优化 */
+/* 6.5 古典2 皮肤主题的 AI 回复与用户回复区块色差优化 */
+.theme-classic2 .user-message {
+  background-color: #0b0907 !important; /* Lacquer charcoal night black */
+  border-bottom: 1px solid #1c1510 !important;
+}
+
 .theme-classic2 .assistant-message {
-  background-color: #171310 !important;
+  background-color: #1a1511 !important; /* Distinct dark wood bronze lacquer */
   color: #f0e2cd !important;
-  border-top: 1px solid #2e251e !important;
-  border-bottom: 1px solid #2e251e !important;
+  border-top: 1px solid #36281e !important;
+  border-bottom: 1px solid #36281e !important;
 }
 
 .theme-classic2 .assistant-message p,
