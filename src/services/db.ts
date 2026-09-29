@@ -857,8 +857,21 @@ export async function getModels(): Promise<ModelItem[]> {
       });
 
       // Match missing defaults scoped strictly by providerId AND rawModelId
+      const deletedDefaultKeys = (() => {
+        try {
+          const raw = localStorage.getItem('omnichat_deleted_default_models');
+          return raw ? JSON.parse(raw) : [];
+        } catch {
+          return [];
+        }
+      })();
+
       const missingDefaults = DEFAULT_MODELS.filter(dm => {
         const dmRaw = getRawModelId(dm);
+        const uniqueId = dm.id.includes('::') ? dm.id : buildUniqueModelId(dm.providerId, dmRaw);
+        if (deletedDefaultKeys.includes(uniqueId)) {
+          return false;
+        }
         return !normalizedResults.some(r => r.providerId === dm.providerId && getRawModelId(r) === dmRaw);
       });
 
@@ -899,6 +912,16 @@ export async function saveModel(model: ModelItem): Promise<void> {
     rawModelId: rawId,
   };
 
+  // If this model was previously marked as deleted, remove it from the deleted list!
+  try {
+    const raw = localStorage.getItem('omnichat_deleted_default_models');
+    if (raw) {
+      const deletedList: string[] = JSON.parse(raw);
+      const filtered = deletedList.filter(id => id !== uniqueId);
+      localStorage.setItem('omnichat_deleted_default_models', JSON.stringify(filtered));
+    }
+  } catch {}
+
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('models', 'readwrite');
     const store = transaction.objectStore('models');
@@ -911,6 +934,19 @@ export async function saveModel(model: ModelItem): Promise<void> {
 
 export async function deleteModel(id: string): Promise<void> {
   const db = await openDB();
+
+  // Track that this default model was deleted by the user so we don't automatically re-seed it
+  try {
+    const raw = localStorage.getItem('omnichat_deleted_default_models');
+    const deletedList: string[] = raw ? JSON.parse(raw) : [];
+    if (!deletedList.includes(id)) {
+      deletedList.push(id);
+      localStorage.setItem('omnichat_deleted_default_models', JSON.stringify(deletedList));
+    }
+  } catch (e) {
+    console.warn('Failed to save deleted model reference:', e);
+  }
+
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('models', 'readwrite');
     const store = transaction.objectStore('models');
@@ -1070,6 +1106,9 @@ export async function saveUserSettings(settings: UserSettings): Promise<void> {
 export async function resetAllData(): Promise<void> {
   await clearAllConversations();
   await clearAllApiKeys();
+  try {
+    localStorage.removeItem('omnichat_deleted_default_models');
+  } catch {}
   const db = await openDB();
   const tx = db.transaction(['models', 'providers', 'settings'], 'readwrite');
   tx.objectStore('models').clear();
