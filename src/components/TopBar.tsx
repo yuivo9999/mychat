@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Menu, 
   Plus, 
@@ -89,6 +89,37 @@ export const TopBar: React.FC<TopBarProps> = ({
   const [keyDropdownOpen, setKeyDropdownOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [searchModelQuery, setSearchModelQuery] = useState('');
+
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+  const keyDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    if (moreMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [moreMenuOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (keyDropdownRef.current && !keyDropdownRef.current.contains(event.target as Node)) {
+        setKeyDropdownOpen(false);
+      }
+    };
+    if (keyDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [keyDropdownOpen]);
 
   const currentModel = models.find(m => m.id === selectedModelId) || models[0];
   const currentProvider = providers.find(p => p.id === currentModel?.providerId);
@@ -230,7 +261,7 @@ export const TopBar: React.FC<TopBarProps> = ({
 
         {/* Quick API Key switch if multiple keys */}
         {availableKeysForProvider.length > 1 && (
-          <div className="relative hidden md:block">
+          <div className="relative hidden md:block" ref={keyDropdownRef}>
             <button
               onClick={() => {
                 setKeyDropdownOpen(!keyDropdownOpen);
@@ -246,29 +277,26 @@ export const TopBar: React.FC<TopBarProps> = ({
             </button>
 
             {keyDropdownOpen && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setKeyDropdownOpen(false)} />
-                <div className="absolute right-0 top-8 w-48 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1 z-40 text-xs">
-                  <div className="px-3 py-1 font-semibold text-[10px] text-neutral-400 uppercase">
-                    切换 {currentProvider?.name} Key
-                  </div>
-                  {availableKeysForProvider.map(k => (
-                    <button
-                      key={k.id}
-                      onClick={() => {
-                        onSelectApiKey(k.id);
-                        setKeyDropdownOpen(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
-                        k.id === selectedApiKeyId ? 'text-indigo-600 font-medium' : 'text-neutral-700 dark:text-neutral-300'
-                      }`}
-                    >
-                      <span className="truncate">{k.label}</span>
-                      {k.id === selectedApiKeyId && <Check className="w-3.5 h-3.5" />}
-                    </button>
-                  ))}
+              <div className="absolute right-0 top-8 w-48 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1 z-40 text-xs">
+                <div className="px-3 py-1 font-semibold text-[10px] text-neutral-400 uppercase">
+                  切换 {currentProvider?.name} Key
                 </div>
-              </>
+                {availableKeysForProvider.map(k => (
+                  <button
+                    key={k.id}
+                    onClick={() => {
+                      onSelectApiKey(k.id);
+                      setKeyDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+                      k.id === selectedApiKeyId ? 'text-indigo-600 font-medium' : 'text-neutral-700 dark:text-neutral-300'
+                    }`}
+                  >
+                    <span className="truncate">{k.label}</span>
+                    {k.id === selectedApiKeyId && <Check className="w-3.5 h-3.5" />}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -337,7 +365,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         </button>
 
         {/* More actions menu */}
-        <div className="relative">
+        <div className="relative" ref={moreMenuRef}>
           <button
             type="button"
             onClick={() => {
@@ -352,57 +380,54 @@ export const TopBar: React.FC<TopBarProps> = ({
           </button>
 
           {moreMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-30" onClick={() => setMoreMenuOpen(false)} />
-              <div className="absolute right-0 top-10 w-40 bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1.5 z-40 text-xs">
-                <button
-                  onClick={() => {
-                    setMoreMenuOpen(false);
-                    onExportChat();
-                  }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors"
-                >
-                  <Download className="w-4 h-4 text-neutral-400 shrink-0" />
-                  <span>导出对话</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setMoreMenuOpen(false);
-                    onCopyAllChat();
-                  }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors"
-                >
-                  <Copy className="w-4 h-4 text-neutral-400 shrink-0" />
-                  <span>复制全文</span>
-                </button>
+            <div className="absolute right-0 top-10 w-40 bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1.5 z-40 text-xs">
+              <button
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  onExportChat();
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors"
+              >
+                <Download className="w-4 h-4 text-neutral-400 shrink-0" />
+                <span>导出对话</span>
+              </button>
+              <button
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  onCopyAllChat();
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors"
+              >
+                <Copy className="w-4 h-4 text-neutral-400 shrink-0" />
+                <span>复制全文</span>
+              </button>
 
-                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+              <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
 
-                <button
-                  onClick={() => {
-                    setMoreMenuOpen(false);
-                    onClearChat();
-                  }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 flex items-center gap-2.5 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4 shrink-0" />
-                  <span>清空对话</span>
-                </button>
+              <button
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  onClearChat();
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-red-50 dark:hover:bg-red-950/30 text-red-600 dark:text-red-400 flex items-center gap-2.5 transition-colors"
+              >
+                <Trash2 className="w-4 h-4 shrink-0" />
+                <span>清空对话</span>
+              </button>
 
-                <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
+              <div className="border-t border-neutral-100 dark:border-neutral-800 my-1" />
 
-                <button
-                  onClick={() => {
-                    setMoreMenuOpen(false);
-                    onOpenSettings('appearance');
-                  }}
-                  className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors cursor-pointer"
-                >
-                  <Settings className="w-4 h-4 text-neutral-400 shrink-0" />
-                  <span>系统设置</span>
-                </button>
-              </div>
-            </>
+              <button
+                onClick={() => {
+                  setMoreMenuOpen(false);
+                  onOpenSettings('appearance');
+                }}
+                className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300 transition-colors cursor-pointer"
+              >
+                <Settings className="w-4 h-4 text-neutral-400 shrink-0" />
+                <span>系统设置</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
