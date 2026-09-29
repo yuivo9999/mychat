@@ -12,7 +12,8 @@ import {
   Terminal,
   Layers,
   FileText,
-  FileCode
+  FileCode,
+  Brain
 } from 'lucide-react';
 import { ModelParameters, UserSettings } from '../types';
 
@@ -77,6 +78,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
         collapseLongCode: true,
         showStreamingCursor: true,
         compactMode: false,
+        enableChatContextMemory: false,
       });
     }
   };
@@ -90,6 +92,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
     collapse: '代码超出高度时自动折叠收起，提供“展开完整代码”按钮，移动端浏览更流畅。',
     cursor: '打字机逐字生成时末尾伴随微闪的呼吸光标（▋），生成完毕自动隐去。',
     compact: '缩小消息气泡上下边距、微调字号和间隙，大幅提升单屏信息展示密度。',
+    chatContextMemory: '允许 AI 记住历史对话中提取的重要需求与约定。关闭可大幅节省输入 Token 消耗。',
   };
 
   const streamVal = settings?.enableStreaming ?? parameters.stream ?? true;
@@ -428,6 +431,25 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                     type="checkbox"
                     checked={settings.enableCodeHighlight}
                     onChange={() => handleToggleSetting('enableCodeHighlight')}
+                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {/* 会话专属上下文记忆 (默认关闭) */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-[#181818] border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                  <div className="space-y-0.5 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <Brain className="w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="text-xs font-semibold text-neutral-200 block">启用单聊专属上下文记忆</span>
+                    </div>
+                    <span className="text-[11px] text-neutral-400 block pl-5">
+                      携带本窗口提取的约定与需求信息。**关闭可大幅节省输入 Token**（默认关闭）
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.enableChatContextMemory ?? false}
+                    onChange={() => handleToggleSetting('enableChatContextMemory')}
                     className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>

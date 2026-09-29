@@ -869,8 +869,8 @@ export default function App() {
           isDiagnosisMode
         );
       } else {
-        // Pure chat mode / Agent OFF: only append chat's own private memory if present, ZERO workspace tools protocol or directory trees
-        const chatMemory = formatChatContextPrompt(targetConv.chatContext);
+        // Pure chat mode / Agent OFF: only append chat's own private memory if present AND enabled, ZERO workspace tools protocol or directory trees
+        const chatMemory = (settings.enableChatContextMemory ?? false) ? formatChatContextPrompt(targetConv.chatContext) : '';
         if (chatMemory) {
           effectiveSystemPrompt = effectiveSystemPrompt ? `${effectiveSystemPrompt}\n\n${chatMemory}` : chatMemory;
         }

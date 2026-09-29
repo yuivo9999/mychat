@@ -166,6 +166,7 @@ export interface UserSettings {
   collapseLongCode?: boolean; // 📱 长代码块自动限制高度 / 折叠
   showStreamingCursor?: boolean; // ▋ 流式输出呼吸光标动画
   compactMode?: boolean; // 🔍 紧凑排版模式
+  enableChatContextMemory?: boolean; // 🧠 启用单聊专属上下文记忆
   defaultProviderId: string;
   defaultModelId: string;
   defaultSystemPrompt: string;
