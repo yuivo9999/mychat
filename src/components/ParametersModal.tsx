@@ -70,7 +70,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
         ...settings,
         enableStreaming: true,
         autoScroll: true,
-        enableMarkdown: true,
+        enableMarkdown: false,
         enableCodeHighlight: true,
         showTimestamps: true,
         renderLatex: true,
@@ -78,6 +78,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
         collapseLongCode: true,
         showStreamingCursor: true,
         compactMode: false,
+        boldHeadings: true,
         enableChatContextMemory: false,
       });
     }
@@ -412,6 +413,25 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                     type="checkbox"
                     checked={settings.enableMarkdown}
                     onChange={() => handleToggleSetting('enableMarkdown')}
+                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {/* 加粗标题 (纯文本结构优化) */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                  <div className="space-y-0.5 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <SlidersHorizontal className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">加粗纯文本标题</span>
+                    </div>
+                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
+                      在关闭 Markdown 解析时，自动加粗带有 #, ##, ### 等前缀的结构化标题行
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.boldHeadings ?? false}
+                    onChange={() => handleToggleSetting('boldHeadings')}
                     className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>

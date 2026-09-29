@@ -94,6 +94,29 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     }
   };
 
+  const renderPlaintextContent = (content: string) => {
+    if (!settings.boldHeadings) {
+      return <div className="whitespace-pre-wrap font-sans">{content}</div>;
+    }
+
+    const lines = content.split('\n');
+    return (
+      <div className="whitespace-pre-wrap font-sans">
+        {lines.map((line, idx) => {
+          const headingMatch = line.match(/^(#{1,6}\s+)(.+)$/);
+          if (headingMatch) {
+            return (
+              <div key={idx} className="font-bold text-neutral-950 dark:text-white">
+                {line}
+              </div>
+            );
+          }
+          return <div key={idx}>{line || ' '}</div>;
+        })}
+      </div>
+    );
+  };
+
   // Delegate click for code block copy, download, and expand/collapse buttons
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
@@ -369,7 +392,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             )}
 
             {isUser || !settings.enableMarkdown ? (
-              <div className="whitespace-pre-wrap font-sans">{mainContent}</div>
+              renderPlaintextContent(mainContent)
             ) : (
               <div 
                 className="markdown-body" 
