@@ -2029,6 +2029,7 @@ export default function App() {
           currentApiKey={currentApiKey}
           models={models}
           providers={providers}
+          apiKeys={apiKeys}
           selectedModelId={selectedModelId}
           onSelectModel={handleSelectModel}
           settings={settings}

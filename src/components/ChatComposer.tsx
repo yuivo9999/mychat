@@ -28,6 +28,7 @@ interface ChatComposerProps {
   currentApiKey: ApiKeyConfig | undefined;
   models?: ModelItem[];
   providers?: ProviderDefinition[];
+  apiKeys?: ApiKeyConfig[];
   selectedModelId?: string;
   onSelectModel?: (modelId: string) => void;
   settings: UserSettings;
@@ -56,6 +57,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   currentApiKey,
   models = [],
   providers = [],
+  apiKeys = [],
   selectedModelId,
   onSelectModel,
   settings,
@@ -323,6 +325,18 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                         // Ensure the model belongs to an active, registered provider group
                         const providerExists = providers.some(p => p.id === m.providerId);
                         if (!providerExists) return false;
+
+                        // Only show models of providers that have at least one active (non-empty) API Key configured.
+                        // Exception: Ollama is running locally, doesn't need a key.
+                        // Fallback: If the user has NOT configured ANY api keys in the entire client yet, show all so they are not greeted with an empty list.
+                        const hasConfiguredKeysInEntireApp = apiKeys.some(k => k.apiKey && k.apiKey.trim() !== '');
+                        if (hasConfiguredKeysInEntireApp) {
+                          const isOllama = m.providerId === 'ollama';
+                          const providerHasKey = apiKeys.some(k => k.providerId === m.providerId && k.apiKey && k.apiKey.trim() !== '');
+                          if (!providerHasKey && !isOllama) {
+                            return false;
+                          }
+                        }
 
                         if (!searchModelQuery) return true;
                         const q = searchModelQuery.toLowerCase();
