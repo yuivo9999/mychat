@@ -75,6 +75,8 @@ import { formatProjectMemoryPrompt, updateProjectCollectiveMemory } from './serv
 import { getAdapterForProvider } from './services/adapters';
 import { safeExtractText } from './services/adapters/base';
 import { performWebSearch, buildWebSearchContext } from './services/webSearch';
+import { isModelWebSearchSupported, isModelVisionCapable, isModelFileCapable, isModelReasoningSupported } from './services/modelUtils';
+import { isAttachmentTextReadable, formatFilesPromptForAi } from './services/fileParser';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { MessageList } from './components/MessageList';
@@ -715,11 +717,83 @@ export default function App() {
       },
     ];
 
+    // Check vision capabilities for image attachments
+    const hasImageAttachments = (effectiveAttachments || []).some(a => a.type.startsWith('image/'));
+    const isVisionSupported = isModelVisionCapable(currentModel, currentModel.providerId);
+    let visionNotice = '';
+
+    if (hasImageAttachments && !isVisionSupported) {
+      const modelLabel = currentModel.name || currentModel.id;
+      visionNotice = `> ℹ️ **图片识别提示**：当前选择的模型【${modelLabel}】为纯文本语言模型，暂不支持图像视觉识别功能。系统已自动略过图片附件，其他文字内容已提交，AI 将继续回答您的问题。\n> *(如需识别图片内容，请在顶栏切换为支持视觉的多模态模型，如 Gemini 3.8 Flash、GPT-4o、Qwen-VL 等)*\n\n`;
+    }
+
+    // Check file capabilities for document / code attachments
+    const nonImageAttachments = (effectiveAttachments || []).filter(a => !a.type.startsWith('image/'));
+    const fileSupport = isModelFileCapable(currentModel, currentModel.providerId);
+    let fileNotice = '';
+
+    if (nonImageAttachments.length > 0) {
+      const modelLabel = currentModel.name || currentModel.id;
+      if (!fileSupport.supported) {
+        fileNotice = `> ℹ️ **文件处理提示**：当前选择的模型【${modelLabel}】不支持解析或查看文件附件（${fileSupport.reason || '该模型无文件处理能力'}）。系统已自动略过文件数据，其他文字问题已提交，AI 将继续回答您的问题。\n\n`;
+      } else {
+        const unreadableFiles = nonImageAttachments.filter(a => !isAttachmentTextReadable(a));
+        if (unreadableFiles.length > 0 && currentModel.providerId !== 'google' && currentModel.providerId !== 'gemini') {
+          const unreadableNames = unreadableFiles.map(f => f.name).join('、');
+          fileNotice = `> ℹ️ **文件提示**：附件【${unreadableNames}】为二进制或无法直接解析的格式，系统已自动略过该附件，其余文字/文件已正常提交。\n\n`;
+        }
+      }
+    }
+
+    // Check reasoning / thinking mode status
+    const isReasoningEnabled = Boolean((targetConv.parameters || parameters)?.enableReasoning);
+    const modelSupportsReasoning = isModelReasoningSupported(currentModel, currentModel.providerId);
+    let reasoningNotice = '';
+
+    if (isReasoningEnabled && !modelSupportsReasoning) {
+      const modelLabel = currentModel.name || currentModel.id;
+      reasoningNotice = `> ℹ️ **思考模式提示**：当前选择的模型【${modelLabel}】不支持原生深度思考/推理模式。系统已自动按标准对话模式为您作答，以下为完整回复：\n\n`;
+    } else if (!isReasoningEnabled && modelSupportsReasoning) {
+      // Check if this is the first message sent to this model in this conversation
+      const hasUsedThisModelBefore = targetConv.messages.some(
+        m => m.role === 'assistant' && (m.model === currentModel.name || m.model === currentModel.id)
+      );
+      if (!hasUsedThisModelBefore) {
+        const modelLabel = currentModel.name || currentModel.id;
+        reasoningNotice = `> 💡 **提示**：当前模型【${modelLabel}】支持深度思考模式（Reasoning/Thinking）。如需展示详细的思维推导过程，可在输入框上方开启「✨ 思考模式」。\n\n`;
+      }
+    }
+
     if (effectiveAttachments && effectiveAttachments.length > 0) {
+      if (hasImageAttachments && !isVisionSupported) {
+        initialThinkingSteps.push({
+          id: `step_att_${Date.now()}`,
+          icon: 'code',
+          title: `当前模型不支持图片识别，已自动略过图片数据，仅发送文字问题`,
+          status: 'completed',
+        });
+      } else if (nonImageAttachments.length > 0 && !fileSupport.supported) {
+        initialThinkingSteps.push({
+          id: `step_att_${Date.now()}`,
+          icon: 'code',
+          title: `当前模型不支持文件附件，已自动略过文件数据，仅发送文字提问`,
+          status: 'completed',
+        });
+      } else {
+        initialThinkingSteps.push({
+          id: `step_att_${Date.now()}`,
+          icon: 'code',
+          title: `已深度解析并装载【${effectiveAttachments.length} 个附件文件】，准备基于文件内容回复`,
+          status: 'completed',
+        });
+      }
+    }
+
+    if (isReasoningEnabled && !modelSupportsReasoning) {
       initialThinkingSteps.push({
-        id: `step_att_${Date.now()}`,
-        icon: 'code',
-        title: `审查解析多模态附件数据（${effectiveAttachments.length} 个文件）`,
+        id: `step_reasoning_${Date.now()}`,
+        icon: 'brain',
+        title: `当前模型不支持原生思考模式，已转为标准模式直接组织回答`,
         status: 'completed',
       });
     }
@@ -742,17 +816,18 @@ export default function App() {
 
     let currentThinkingSteps = [...initialThinkingSteps];
 
+    const initialNotices = (visionNotice + fileNotice + reasoningNotice);
     const assistantMsgId = `msg_a_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const assistantMessage: Message = {
       id: assistantMsgId,
       role: 'assistant',
-      content: '',
+      content: initialNotices || '',
       timestamp: Date.now(),
       model: currentModel.name,
       providerId: currentModel.providerId,
       status: 'streaming',
       thinkingSteps: currentThinkingSteps,
-      versions: [{ content: '', timestamp: Date.now(), model: currentModel?.name }],
+      versions: [{ content: initialNotices || '', timestamp: Date.now(), model: currentModel?.name }],
       currentVersionIndex: 0,
     };
 
@@ -790,61 +865,137 @@ export default function App() {
     // Web Search Grounding (if 访问网络 is enabled)
     let webResults: WebSearchResultItem[] = [];
     let webContext = '';
+    let webSearchNotice = '';
 
     if (webAccessEnabled) {
-      setStatusMessage('正在联网检索最新网页与资料...');
-      try {
-        const searchRes = await performWebSearch(text);
-        if (searchRes.results.length > 0 || searchRes.pageContents.length > 0) {
-          webResults = searchRes.results;
-          webContext = buildWebSearchContext(searchRes);
+      const searchSupport = isModelWebSearchSupported(currentModel, currentModel.providerId);
 
-          // Update thinking steps with search result count (精确还原图片展示)
+      if (!searchSupport.supported) {
+        // Model does NOT support web search: Inform user honestly, NEVER fake that it searched!
+        const reasonText = searchSupport.reason || '当前模型不支持接入网络搜索';
+        webSearchNotice = `> ⚠️ **联网搜索提示**：当前选择的模型【${currentModel.name || currentModel.id}】不支持实时网络搜索功能（${reasonText}）。本次回答仅基于该模型的离线训练知识库，未联网检索最新数据。如需获取最新实时网络信息，请在顶栏切换为支持联网的模型（如 Gemini 3.8 Flash、DeepSeek、GPT-4o 等）。\n\n`;
+
+        const updatedSteps: ThinkingStep[] = currentThinkingSteps.map(s => {
+          if (s.id.startsWith('step_search_')) {
+            return {
+              ...s,
+              icon: 'search',
+              title: `当前模型不支持联网搜索（${reasonText}），已转为离线回答`,
+              status: 'completed',
+            };
+          }
+          return s;
+        });
+        currentThinkingSteps = updatedSteps;
+        setConversations(prev => prev.map(c => {
+          if (c.id !== updatedConv.id) return c;
+          return {
+            ...c,
+            messages: c.messages.map(m => m.id === assistantMsgId ? { ...m, thinkingSteps: updatedSteps } : m),
+          };
+        }));
+      } else {
+        // Model supports web search: Perform real-time search
+        setStatusMessage('正在联网检索最新网页与资料...');
+        try {
+          const searchRes = await performWebSearch(text);
+          if (searchRes.results.length > 0 || searchRes.pageContents.length > 0) {
+            webResults = searchRes.results;
+            webContext = buildWebSearchContext(searchRes);
+
+            const updatedSteps: ThinkingStep[] = currentThinkingSteps.map(s => {
+              if (s.id.startsWith('step_search_')) {
+                return {
+                  ...s,
+                  icon: 'lightning',
+                  title: `已搜索到 ${webResults.length} 条实时网络参考资料`,
+                  status: 'completed',
+                };
+              }
+              return s;
+            });
+
+            if (searchRes.pageContents.length > 0) {
+              updatedSteps.push({
+                id: `step_page_${Date.now()}`,
+                icon: 'search',
+                title: `审查并读取 ${searchRes.pageContents.length} 个目标网页正文`,
+                status: 'completed',
+              });
+            }
+
+            updatedSteps.push({
+              id: `step_engine_${Date.now()}`,
+              icon: 'github',
+              title: `结合网络资料调用 ${currentModel.name} 组织回答`,
+              status: 'running',
+            });
+
+            currentThinkingSteps = updatedSteps;
+
+            setConversations(prev => prev.map(c => {
+              if (c.id !== updatedConv.id) return c;
+              return {
+                ...c,
+                messages: c.messages.map(m => m.id === assistantMsgId ? { ...m, thinkingSteps: updatedSteps } : m),
+              };
+            }));
+          } else {
+            // Search returned 0 results: Honest notification, do not pretend!
+            webSearchNotice = `> ℹ️ **联网检索提示**：网络搜索服务未检索到与本次提问直接相关的公开网页数据，AI 已转为基于基础知识库为您作答。\n\n`;
+            const updatedSteps: ThinkingStep[] = currentThinkingSteps.map(s => {
+              if (s.id.startsWith('step_search_')) {
+                return {
+                  ...s,
+                  icon: 'search',
+                  title: '未检索到相关公开网页数据，已转为基于基础知识库回答',
+                  status: 'completed',
+                };
+              }
+              return s;
+            });
+            updatedSteps.push({
+              id: `step_engine_${Date.now()}`,
+              icon: 'github',
+              title: `调用 ${currentModel.name} 基础知识库组织回答`,
+              status: 'running',
+            });
+            currentThinkingSteps = updatedSteps;
+
+            setConversations(prev => prev.map(c => {
+              if (c.id !== updatedConv.id) return c;
+              return {
+                ...c,
+                messages: c.messages.map(m => m.id === assistantMsgId ? { ...m, thinkingSteps: updatedSteps } : m),
+              };
+            }));
+          }
+        } catch (searchErr) {
+          console.warn('Web search error:', searchErr);
+          webSearchNotice = `> ⚠️ **联网检索提示**：实时网络检索服务连接异常，已自动降级为离线模型知识库为您作答。\n\n`;
           const updatedSteps: ThinkingStep[] = currentThinkingSteps.map(s => {
             if (s.id.startsWith('step_search_')) {
               return {
                 ...s,
-                icon: 'lightning',
-                title: `已搜索 ${webResults.length} 个网站`,
+                icon: 'search',
+                title: '网络检索服务连接异常，已降级为模型基础知识库直接回答',
                 status: 'completed',
               };
             }
             return s;
           });
-
-          if (searchRes.pageContents.length > 0) {
-            updatedSteps.push({
-              id: `step_page_${Date.now()}`,
-              icon: 'search',
-              title: `审查并读取 ${searchRes.pageContents.length} 个目标网页正文`,
-              status: 'completed',
-            });
-          }
-
-          updatedSteps.push({
-            id: `step_engine_${Date.now()}`,
-            icon: 'github',
-            title: `调用 ${currentModel.name} 推理引擎并组织回答`,
-            status: 'running',
-          });
-
           currentThinkingSteps = updatedSteps;
-
-          setConversations(prev => prev.map(c => {
-            if (c.id !== updatedConv.id) return c;
-            return {
-              ...c,
-              messages: c.messages.map(m => m.id === assistantMsgId ? { ...m, thinkingSteps: updatedSteps } : m),
-            };
-          }));
         }
-      } catch (searchErr) {
-        console.warn('Web search error:', searchErr);
       }
     }
 
     try {
-      const activeParams = updatedConv.parameters || parameters;
+      const baseParams = updatedConv.parameters || parameters;
+      const activeParams: ModelParameters = {
+        ...baseParams,
+        // Only send enableReasoning to model if the model actually supports reasoning mode
+        enableReasoning: isReasoningEnabled && modelSupportsReasoning,
+      };
       const baseSystemPrompt = targetConv.systemPrompt || settings.defaultSystemPrompt;
       let effectiveSystemPrompt = webContext
         ? (baseSystemPrompt ? `${baseSystemPrompt}\n\n${webContext}` : webContext)
@@ -898,9 +1049,44 @@ export default function App() {
       const executedToolCalls: ToolCallExecution[] = [];
       const modifiedPaths = new Set<string>();
 
+      // Prepare user message for API call: if model does not support vision or files, safely strip unsupported attachments
+      let apiUserMessage = userMessage;
+      const modelLabel = currentModel.name || currentModel.id;
+
+      // Filter attachments based on model capability
+      const effectiveAttsForApi = (userMessage.attachments || []).filter(a => {
+        if (a.type.startsWith('image/')) return isVisionSupported;
+        return fileSupport.supported && (isAttachmentTextReadable(a) || currentModel.providerId === 'google' || currentModel.providerId === 'gemini');
+      });
+
+      let adaptedContent = userMessage.content || '';
+
+      // Append natural guidance if attachments were omitted
+      if (hasImageAttachments && !isVisionSupported) {
+        if (adaptedContent.trim()) {
+          adaptedContent += `\n\n[系统提示：用户随消息附带了图片，但当前模型【${modelLabel}】为纯文本语言模型，暂不支持视觉识别功能，系统已自动略过图片。如果用户问到了图片相关内容，请礼貌告知当前模型暂不支持识别图片，并建议在顶部切换为支持视觉的多模态模型（如 Gemini 3.8 Flash、GPT-4o、Qwen-VL 等）；其他文字/文件问题请正常回答。]`;
+        } else {
+          adaptedContent = `[系统提示：用户发送了一张图片，但当前大模型【${modelLabel}】为纯文本语言模型，暂不支持图像视觉识别功能。请礼貌告知用户您当前无法查看该图片内容，并建议用户在顶部切换为支持图片视觉的多模态模型（如 Gemini 3.8 Flash、GPT-4o、Qwen-VL 等）。]`;
+        }
+      }
+
+      if (nonImageAttachments.length > 0 && !fileSupport.supported) {
+        if (adaptedContent.trim()) {
+          adaptedContent += `\n\n[系统提示：用户随消息附带了文件附件，但当前模型【${modelLabel}】不支持文件查看与解析，系统已自动略过文件内容。如果用户问到了文件相关内容，请说明暂无法直接读取该文件；其他文字提问请正常回答。]`;
+        } else {
+          adaptedContent = `[系统提示：用户发送了文件，但当前大模型【${modelLabel}】暂不支持读取或解析文件附件。请礼貌告知用户您当前无法查看该文件内容，并建议用户使用支持文档分析的模型（如 Gemini 3.8 Flash、GPT-4o）或将文件文本直接粘贴至输入框。]`;
+        }
+      }
+
+      apiUserMessage = {
+        ...userMessage,
+        content: adaptedContent,
+        attachments: effectiveAttsForApi,
+      };
+
       // Prepare local compaction for THIS single chat (Chat A never shares history with Chat B)
       const { compactedSummary, effectiveMessages } = prepareChatHistoryWithLocalCompaction(targetConv.messages);
-      let currentHistoryMessages = [...effectiveMessages, userMessage];
+      let currentHistoryMessages = [...effectiveMessages, apiUserMessage];
 
       if (compactedSummary) {
         currentHistoryMessages = [
@@ -913,6 +1099,8 @@ export default function App() {
           ...currentHistoryMessages,
         ];
       }
+
+      const systemNotices = (visionNotice + fileNotice + reasoningNotice + webSearchNotice);
 
       let turn = 0;
       const maxAgentTurns = workspaceAgentEnabled ? 8 : 1;
@@ -939,7 +1127,7 @@ export default function App() {
               const textChunk = safeExtractText(chunk);
               if (!textChunk) return;
               turnAccumulatedText += textChunk;
-              const displayContent = cleanResponseText(turnAccumulatedText);
+              const displayContent = (systemNotices ? systemNotices : '') + cleanResponseText(turnAccumulatedText);
               const completedSteps = currentThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
 
               setConversations(prev => prev.map(c => {
@@ -1070,7 +1258,7 @@ export default function App() {
       }
 
       // Clean final answer
-      let cleanedFinalAnswer = cleanResponseText(finalFullText);
+      let cleanedFinalAnswer = (systemNotices ? systemNotices : '') + cleanResponseText(finalFullText);
       if (modifiedPaths.size > 0) {
         cleanedFinalAnswer += `\n\n> 📦 **项目工作区已更新**：AI 已修改文件 \`${Array.from(modifiedPaths).join('`, `')}\`。\n> ⚠️ **运行与测试提示**：AI 仅负责分析与修改代码，未在云端运行任何代码或执行测试。请您在本地运行并测试代码；若遇到报错，请将错误信息贴回本聊天中，AI 将继续为您排查修复。`;
       }

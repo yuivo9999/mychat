@@ -75,15 +75,29 @@ export function parseHttpError(status: number, errorData: any, statusText: strin
     return `API Key 无效或未生效 (${status} API_KEY_INVALID): 提供商拒绝了此 Key。请确认 Key 属于当前提供商、对应 API 已启用，并且没有复制空格、引号或其他平台的 Key。`;
   }
 
+  const detailLower = detail.toLowerCase();
+  if (
+    status === 429 ||
+    detailLower.includes('resource_exhausted') ||
+    detailLower.includes('quota exceeded') ||
+    reason === 'RESOURCE_EXHAUSTED'
+  ) {
+    if (
+      detailLower.includes('quota') ||
+      detailLower.includes('balance') ||
+      detailLower.includes('credit') ||
+      detailLower.includes('resource_exhausted') ||
+      detailLower.includes('tokens_per_model') ||
+      reason === 'RESOURCE_EXHAUSTED'
+    ) {
+      return `API 额度已用尽 / 配额超限 (429 RESOURCE_EXHAUSTED): 当前模型 API 账户的免费额度或 Token 预算已用完。请在顶栏切换为其他可用模型（如 DeepSeek、Qwen、OpenAI 等），或进入设置更换新的 API Key。详细信息: ${detail}`;
+    }
+    return `请求频率超限 (429): ${detail || '当前请求过于频繁，请稍候几秒后再试。'}`;
+  }
+
   if (status === 401) return `API Key 无效或未授权 (401): ${detail || '请检查设置中的 API Key'}`;
   if (status === 403) return `没有访问权限 (403): ${detail || '当前 API Key 没有该模型或 API 的调用权限'}`;
   if (status === 404) return `模型不存在或端点未找到 (404): ${detail || '请确认模型 ID 和 Base URL 是否匹配'}`;
-  if (status === 429) {
-    if (detail.toLowerCase().includes('quota') || detail.toLowerCase().includes('balance') || detail.toLowerCase().includes('credit')) {
-      return `额度不足 (429): ${detail || '当前 Key 的免费额度或账户额度已耗尽'}`;
-    }
-    return `请求频率超限 (429): ${detail || '请求过于频繁，请稍后再试'}`;
-  }
   if (status >= 500) return `服务提供商接口故障 (${status}): ${detail || statusText || '提供商服务器错误，请稍后再试'}`;
   return `请求失败 (${status} ${statusText}): ${detail || '未知错误'}`;
 }

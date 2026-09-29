@@ -1,8 +1,8 @@
 import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFetch, safeExtractText } from './base';
 import { ApiKeyConfig } from '../../types';
-import { extractAttachmentText } from '../fileParser';
+import { extractAttachmentText, formatFilesPromptForAi } from '../fileParser';
 import { sendOpenAIResponses } from './openaiResponses';
-import { getRawModelId } from '../modelUtils';
+import { getRawModelId, isModelVisionCapable } from '../modelUtils';
 
 export class OpenAIAdapter implements BaseAdapter {
   private getDefaultBaseUrl(providerId: string): string {
@@ -46,15 +46,19 @@ export class OpenAIAdapter implements BaseAdapter {
 
   async sendMessage(options: AdapterOptions, callbacks?: StreamCallbacks): Promise<string> {
     const { model, apiKeyConfig, messages, systemPrompt, temperature, maxTokens, topP, parameters, abortSignal, timeoutSeconds } = options;
+    // Never hijack image attachments to /responses! Standard /v1/chat/completions natively handles vision (gpt-4o, etc.)
+    const hasImageAttachments = messages.some(m => m.attachments?.some(a => a.type.startsWith('image/')));
     if (
       apiKeyConfig.providerId === 'openai' &&
       model.supportsFiles &&
+      !hasImageAttachments &&
       messages.some(m => m.role === 'user' && (m.attachments?.length || 0) > 0)
     ) {
       return sendOpenAIResponses(options, callbacks);
     }
 
     const endpoint = this.resolveEndpoint(apiKeyConfig);
+    const modelCanVision = isModelVisionCapable(model, apiKeyConfig.providerId);
 
     const formattedMessages: any[] = [];
 
@@ -74,52 +78,46 @@ export class OpenAIAdapter implements BaseAdapter {
     // Convert messages
     for (const msg of messages) {
       if (msg.role === 'user') {
-        const hasAttachments = msg.attachments && msg.attachments.length > 0;
-        
-        if (hasAttachments && model.supportsVision) {
-          const contents: any[] = [];
+        const imageAttachments = (msg.attachments || []).filter(a => a.type.startsWith('image/') && a.dataUrl);
+        const nonImageAttachments = (msg.attachments || []).filter(a => !a.type.startsWith('image/'));
 
-          // Text/code/document attachments are extracted locally. Images are
-          // sent natively below and must not be duplicated as fake text.
-          let textWithExtracted = msg.content;
-          for (const att of msg.attachments || []) {
-            if (!att.type.startsWith('image/') && (att.extractedText || att.base64Data)) {
-              textWithExtracted += `\n\n[附件文本: ${att.name}]\n${extractAttachmentText(att)}`;
-            }
+        // Format document/code files using optimal structured prompt
+        let formattedText = msg.content || '';
+        if (nonImageAttachments.length > 0) {
+          formattedText = formatFilesPromptForAi(nonImageAttachments, formattedText);
+        }
+
+        if (imageAttachments.length > 0 && modelCanVision) {
+          const contents: any[] = [];
+          if (!formattedText.trim()) {
+            formattedText = '请仔细观察并识别分析附带的图片中的内容。';
           }
-          contents.push({ type: 'text', text: textWithExtracted || '请分析以下内容' });
+          contents.push({ type: 'text', text: formattedText });
 
           // Add image attachments
-          for (const att of msg.attachments || []) {
-            if (att.type.startsWith('image/') && att.dataUrl) {
-              contents.push({
-                type: 'image_url',
-                image_url: {
-                  url: att.dataUrl,
-                  detail: 'auto',
-                },
-              });
-            }
+          for (const att of imageAttachments) {
+            contents.push({
+              type: 'image_url',
+              image_url: {
+                url: att.dataUrl,
+                detail: 'auto',
+              },
+            });
           }
           formattedMessages.push({ role: 'user', content: contents });
         } else {
-          const hasGroqImageAttachment =
-            apiKeyConfig.providerId === 'groq' &&
-            (msg.attachments || []).some(att => att.type.startsWith('image/'));
-
-          if (hasGroqImageAttachment) {
-            throw new Error(`当前 Groq 模型 [${model.id}] 不支持图片输入。请切换到 Groq 的视觉模型后再发送图片；TXT、JS 等文本/代码附件仍可直接使用。`);
-          }
-
-          let text = msg.content;
-          if (hasAttachments) {
-            for (const att of msg.attachments || []) {
-              if (att.extractedText || att.base64Data) {
-                text += `\n\n[附件文本: ${att.name}]\n${extractAttachmentText(att)}`;
-              }
+          // Model does not support vision (or no image attached)
+          if (imageAttachments.length > 0 && !modelCanVision) {
+            // Natural explanation in prompt so AI naturally informs user without showing a red error
+            const modelLabel = model.name || model.id;
+            if (formattedText.trim()) {
+              formattedText += `\n\n[系统提示：用户随消息附带了图片，但当前大模型【${modelLabel}】为纯文本语言模型，暂不支持图像视觉识别功能，系统已自动略过图片数据。请您正常针对上述文字/文件内容进行解答，并在回答开头简要告知用户当前模型暂不支持识别图片。]`;
+            } else {
+              formattedText = `[系统提示：用户发送了图片，但当前大模型【${modelLabel}】为纯文本语言模型，暂不支持图像视觉识别功能。请礼貌告知用户您当前无法查看该图片内容，并建议用户在顶部切换为支持图片视觉的多模态模型（如 Gemini 3.8 Flash、GPT-4o、Qwen-VL 等）。]`;
             }
           }
-          formattedMessages.push({ role: 'user', content: text });
+
+          formattedMessages.push({ role: 'user', content: formattedText || '你好' });
         }
       } else if (msg.role === 'assistant') {
         formattedMessages.push({
@@ -250,6 +248,29 @@ export class OpenAIAdapter implements BaseAdapter {
           errorData = await response.text();
         } catch {}
       }
+
+      const errorText = typeof errorData === 'string' ? errorData : JSON.stringify(errorData || {});
+      const isVisionRejection =
+        (response.status === 400 || response.status === 404 || response.status === 422) &&
+        (errorText.toLowerCase().includes('image') ||
+         errorText.toLowerCase().includes('vision') ||
+         errorText.toLowerCase().includes('multimodal') ||
+         errorText.toLowerCase().includes('unsupported content') ||
+         errorText.toLowerCase().includes('image_url') ||
+         errorText.toLowerCase().includes('not support'));
+
+      // If the API rejected image input and images were attached, seamlessly fallback to text-only mode without throwing error
+      if (isVisionRejection && messages.some(m => m.attachments?.some(a => a.type.startsWith('image/')))) {
+        console.warn('API rejected image input, seamlessly falling back to text-only mode without image payload.');
+        return this.sendMessage(
+          {
+            ...options,
+            model: { ...model, supportsVision: false },
+          },
+          callbacks
+        );
+      }
+
       throw new Error(parseHttpError(response.status, errorData, response.statusText));
     }
 

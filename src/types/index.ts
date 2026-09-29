@@ -41,6 +41,7 @@ export interface ModelItem {
   supportsVision: boolean;
   supportsFiles: boolean;
   supportsStreaming: boolean;
+  supportsWebSearch?: boolean; // 是否支持联网搜索
   contextWindow?: number;
   temperature?: number;
   maxTokens?: number;

@@ -2,7 +2,7 @@ import { BaseAdapter, AdapterOptions, StreamCallbacks, parseHttpError, executeFe
 import { ApiKeyConfig } from '../../types';
 import { extractAttachmentText } from '../fileParser';
 import { isGeminiNativeFileModel, resolveGoogleNativeMimeType, supportsGoogleNativeFileMime } from '../googleFileSupport';
-import { getRawModelId } from '../modelUtils';
+import { getRawModelId, isModelVisionCapable } from '../modelUtils';
 
 export class GeminiAdapter implements BaseAdapter {
   private normalizeModelId(modelId: string): string {
@@ -42,6 +42,7 @@ export class GeminiAdapter implements BaseAdapter {
     const { model, apiKeyConfig, messages, systemPrompt, temperature, maxTokens, topP, parameters, abortSignal, timeoutSeconds } = options;
     const stream = (parameters?.stream !== undefined ? parameters.stream : model.supportsStreaming !== false) && callbacks != null;
     const endpoint = this.resolveEndpoint(apiKeyConfig, model.id, stream);
+    const modelCanVision = isModelVisionCapable(model, 'google');
     const contents: any[] = [];
 
     for (const msg of messages) {
@@ -51,17 +52,39 @@ export class GeminiAdapter implements BaseAdapter {
       if (textContent) parts.push({ text: textContent });
 
       if (msg.role === 'user' && msg.attachments) {
-        for (const att of msg.attachments) {
-          if (att.type.startsWith('image/') && model.supportsVision && att.dataUrl) {
-            const matches = att.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
-            if (matches) parts.push({ inlineData: { mimeType: matches[1], data: matches[2] } });
-          } else if (att.base64Data) {
+        const imageAttachments = msg.attachments.filter(a => a.type.startsWith('image/'));
+        const nonImageAttachments = msg.attachments.filter(a => !a.type.startsWith('image/'));
+
+        if (imageAttachments.length > 0 && modelCanVision) {
+          for (const att of imageAttachments) {
+            if (att.dataUrl) {
+              const matches = att.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+              if (matches) parts.push({ inlineData: { mimeType: matches[1], data: matches[2] } });
+            }
+          }
+          if (parts.length === 0 || !parts.some(p => p.text)) {
+            parts.unshift({ text: '请仔细观察并识别分析附带的图片中的内容。' });
+          }
+        } else if (imageAttachments.length > 0 && !modelCanVision) {
+          const modelLabel = model.name || model.id;
+          if (parts.length > 0) {
+            parts.push({
+              text: `\n\n[系统提示：用户随消息附带了图片，但当前大模型【${modelLabel}】为纯文本语言模型，暂不支持多模态图像视觉识别功能，系统已自动略过图片。请您正常针对上述文字问题进行解答，并在回答开头简要告知用户当前模型暂不支持识别图片。]`
+            });
+          } else {
+            parts.push({
+              text: `[系统提示：用户发送了图片，但当前大模型【${modelLabel}】为纯文本语言模型，暂不支持图像视觉识别功能。请礼貌告知用户您当前无法查看该图片内容，并建议用户在顶部切换为支持图片视觉的多模态模型（如 Gemini 3.8 Flash、GPT-4o、Qwen-VL 等）。]`
+            });
+          }
+        }
+
+        for (const att of nonImageAttachments) {
+          if (att.base64Data) {
             const isNativeModel = isGeminiNativeFileModel(model.id) || model.supportsFiles;
             const nativeMime = isNativeModel ? resolveGoogleNativeMimeType(att) : null;
 
             if (nativeMime) {
               // TXT and native document files are sent as independent Gemini inlineData parts.
-              // Never serialized into prompt text; never duplicated.
               parts.push({
                 inlineData: {
                   mimeType: nativeMime,
@@ -69,7 +92,7 @@ export class GeminiAdapter implements BaseAdapter {
                 },
               });
             } else {
-              // Only unsupported binary documents (e.g. DOCX) fall back to local text extraction.
+              // Only unsupported binary documents fall back to local text extraction.
               parts.push({ text: `[附件文本: ${att.name}]\n${extractAttachmentText(att)}` });
             }
           }
@@ -130,6 +153,26 @@ export class GeminiAdapter implements BaseAdapter {
     if (!response.ok) {
       let errorData: any = null;
       try { errorData = await response.json(); } catch { errorData = await response.text(); }
+      const errorText = typeof errorData === 'string' ? errorData : JSON.stringify(errorData || {});
+      const isVisionRejection =
+        (response.status === 400 || response.status === 404 || response.status === 422) &&
+        (errorText.toLowerCase().includes('image') ||
+         errorText.toLowerCase().includes('vision') ||
+         errorText.toLowerCase().includes('multimodal') ||
+         errorText.toLowerCase().includes('unsupported content') ||
+         errorText.toLowerCase().includes('not support'));
+
+      if (isVisionRejection && messages.some(m => m.attachments?.some(a => a.type.startsWith('image/')))) {
+        console.warn('Gemini API rejected image input, seamlessly falling back to text-only mode.');
+        return this.sendMessage(
+          {
+            ...options,
+            model: { ...model, supportsVision: false },
+          },
+          callbacks
+        );
+      }
+
       throw new Error(parseHttpError(response.status, errorData, response.statusText));
     }
 

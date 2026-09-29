@@ -52,7 +52,23 @@ async function startServer() {
     return { title, text: clean.slice(0, 8000) };
   }
 
-  // 1. Web Search Endpoint (DuckDuckGo HTML + Direct URL crawler)
+  // Helper: Decode HTML entities and strip tags
+  function cleanHtmlText(text: string): string {
+    return text
+      .replace(/<[^>]+>/g, '')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&apos;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&middot;/g, '·')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  // 1. Web Search Endpoint (DuckDuckGo HTML + Direct URL crawler + Wikipedia Fallback)
   app.post('/api/web-search', async (req, res) => {
     const { query, urls = [] } = req.body;
     const results: Array<{ title: string; url: string; snippet: string }> = [];
@@ -76,7 +92,7 @@ async function startServer() {
             const html = await pageRes.text();
             const { title, text } = extractTextFromHtml(html);
             if (text) {
-              pageContents.push({ url: targetUrl, title, content: text });
+              pageContents.push({ url: targetUrl, title: cleanHtmlText(title), content: text });
             }
           }
         } catch (pageErr) {
@@ -113,14 +129,22 @@ async function startServer() {
                 resultUrl = decodeURIComponent(urlMatch[1]);
               } catch {}
             }
+            if (!resultUrl) {
+              const rawHref = block.match(/href="([^"]+)"/);
+              if (rawHref && rawHref[1].startsWith('http')) {
+                resultUrl = rawHref[1];
+              }
+            }
+
+            // Exclude advertising or redirect trackers
+            if (!resultUrl || resultUrl.includes('duckduckgo.com/y.js') || resultUrl.includes('ad_provider') || resultUrl.includes('ad_domain')) {
+              continue;
+            }
+
             const titleMatch = block.match(/class="result__a"[^>]*>([\s\S]*?)<\/a>/);
-            const title = titleMatch 
-              ? titleMatch[1].replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim() 
-              : '';
+            const title = titleMatch ? cleanHtmlText(titleMatch[1]) : '';
             const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
-            const snippet = snippetMatch 
-              ? snippetMatch[1].replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').trim() 
-              : '';
+            const snippet = snippetMatch ? cleanHtmlText(snippetMatch[1]) : '';
 
             if (title && (resultUrl || snippet)) {
               results.push({
@@ -133,6 +157,37 @@ async function startServer() {
         }
       } catch (ddgErr) {
         console.warn('DuckDuckGo search error:', ddgErr);
+      }
+    }
+
+    // Fallback: If 0 results from DuckDuckGo, try Wikipedia OpenSearch
+    if (results.length === 0 && query && query.trim()) {
+      try {
+        const wikiUrl = `https://zh.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query.trim())}&limit=5&namespace=0&format=json`;
+        const wikiController = new AbortController();
+        const wikiTimer = setTimeout(() => wikiController.abort(), 5000);
+        const wikiRes = await fetch(wikiUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          signal: wikiController.signal,
+        });
+        clearTimeout(wikiTimer);
+        if (wikiRes.ok) {
+          const data = await wikiRes.json();
+          const titles: string[] = data[1] || [];
+          const snippets: string[] = data[2] || [];
+          const links: string[] = data[3] || [];
+          for (let i = 0; i < titles.length; i++) {
+            if (titles[i] && links[i]) {
+              results.push({
+                title: cleanHtmlText(titles[i]),
+                url: links[i],
+                snippet: cleanHtmlText(snippets[i] || `维基百科词条：${titles[i]}`),
+              });
+            }
+          }
+        }
+      } catch (wikiErr) {
+        console.warn('Wikipedia search fallback error:', wikiErr);
       }
     }
 

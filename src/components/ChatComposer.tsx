@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Attachment, ModelItem, ProviderDefinition, ApiKeyConfig, UserSettings, ModelParameters } from '../types';
 import { parseFileToAttachment, formatFileSize } from '../services/fileParser';
+import { isModelWebSearchSupported, isModelVisionCapable } from '../services/modelUtils';
 
 interface ChatComposerProps {
   onSendMessage: (content: string, attachments: Attachment[]) => void;
@@ -664,10 +665,6 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             )}
           </div>
         </div>
-      </div>
-
-      <div className="mt-1.5 text-center text-[10px] text-neutral-400 select-none">
-        仅向目标模型发起必要推理请求
       </div>
     </div>
   );
