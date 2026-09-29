@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   User, 
   Copy, 
@@ -15,7 +15,9 @@ import {
   FileText,
   Eye,
   FileCode,
-  Globe
+  Globe,
+  BarChart2,
+  X
 } from 'lucide-react';
 import { Message, Attachment, UserSettings } from '../types';
 import { renderMarkdown, getFileExtensionForLang } from '../services/markdown';
@@ -54,11 +56,73 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.content);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const statsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close word count popover when clicking elsewhere
+  useEffect(() => {
+    if (!isStatsOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statsContainerRef.current && !statsContainerRef.current.contains(event.target as Node)) {
+        setIsStatsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isStatsOpen]);
 
   const { thinkingText, mainContent } = useMemo(() => {
     if (isUser) return { thinkingText: '', mainContent: message.content };
     return parseThinkingContent(message.content);
   }, [message.content, isUser]);
+
+  // Detailed statistics for the message content
+  const textStats = useMemo(() => {
+    const textToAnalyze = isUser ? message.content : (mainContent || message.content);
+    const totalChars = textToAnalyze.length;
+    const charsNoSpaces = textToAnalyze.replace(/\s/g, '').length;
+    
+    // Chinese characters count
+    const chineseChars = (textToAnalyze.match(/[\u4e00-\u9fa5]/g) || []).length;
+    
+    // English words count
+    const englishWords = (textToAnalyze.match(/[a-zA-Z0-9_-]+/g) || []).length;
+    
+    // Lines / Paragraphs
+    const lines = textToAnalyze.split('\n').length;
+    const paragraphs = textToAnalyze.split(/\n\s*\n/).filter(p => p.trim().length > 0).length || 1;
+    
+    // Code blocks & lines
+    const codeBlockMatches = textToAnalyze.match(/```[\s\S]*?```/g) || [];
+    const codeBlocksCount = codeBlockMatches.length;
+    let codeLinesCount = 0;
+    codeBlockMatches.forEach(cb => {
+      codeLinesCount += Math.max(0, cb.split('\n').length - 2);
+    });
+    
+    // Reading time estimation
+    const readingTimeSec = Math.max(1, Math.round(charsNoSpaces / 5));
+    const readingTime = readingTimeSec < 60 
+      ? `约 ${readingTimeSec} 秒` 
+      : `约 ${Math.ceil(readingTimeSec / 60)} 分钟`;
+
+    const thinkingChars = thinkingText ? thinkingText.length : 0;
+
+    return {
+      totalChars,
+      charsNoSpaces,
+      chineseChars,
+      englishWords,
+      lines,
+      paragraphs,
+      codeBlocksCount,
+      codeLinesCount,
+      readingTime,
+      thinkingChars,
+    };
+  }, [message.content, mainContent, thinkingText, isUser]);
 
   const htmlContent = useMemo(() => {
     if (isUser || !settings.enableMarkdown) {
@@ -487,7 +551,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
         {/* Action Toolbar */}
         {!isEditing && message.status !== 'streaming' && (
-          <div className="pt-1.5 flex flex-wrap items-center gap-1 text-xs opacity-75 md:opacity-0 group-hover:opacity-100 transition-opacity select-none">
+          <div className={`pt-1.5 flex flex-wrap items-center gap-1 text-xs transition-opacity select-none ${isStatsOpen ? 'opacity-100' : 'opacity-75 md:opacity-0 group-hover:opacity-100'}`}>
             {/* Copy button */}
             <button
               type="button"
@@ -520,12 +584,89 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 >
                   <RotateCw className="w-3.5 h-3.5" />
                 </button>
-                <span
-                  className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] text-neutral-400 dark:text-neutral-500 font-mono select-none"
-                  title={`提问共 ${message.content.length} 个字符`}
-                >
-                  {message.content.length.toLocaleString()} 字
-                </span>
+
+                {/* 用户消息字数统计（点击展示统计详情，点击其他地方收起） */}
+                <div className="relative inline-flex items-center" ref={statsContainerRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsStatsOpen(!isStatsOpen)}
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-mono select-none transition-colors cursor-pointer ${
+                      isStatsOpen
+                        ? 'bg-neutral-200/90 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 font-semibold shadow-2xs'
+                        : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200/50 dark:hover:bg-neutral-800/60'
+                    }`}
+                  >
+                    <span>{textStats.totalChars.toLocaleString()} 字</span>
+                  </button>
+
+                  {/* 详细字数与结构统计浮层 */}
+                  {isStatsOpen && (
+                    <div className="absolute bottom-full mb-2 left-0 sm:left-auto sm:right-0 w-64 max-w-[calc(100vw-48px)] bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-3 z-40 text-xs animate-in fade-in zoom-in-95 duration-150">
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-neutral-100 dark:border-neutral-800/80">
+                        <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
+                          <BarChart2 className="w-3.5 h-3.5 text-lime-500" />
+                          <span>字数统计详情</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsStatsOpen(false)}
+                          className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1.5 font-sans">
+                        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                          <span>总字符数（含空格）</span>
+                          <span className="font-mono font-semibold text-neutral-900 dark:text-neutral-100">
+                            {textStats.totalChars.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                          <span>纯字数（不含空格）</span>
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                            {textStats.charsNoSpaces.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                          <span>中文字符</span>
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                            {textStats.chineseChars.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                          <span>英文单词</span>
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                            {textStats.englishWords.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                          <span>段落 / 行数</span>
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                            {textStats.paragraphs} 段 / {textStats.lines} 行
+                          </span>
+                        </div>
+
+                        {textStats.codeBlocksCount > 0 && (
+                          <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                            <span>代码块 / 代码行</span>
+                            <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                              {textStats.codeBlocksCount} 个 ({textStats.codeLinesCount} 行)
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400 pt-1.5 border-t border-neutral-100 dark:border-neutral-800 text-[11px]">
+                          <span>预估阅读耗时</span>
+                          <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                            {textStats.readingTime}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
@@ -577,13 +718,97 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   <Download className="w-3.5 h-3.5" />
                 </button>
 
-                {/* AI 消息字数统计 */}
-                <span
-                  className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] text-neutral-400 dark:text-neutral-500 font-mono select-none"
-                  title={`当前 AI 回复共 ${(mainContent.length || message.content.length)} 个字符${thinkingText ? `（思考过程 ${thinkingText.length} 字）` : ''}`}
-                >
-                  {(mainContent.length || message.content.length).toLocaleString()} 字
-                </span>
+                {/* AI 消息字数统计（点击展示统计详情，点击其他地方收起） */}
+                <div className="relative inline-flex items-center" ref={statsContainerRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsStatsOpen(!isStatsOpen)}
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-mono select-none transition-colors cursor-pointer ${
+                      isStatsOpen
+                        ? 'bg-neutral-200/90 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 font-semibold shadow-2xs'
+                        : 'text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200/50 dark:hover:bg-neutral-800/60'
+                    }`}
+                  >
+                    <span>{textStats.totalChars.toLocaleString()} 字</span>
+                  </button>
+
+                  {/* 详细字数与结构统计浮层 */}
+                  {isStatsOpen && (
+                    <div className="absolute bottom-full mb-2 left-0 sm:left-auto sm:right-0 w-64 max-w-[calc(100vw-48px)] bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-3 z-40 text-xs animate-in fade-in zoom-in-95 duration-150">
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-neutral-100 dark:border-neutral-800/80">
+                        <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
+                          <BarChart2 className="w-3.5 h-3.5 text-lime-500" />
+                          <span>字数统计详情</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsStatsOpen(false)}
+                          className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-1.5 font-sans">
+                        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                          <span>总字符数（含空格）</span>
+                          <span className="font-mono font-semibold text-neutral-900 dark:text-neutral-100">
+                            {textStats.totalChars.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                          <span>纯字数（不含空格）</span>
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                            {textStats.charsNoSpaces.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                          <span>中文字符</span>
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                            {textStats.chineseChars.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                          <span>英文单词</span>
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                            {textStats.englishWords.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                          <span>段落 / 行数</span>
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                            {textStats.paragraphs} 段 / {textStats.lines} 行
+                          </span>
+                        </div>
+
+                        {textStats.codeBlocksCount > 0 && (
+                          <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
+                            <span>代码块 / 代码行</span>
+                            <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                              {textStats.codeBlocksCount} 个 ({textStats.codeLinesCount} 行)
+                            </span>
+                          </div>
+                        )}
+
+                        {textStats.thinkingChars > 0 && (
+                          <div className="flex items-center justify-between text-amber-600 dark:text-amber-400/90 pt-1 border-t border-neutral-100 dark:border-neutral-800">
+                            <span>深度思考过程</span>
+                            <span className="font-mono">
+                              {textStats.thinkingChars.toLocaleString()} 字
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400 pt-1.5 border-t border-neutral-100 dark:border-neutral-800 text-[11px]">
+                          <span>预估阅读耗时</span>
+                          <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                            {textStats.readingTime}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             )}
 
