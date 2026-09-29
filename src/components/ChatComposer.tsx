@@ -320,9 +320,6 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           >
             <Minus className="w-3.5 h-3.5" />
           </button>
-          <span className="text-[11px] text-neutral-400 dark:text-neutral-500 font-mono pl-0.5">
-            {currentFontSize}px
-          </span>
         </div>
 
         {/* Right-aligned model pill button */}
