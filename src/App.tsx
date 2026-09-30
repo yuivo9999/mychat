@@ -720,70 +720,35 @@ export default function App() {
     // Check vision capabilities for image attachments
     const hasImageAttachments = (effectiveAttachments || []).some(a => a.type.startsWith('image/'));
     const isVisionSupported = isModelVisionCapable(currentModel, currentModel.providerId);
-    let visionNotice = '';
-
-    if (hasImageAttachments && !isVisionSupported) {
-      const modelLabel = currentModel.name || currentModel.id;
-      visionNotice = `> ℹ️ **图片识别提示**：当前选择的模型【${modelLabel}】为纯文本语言模型，暂不支持图像视觉识别功能。系统已自动略过图片附件，其他文字内容已提交，AI 将继续回答您的问题。\n> *(如需识别图片内容，请在顶栏切换为支持视觉的多模态模型，如 Gemini 3.8 Flash、GPT-4o、Qwen-VL 等)*\n\n`;
-    }
 
     // Check file capabilities for document / code attachments
     const nonImageAttachments = (effectiveAttachments || []).filter(a => !a.type.startsWith('image/'));
     const fileSupport = isModelFileCapable(currentModel, currentModel.providerId);
-    let fileNotice = '';
-
-    if (nonImageAttachments.length > 0) {
-      const modelLabel = currentModel.name || currentModel.id;
-      if (!fileSupport.supported) {
-        fileNotice = `> ℹ️ **文件处理提示**：当前选择的模型【${modelLabel}】不支持解析或查看文件附件（${fileSupport.reason || '该模型无文件处理能力'}）。系统已自动略过文件数据，其他文字问题已提交，AI 将继续回答您的问题。\n\n`;
-      } else {
-        const unreadableFiles = nonImageAttachments.filter(a => !isAttachmentTextReadable(a));
-        if (unreadableFiles.length > 0 && currentModel.providerId !== 'google' && currentModel.providerId !== 'gemini') {
-          const unreadableNames = unreadableFiles.map(f => f.name).join('、');
-          fileNotice = `> ℹ️ **文件提示**：附件【${unreadableNames}】为二进制或无法直接解析的格式，系统已自动略过该附件，其余文字/文件已正常提交。\n\n`;
-        }
-      }
-    }
 
     // Check reasoning / thinking mode status
     const isReasoningEnabled = Boolean((targetConv.parameters || parameters)?.enableReasoning);
     const modelSupportsReasoning = isModelReasoningSupported(currentModel, currentModel.providerId);
-    let reasoningNotice = '';
-
-    if (isReasoningEnabled && !modelSupportsReasoning) {
-      const modelLabel = currentModel.name || currentModel.id;
-      reasoningNotice = `> ℹ️ **思考模式提示**：当前选择的模型【${modelLabel}】不支持原生深度思考/推理模式。系统已自动按标准对话模式为您作答，以下为完整回复：\n\n`;
-    } else if (!isReasoningEnabled && modelSupportsReasoning) {
-      // Check if this is the first message sent to this model in this conversation
-      const hasUsedThisModelBefore = targetConv.messages.some(
-        m => m.role === 'assistant' && (m.model === currentModel.name || m.model === currentModel.id)
-      );
-      if (!hasUsedThisModelBefore) {
-        const modelLabel = currentModel.name || currentModel.id;
-        reasoningNotice = `> 💡 **提示**：当前模型【${modelLabel}】支持深度思考模式（Reasoning/Thinking）。如需展示详细的思维推导过程，可在输入框上方开启「✨ 思考模式」。\n\n`;
-      }
-    }
 
     if (effectiveAttachments && effectiveAttachments.length > 0) {
       if (hasImageAttachments && !isVisionSupported) {
         initialThinkingSteps.push({
           id: `step_att_${Date.now()}`,
           icon: 'code',
-          title: `当前模型不支持图片识别，已自动略过图片数据，仅发送文字问题`,
+          title: `当前模型不支持图片识别，已自动略过图片数据，仅发送文字提问`,
           status: 'completed',
         });
       } else if (nonImageAttachments.length > 0 && !fileSupport.supported) {
         initialThinkingSteps.push({
           id: `step_att_${Date.now()}`,
           icon: 'code',
-          title: `当前模型不支持文件附件，已自动略过文件数据，仅发送文字提问`,
+          title: `当前模型不支持文件解析，已自动略过文件数据，仅发送文字提问`,
           status: 'completed',
         });
       } else {
         initialThinkingSteps.push({
           id: `step_att_${Date.now()}`,
           icon: 'code',
-          title: `已深度解析并装载【${effectiveAttachments.length} 个附件文件】，准备基于文件内容回复`,
+          title: `已解析并装载【${effectiveAttachments.length} 个附件文件】`,
           status: 'completed',
         });
       }
@@ -793,7 +758,7 @@ export default function App() {
       initialThinkingSteps.push({
         id: `step_reasoning_${Date.now()}`,
         icon: 'brain',
-        title: `当前模型不支持原生思考模式，已转为标准模式直接组织回答`,
+        title: `当前模型不支持原生思考模式，已转为标准模式直接回答`,
         status: 'completed',
       });
     }
@@ -801,8 +766,8 @@ export default function App() {
     if (webAccessEnabled) {
       initialThinkingSteps.push({
         id: `step_search_${Date.now()}`,
-        icon: 'lightning',
-        title: '正在联网检索最新网页与参考资料...',
+        icon: 'search',
+        title: '联网模式已开启，检索最新网络网页资料中...',
         status: 'running',
       });
     } else {
@@ -816,7 +781,7 @@ export default function App() {
 
     let currentThinkingSteps = [...initialThinkingSteps];
 
-    const initialNotices = (visionNotice + fileNotice + reasoningNotice);
+    const initialNotices = '';
     const assistantMsgId = `msg_a_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const assistantMessage: Message = {
       id: assistantMsgId,
@@ -1100,7 +1065,7 @@ export default function App() {
         ];
       }
 
-      const systemNotices = (visionNotice + fileNotice + reasoningNotice + webSearchNotice);
+      const systemNotices = '';
 
       let turn = 0;
       const maxAgentTurns = workspaceAgentEnabled ? 8 : 1;

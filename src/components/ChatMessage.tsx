@@ -75,7 +75,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   const { thinkingText, mainContent } = useMemo(() => {
     if (isUser) return { thinkingText: '', mainContent: message.content };
-    return parseThinkingContent(message.content);
+    const parsed = parseThinkingContent(message.content);
+    // Strip legacy blockquotes starting with > ℹ️ or > 💡
+    const cleaned = parsed.mainContent.replace(/^>\s*(ℹ️|💡)[\s\S]*?\n\n/g, '').trim();
+    return { thinkingText: parsed.thinkingText, mainContent: cleaned };
   }, [message.content, isUser]);
 
   // Detailed statistics for the message content
