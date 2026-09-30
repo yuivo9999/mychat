@@ -1054,8 +1054,10 @@ export default function App() {
         attachments: effectiveAttsForApi,
       };
 
+      // Extract previous history before the current turn (excluding the newly appended userMessage and streaming assistantMessage)
+      const previousHistory = targetConv.messages.slice(0, -2);
       // Prepare local compaction for THIS single chat (Chat A never shares history with Chat B)
-      const { compactedSummary, effectiveMessages } = prepareChatHistoryWithLocalCompaction(targetConv.messages);
+      const { compactedSummary, effectiveMessages } = prepareChatHistoryWithLocalCompaction(previousHistory);
       let currentHistoryMessages = [...effectiveMessages, apiUserMessage];
 
       if (compactedSummary) {

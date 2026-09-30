@@ -73,7 +73,7 @@ async function startServer() {
     const items: Array<{ title: string; url: string; snippet: string }> = [];
     const itemMatches = xmlText.match(/<item>[\s\S]*?<\/item>/gi) || [];
 
-    for (const itemXml of itemMatches.slice(0, 6)) {
+    for (const itemXml of itemMatches.slice(0, 8)) {
       const titleMatch = itemXml.match(/<title>([\s\S]*?)<\/title>/i);
       const linkMatch = itemXml.match(/<link>([\s\S]*?)<\/link>/i) || itemXml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/i);
       const descMatch = itemXml.match(/<description>([\s\S]*?)<\/description>/i);
@@ -93,12 +93,82 @@ async function startServer() {
     return items;
   }
 
+  // Helper: Bing Universal Web Search (searches the entire internet, not just news)
+  async function searchBingWeb(cleanQuery: string): Promise<Array<{ title: string; url: string; snippet: string }>> {
+    const items: Array<{ title: string; url: string; snippet: string }> = [];
+    try {
+      const url = `https://www.bing.com/search?q=${encodeURIComponent(cleanQuery)}&ensearch=0`;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+          'Cookie': 'SRCHHPGUSR=ADLT=OFF&NRSLT=20;'
+        },
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (!res.ok) return items;
+      const html = await res.text();
+      const algoBlocks = html.split(/<li\s+class="b_algo"/i).slice(1);
+      for (const block of algoBlocks.slice(0, 8)) {
+        const titleMatch = block.match(/<h2[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a><\/h2>/i);
+        const citeMatch = block.match(/<cite>([\s\S]*?)<\/cite>/i);
+        const linkMatch = block.match(/<h2[^>]*>[\s\S]*?<a\s+[^>]*href="([^"]+)"/i);
+        const snippetMatch = block.match(/<div\s+class="b_caption"[\s\S]*?<p[^>]*>([\s\S]*?)<\/p>/i) || block.match(/<p[^>]*>([\s\S]*?)<\/p>/i);
+
+        if (titleMatch) {
+          const cleanTitle = cleanHtmlText(titleMatch[1]);
+          const cleanSnippet = snippetMatch ? cleanHtmlText(snippetMatch[1]) : '';
+          let targetUrl = '';
+          if (citeMatch) {
+            const rawCite = cleanHtmlText(citeMatch[1]).split(' ')[0].split('›')[0].trim();
+            targetUrl = rawCite.startsWith('http') ? rawCite : (rawCite ? `https://${rawCite}` : '');
+          }
+          if (!targetUrl && linkMatch && !linkMatch[1].startsWith('/')) {
+            targetUrl = linkMatch[1];
+          }
+
+          if (cleanTitle && (cleanSnippet || targetUrl)) {
+            items.push({
+              title: cleanTitle,
+              url: targetUrl || 'https://www.bing.com',
+              snippet: cleanSnippet || `必应全网检索：${cleanTitle}`
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Bing Web Search error:', err);
+    }
+    return items;
+  }
+
+  // Helper: Strip conversational prefixes/suffixes to extract clean keyword query
+  function cleanQueryString(rawQuery: string): string {
+    let q = (rawQuery || '').replace(/https?:\/\/[^\s]+/g, ' ').trim();
+    const fillers = [
+      /^(请(您|你)?(帮我|为我)?(在网上|在网络上|联网)?(搜索|查一下|查找|查询|查查|检索)?)/i,
+      /^(请问|请教一下|我想了解|我想知道|我想查一下|帮我查一下|帮我搜索一下|你能告诉我|请告诉我)/i,
+      /(有哪些|有什么|好不好|怎么样|是什么意思|详细介绍|并总结|列成表格|以表格形式|制作表格|帮我总结|总结一下|分析一下)[？?！!。]*$/i,
+    ];
+    let deNoised = q;
+    for (const re of fillers) {
+      deNoised = deNoised.replace(re, ' ').trim();
+    }
+    if (deNoised.length >= 2) {
+      q = deNoised;
+    }
+    return q.replace(/[，。！？、\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
   // 1. Ultra-Fast Parallel Web Search Endpoint (< 2.5s Timeout, Bing & Google Priority)
   app.post('/api/web-search', async (req, res) => {
     const { query, urls = [], searchEngines, activeSearchEngineId } = req.body;
     const results: Array<{ title: string; url: string; snippet: string }> = [];
     const pageContents: Array<{ url: string; title: string; content: string }> = [];
-    const cleanQuery = (query || '').trim();
+    const cleanQuery = cleanQueryString(query);
 
     const tasks: Promise<void>[] = [];
 
@@ -140,15 +210,28 @@ async function startServer() {
             { id: 'google', enabled: true, type: 'google' }
           ];
 
-      // Primary engine task (Bing search engine)
+      // Primary engine task (Bing search engine: Universal Web Search + Breaking News RSS in parallel)
       const isBingEnabled = engineList.some((e: any) => (e.id === 'bing' || e.type === 'bing') && e.enabled !== false);
       if (isBingEnabled || !activeSearchEngineId || activeSearchEngineId === 'bing') {
+        // Parallel Task 1: Bing Universal Web Search (Whole Web)
         tasks.push((async () => {
           try {
-            const bingUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(cleanQuery)}&format=rss`;
+            const webItems = await searchBingWeb(cleanQuery);
+            if (webItems.length > 0) {
+              results.push(...webItems);
+            }
+          } catch (e) {
+            console.warn('Bing Web Search task error:', e);
+          }
+        })());
+
+        // Parallel Task 2: Bing News RSS
+        tasks.push((async () => {
+          try {
+            const bingNewsUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(cleanQuery)}&format=rss`;
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 2500);
-            const bRes = await fetch(bingUrl, {
+            const bRes = await fetch(bingNewsUrl, {
               headers: { 
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
@@ -162,7 +245,7 @@ async function startServer() {
               results.push(...parsed);
             }
           } catch (e) {
-            console.warn('Bing Search error:', e);
+            console.warn('Bing News RSS error:', e);
           }
         })());
       }
@@ -191,7 +274,7 @@ async function startServer() {
         })());
       }
 
-      // Wikipedia task (if enabled by user)
+      // Wikipedia task (if enabled by user or as knowledge fallback)
       const isWikiEnabled = engineList.some((e: any) => e.id === 'wikipedia' && e.enabled);
       if (isWikiEnabled) {
         tasks.push((async () => {
@@ -271,7 +354,44 @@ async function startServer() {
       if (cleanUrl) seenUrls.add(cleanUrl);
 
       uniqueResults.push(item);
-      if (uniqueResults.length >= 8) break;
+      if (uniqueResults.length >= 10) break;
+    }
+
+    // Deep Web Crawling: Automatically crawl the top 2 search result pages for in-depth article reading!
+    if (pageContents.length < 2 && uniqueResults.length > 0) {
+      const candidateUrls = uniqueResults
+        .map(r => r.url)
+        .filter(u => u && u.startsWith('http') && !u.includes('youtube.com') && !u.includes('bilibili.com') && !u.includes('bing.com') && !u.includes('google.com'))
+        .slice(0, 2);
+
+      const crawlPromises = candidateUrls.map(async (targetUrl) => {
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 2000);
+          const pageRes = await fetch(targetUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
+            signal: controller.signal,
+          });
+          clearTimeout(timer);
+          if (pageRes.ok) {
+            const html = await pageRes.text();
+            const { title, text } = extractTextFromHtml(html);
+            if (text && text.length > 60) {
+              pageContents.push({
+                url: targetUrl,
+                title: cleanHtmlText(title) || '网页正文',
+                content: text.slice(0, 2500)
+              });
+            }
+          }
+        } catch (pageErr) {
+          // Ignore crawl errors
+        }
+      });
+      await Promise.allSettled(crawlPromises);
     }
 
     res.json({

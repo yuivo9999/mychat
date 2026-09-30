@@ -19,7 +19,7 @@ export interface WebSearchResponse {
 }
 
 /**
- * Extracts clean search query text by removing long URLs if present
+ * Extracts clean search query text by removing long URLs and conversational noise phrases
  */
 export function extractCleanQuery(text: string): { query: string; urls: string[] } {
   const urlRegex = /https?:\/\/[^\s<>"'()]+/gi;
@@ -32,6 +32,26 @@ export function extractCleanQuery(text: string): { query: string; urls: string[]
   // Clean prompt for search engine
   let query = text
     .replace(urlRegex, ' ')
+    .trim();
+
+  // Strip conversational fillers at beginning or end
+  const conversationalFillers = [
+    /^(请(您|你)?(帮我|为我)?(在网上|在网络上|联网)?(搜索|查一下|查找|查询|查查|检索)?)/i,
+    /^(请问|请教一下|我想了解|我想知道|我想查一下|帮我查一下|帮我搜索一下|你能告诉我|请告诉我)/i,
+    /(有哪些|有什么|好不好|怎么样|是什么意思|详细介绍|并总结|列成表格|以表格形式|制作表格|帮我总结|总结一下|分析一下)[？?！!。]*$/i,
+  ];
+
+  let deNoised = query;
+  for (const re of conversationalFillers) {
+    deNoised = deNoised.replace(re, ' ').trim();
+  }
+
+  // If denoised is still non-empty (at least 2 chars), use it, otherwise keep query
+  if (deNoised.length >= 2) {
+    query = deNoised;
+  }
+
+  query = query
     .replace(/[，。！？、\n\r\t]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
