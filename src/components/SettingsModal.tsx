@@ -20,16 +20,27 @@ import {
   Upload, 
   AlertTriangle,
   CheckCircle2,
-  HardDrive
+  HardDrive,
+  Type
 } from 'lucide-react';
 import { 
   ProviderDefinition, 
   ApiKeyConfig, 
   ModelItem, 
   UserSettings, 
-  Conversation 
+  Conversation,
+  CustomFontItem,
+  FontDefinition
 } from '../types';
 import { getAdapterForProvider } from '../services/adapters';
+import { 
+  PRESET_CHINESE_FONTS, 
+  initCustomFonts, 
+  saveCustomFont, 
+  deleteCustomFont, 
+  exportIndividualFont, 
+  applyAppFont 
+} from '../services/fontService';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -103,6 +114,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [newProvName, setNewProvName] = useState('');
   const [newProvBaseUrl, setNewProvBaseUrl] = useState('');
   const [newProvDesc, setNewProvDesc] = useState('');
+
+  // Font Management State
+  const [customFonts, setCustomFonts] = useState<CustomFontItem[]>([]);
+  const [fontImporting, setFontImporting] = useState(false);
+  const [fontSuccessMsg, setFontSuccessMsg] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      initCustomFonts().then(fonts => setCustomFonts(fonts));
+    }
+  }, [isOpen]);
+
+  const handleImportFontFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFontImporting(true);
+    try {
+      const res = await saveCustomFont(file);
+      if (res.error) {
+        alert(`导入字体失败: ${res.error}`);
+      } else if (res.item) {
+        const nextList = [res.item, ...customFonts];
+        setCustomFonts(nextList);
+        await onSaveSettings({ ...settings, fontFamily: res.item.id });
+        applyAppFont(res.item.id, nextList);
+        setFontSuccessMsg(`成功导入字体【${res.item.name}】并已生效！`);
+        setTimeout(() => setFontSuccessMsg(null), 3500);
+      }
+    } catch (err: any) {
+      alert(`导入字体出错: ${err.message}`);
+    } finally {
+      setFontImporting(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeleteFont = async (id: string, name: string) => {
+    if (!confirm(`确认在本地删除导入的字体【${name}】？`)) return;
+    await deleteCustomFont(id);
+    const updated = customFonts.filter(f => f.id !== id);
+    setCustomFonts(updated);
+    if (settings.fontFamily === id) {
+      await onSaveSettings({ ...settings, fontFamily: 'system' });
+      applyAppFont('system', updated);
+    }
+  };
+
+  const handleExportFont = async (font: FontDefinition | CustomFontItem) => {
+    await exportIndividualFont(font);
+  };
 
   if (!isOpen) return null;
 
@@ -559,7 +620,156 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {/* 8. 高级设置 */}
             {activeTab === 'advanced' && (
               <div className="space-y-6">
-                <div>
+                {/* 1. 全局中文字体与排版定制 (16 款精选中文字体 + 本地字体导入/导出) */}
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                        <Type className="w-4 h-4 text-indigo-500" />
+                        <span>全局中文字体定制 ({16 + customFonts.length} 款轻量精选字体)</span>
+                      </h3>
+                      <p className="text-xs text-neutral-500 mt-0.5">
+                        按 4 列逐行排布，即选即显；支持本地导入 .ttf/.otf/.woff/.woff2 字体永久保存在浏览器，支持单字导出备份。
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer shadow-xs transition active:scale-95">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{fontImporting ? '导入中...' : '导入本地字体文件'}</span>
+                        <input
+                          type="file"
+                          accept=".ttf,.otf,.woff,.woff2"
+                          onChange={handleImportFontFile}
+                          disabled={fontImporting}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {fontSuccessMsg && (
+                    <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2 animate-in fade-in duration-200">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>{fontSuccessMsg}</span>
+                    </div>
+                  )}
+
+                  {/* Font Cards Grid: Arranged strictly 4 items per row, row by row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                    {[
+                      ...customFonts.map(cf => ({
+                        id: cf.id,
+                        name: cf.name,
+                        category: '自定义',
+                        fontFamily: `"${cf.name}", sans-serif`,
+                        previewText: '云开山色重，木落雁声迟',
+                        isCustom: true,
+                        format: cf.format.toUpperCase(),
+                        fileSize: cf.fileSize,
+                        description: `本地导入 (${cf.format.toUpperCase()}, ${(cf.fileSize / 1024).toFixed(1)}KB)`,
+                      })),
+                      ...PRESET_CHINESE_FONTS,
+                    ].map((font) => {
+                      const isSelected = (settings.fontFamily || 'system') === font.id || (font.id === 'system' && !settings.fontFamily);
+                      return (
+                        <div
+                          key={font.id}
+                          onClick={() => {
+                            onSaveSettings({ ...settings, fontFamily: font.id });
+                            applyAppFont(font.id, customFonts);
+                          }}
+                          className={`group relative p-3 rounded-2xl border text-left cursor-pointer transition-all flex flex-col justify-between select-none ${
+                            isSelected
+                              ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/30 ring-2 ring-indigo-500/25 shadow-xs'
+                              : 'border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-800/40 hover:border-neutral-300 dark:hover:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-800/80'
+                          }`}
+                        >
+                          {/* Top Row: Font Name & Category Tag & Check */}
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100 truncate" title={font.name}>
+                                {font.name}
+                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded-md font-medium ${
+                                    font.isCustom
+                                      ? 'bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60'
+                                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
+                                  }`}
+                                >
+                                  {font.category}
+                                </span>
+                                {isSelected && (
+                                  <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 stroke-[3]" />
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Middle Row: Live Preview In That Font */}
+                            <div
+                              style={{ fontFamily: font.fontFamily }}
+                              className="text-xs sm:text-sm py-1 font-medium text-neutral-800 dark:text-neutral-200 line-clamp-1 break-all"
+                              title={font.previewText}
+                            >
+                              {font.previewText || '沧海桑田，万象森罗'}
+                            </div>
+
+                            {/* Description */}
+                            <p className="text-[10px] text-neutral-400 line-clamp-1 mt-0.5" title={font.description}>
+                              {font.description}
+                            </p>
+                          </div>
+
+                          {/* Bottom Row: Actions (Export & Delete) */}
+                          <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-neutral-100 dark:border-neutral-800/80">
+                            <span className="text-[10px] text-neutral-400 font-mono">
+                              {isSelected ? (
+                                <span className="text-indigo-600 dark:text-indigo-400 font-medium">● 使用中</span>
+                              ) : (
+                                '点击启用'
+                              )}
+                            </span>
+
+                            <div className="flex items-center gap-1.5">
+                              {/* Export Individual Font Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleExportFont(font);
+                                }}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium text-neutral-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition"
+                                title={`导出【${font.name}】字体文件或规则`}
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>导出</span>
+                              </button>
+
+                              {/* Delete Custom Font Button */}
+                              {font.isCustom && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteFont(font.id, font.name);
+                                  }}
+                                  className="inline-flex items-center p-1 rounded-md text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                                  title="在本地删除该字体"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="border-t border-neutral-200 dark:border-neutral-800 pt-5">
                   <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100">网络与高级参数</h3>
                   <p className="text-xs text-neutral-500 mt-1">
                     调整请求超时时长与关于浏览器直接调用第三方 API 的 CORS 跨域须知。

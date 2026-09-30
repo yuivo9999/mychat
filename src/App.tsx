@@ -77,6 +77,7 @@ import { safeExtractText } from './services/adapters/base';
 import { performWebSearch, buildWebSearchContext } from './services/webSearch';
 import { isModelWebSearchSupported, isModelVisionCapable, isModelFileCapable, isModelReasoningSupported } from './services/modelUtils';
 import { isAttachmentTextReadable, formatFilesPromptForAi } from './services/fileParser';
+import { applyAppFont, initCustomFonts } from './services/fontService';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { MessageList } from './components/MessageList';
@@ -199,6 +200,11 @@ export default function App() {
     }
   }, [settings.theme]);
 
+  // Apply Font Family to Document Root
+  useEffect(() => {
+    applyAppFont(settings.fontFamily);
+  }, [settings.fontFamily]);
+
   // Initial Data Load
   useEffect(() => {
     async function init() {
@@ -221,6 +227,10 @@ export default function App() {
         const loadedConversations = conversationsResult.status === 'fulfilled' ? conversationsResult.value : [];
         let loadedWorkspaces: Workspace[] = workspacesResult.status === 'fulfilled' ? (workspacesResult.value as Workspace[]) : [];
         const loadedProjects: Project[] = projectsResult.status === 'fulfilled' ? (projectsResult.value as Project[]) : [];
+
+        // Load and register local custom fonts from IndexedDB, and apply initial font
+        const customFonts = await initCustomFonts();
+        applyAppFont(loadedSettings.fontFamily, customFonts);
 
         // If no workspace exists yet, create an initial clean project workspace
         if (loadedWorkspaces.length === 0) {
@@ -2035,6 +2045,7 @@ export default function App() {
     }
     await saveUserSettings(newSettings);
     setSettings(newSettings);
+    applyAppFont(newSettings.fontFamily);
   };
 
   const handleImportConversations = async (imported: Conversation[]) => {
@@ -2164,12 +2175,12 @@ export default function App() {
           onToggleAgentMode={handleToggleAgentMode}
         />
 
-        {/* Top Inverted Ink Wave Pattern (顶部工具栏下方垂直+水平翻转淡墨色波浪纹，与底部加减号后波浪纹对齐呼应) */}
+        {/* Top Inverted Ink Wave Pattern (顶部工具栏下方垂直翻转淡墨色波浪纹，与底部加减号后波浪纹对齐呼应) */}
         <div className="w-full max-w-4xl mx-auto px-3 md:px-6 relative pointer-events-none select-none z-10 h-0">
           <div className="ink-wave-layer absolute inset-x-0 top-0 h-14 sm:h-16 md:h-18 pointer-events-none overflow-hidden opacity-90 dark:opacity-40 transition-opacity">
             <svg
               className="w-full h-full text-neutral-600 dark:text-neutral-400"
-              style={{ transform: 'scale(-1, -1)' }}
+              style={{ transform: 'scaleY(-1)' }}
               viewBox="0 0 1200 120"
               preserveAspectRatio="none"
               fill="none"

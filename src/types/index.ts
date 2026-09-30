@@ -195,6 +195,30 @@ export interface UserSettings {
   requestTimeout: number; // in seconds
   corsProxyUrl?: string;
   sidebarOpen: boolean;
+  fontFamily?: string; // 全局中文字体 ID 或自定义字体名称
+}
+
+export interface CustomFontItem {
+  id: string;
+  name: string;
+  format: 'ttf' | 'otf' | 'woff' | 'woff2';
+  fileName: string;
+  fileSize: number; // bytes
+  createdAt: number;
+  dataBase64?: string;
+}
+
+export interface FontDefinition {
+  id: string;
+  name: string;
+  category: string;
+  fontFamily: string;
+  previewText?: string;
+  isCustom?: boolean;
+  format?: string;
+  fileSize?: number;
+  description?: string;
+  cdnUrl?: string;
 }
 
 export type ConnectionStatus = 'unconfigured' | 'configured' | 'requesting' | 'success' | 'error';
