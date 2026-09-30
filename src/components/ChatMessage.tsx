@@ -602,24 +602,24 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     <span>{textStats.totalChars.toLocaleString()} 字</span>
                   </button>
 
-                  {/* 详细字数与结构统计浮层 (Mini 版，靠右侧对齐展开，绝不超出右边界) */}
+                  {/* 详细字数与结构统计浮层 (已放大为原来的 1.5 倍，靠右侧对齐展开，绝不超出右边界) */}
                   {isStatsOpen && (
-                    <div className="absolute bottom-full mb-1.5 right-0 w-38 sm:w-40 max-w-[calc(100vw-2.5rem)] bg-white dark:bg-neutral-900 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-800 p-2 z-40 text-[10px] animate-in fade-in zoom-in-95 duration-150 select-none">
-                      <div className="flex items-center justify-between pb-1 mb-1 border-b border-neutral-100 dark:border-neutral-800">
-                        <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1 text-[10.5px]">
-                          <BarChart2 className="w-2.5 h-2.5 text-lime-500" />
+                    <div className="absolute bottom-full mb-2 right-0 w-[240px] max-w-[calc(100vw-2.5rem)] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800 p-4 z-40 text-xs animate-in fade-in zoom-in-95 duration-150 select-none">
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-neutral-100 dark:border-neutral-800">
+                        <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2 text-sm">
+                          <BarChart2 className="w-4 h-4 text-lime-500" />
                           <span>字数统计</span>
                         </span>
                         <button
                           type="button"
                           onClick={() => setIsStatsOpen(false)}
-                          className="p-0.5 rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
+                          className="p-1 rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
                         >
-                          <X className="w-2.5 h-2.5" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
 
-                      <div className="space-y-0.5 font-sans text-[10px]">
+                      <div className="space-y-1.5 font-sans text-xs">
                         <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
                           <span>总字符 (含空格)</span>
                           <span className="font-mono font-semibold text-neutral-900 dark:text-neutral-100">
@@ -634,19 +634,19 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                         </div>
                         <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
                           <span>中文字符</span>
-                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100 font-medium">
                             {textStats.chineseChars.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
                           <span>英文单词</span>
-                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100 font-medium">
                             {textStats.englishWords.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
                           <span>段落 / 行数</span>
-                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100 font-medium">
                             {textStats.paragraphs} 段 / {textStats.lines} 行
                           </span>
                         </div>
@@ -654,15 +654,15 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                         {textStats.codeBlocksCount > 0 && (
                           <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
                             <span>代码块 / 行</span>
-                            <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                            <span className="font-mono text-neutral-900 dark:text-neutral-100 font-medium">
                               {textStats.codeBlocksCount} 个 ({textStats.codeLinesCount} 行)
                             </span>
                           </div>
                         )}
 
-                        <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400 pt-0.5 mt-0.5 border-t border-neutral-100 dark:border-neutral-800 text-[9.5px]">
+                        <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400 pt-1.5 mt-1.5 border-t border-neutral-100 dark:border-neutral-800 text-[11px]">
                           <span>预估阅读</span>
-                          <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                          <span className="font-semibold text-neutral-800 dark:text-neutral-200">
                             {textStats.readingTime}
                           </span>
                         </div>
@@ -735,24 +735,24 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     <span>{textStats.totalChars.toLocaleString()} 字</span>
                   </button>
 
-                  {/* 详细字数与结构统计浮层 (Mini 版，靠右侧对齐展开，绝不超出右边界) */}
+                  {/* 详细字数与结构统计浮层 (已放大为原来的 1.5 倍，靠右侧对齐展开，绝不超出右边界) */}
                   {isStatsOpen && (
-                    <div className="absolute bottom-full mb-1.5 right-0 w-38 sm:w-40 max-w-[calc(100vw-2.5rem)] bg-white dark:bg-neutral-900 rounded-lg shadow-xl border border-neutral-200 dark:border-neutral-800 p-2 z-40 text-[10px] animate-in fade-in zoom-in-95 duration-150 select-none">
-                      <div className="flex items-center justify-between pb-1 mb-1 border-b border-neutral-100 dark:border-neutral-800">
-                        <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1 text-[10.5px]">
-                          <BarChart2 className="w-2.5 h-2.5 text-lime-500" />
+                    <div className="absolute bottom-full mb-2 right-0 w-[240px] max-w-[calc(100vw-2.5rem)] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800 p-4 z-40 text-xs animate-in fade-in zoom-in-95 duration-150 select-none">
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-neutral-100 dark:border-neutral-800">
+                        <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2 text-sm">
+                          <BarChart2 className="w-4 h-4 text-lime-500" />
                           <span>字数统计</span>
                         </span>
                         <button
                           type="button"
                           onClick={() => setIsStatsOpen(false)}
-                          className="p-0.5 rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
+                          className="p-1 rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
                         >
-                          <X className="w-2.5 h-2.5" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
 
-                      <div className="space-y-0.5 font-sans text-[10px]">
+                      <div className="space-y-1.5 font-sans text-xs">
                         <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
                           <span>总字符 (含空格)</span>
                           <span className="font-mono font-semibold text-neutral-900 dark:text-neutral-100">
@@ -761,25 +761,25 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                         </div>
                         <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
                           <span>纯字数 (无空格)</span>
-                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100 font-medium">
                             {textStats.charsNoSpaces.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
                           <span>中文字符</span>
-                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100 font-medium">
                             {textStats.chineseChars.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
                           <span>英文单词</span>
-                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100 font-medium">
                             {textStats.englishWords.toLocaleString()}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
                           <span>段落 / 行数</span>
-                          <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                          <span className="font-mono text-neutral-900 dark:text-neutral-100 font-medium">
                             {textStats.paragraphs} 段 / {textStats.lines} 行
                           </span>
                         </div>
@@ -787,24 +787,24 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                         {textStats.codeBlocksCount > 0 && (
                           <div className="flex items-center justify-between text-neutral-600 dark:text-neutral-400">
                             <span>代码块 / 行</span>
-                            <span className="font-mono text-neutral-900 dark:text-neutral-100">
+                            <span className="font-mono text-neutral-900 dark:text-neutral-100 font-medium">
                               {textStats.codeBlocksCount} 个 ({textStats.codeLinesCount} 行)
                             </span>
                           </div>
                         )}
 
                         {textStats.thinkingChars > 0 && (
-                          <div className="flex items-center justify-between text-amber-600 dark:text-amber-400/90 pt-0.5 border-t border-neutral-100 dark:border-neutral-800">
+                          <div className="flex items-center justify-between text-amber-600 dark:text-amber-400/90 pt-1.5 border-t border-neutral-100 dark:border-neutral-800">
                             <span>思考过程</span>
-                            <span className="font-mono">
+                            <span className="font-mono font-semibold">
                               {textStats.thinkingChars.toLocaleString()} 字
                             </span>
                           </div>
                         )}
 
-                        <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400 pt-0.5 mt-0.5 border-t border-neutral-100 dark:border-neutral-800 text-[9.5px]">
+                        <div className="flex items-center justify-between text-neutral-500 dark:text-neutral-400 pt-1.5 mt-1.5 border-t border-neutral-100 dark:border-neutral-800 text-[11px]">
                           <span>预估阅读</span>
-                          <span className="font-medium text-neutral-700 dark:text-neutral-300">
+                          <span className="font-semibold text-neutral-800 dark:text-neutral-200">
                             {textStats.readingTime}
                           </span>
                         </div>

@@ -581,6 +581,25 @@ html.theme-classic2,
   border-color: #3d3126 !important;
 }
 
+/* 古典2 皮肤下 AI 模型名称下方思考/步骤提示 Mini 块的深黑色字高对比度 */
+.theme-classic2 .thinking-steps-card {
+  background-color: #eae1cd !important;
+  border-color: #d1c3a7 !important;
+  color: #120e0a !important;
+}
+
+.theme-classic2 .thinking-steps-card span,
+.theme-classic2 .thinking-steps-card div,
+.theme-classic2 .thinking-steps-card p {
+  color: #120e0a !important;
+}
+
+.theme-classic2 .thinking-steps-card svg {
+  color: #120e0a !important;
+  stroke: #120e0a !important;
+  fill: currentColor !important;
+}
+
 /* 7. 图标 SVG 规则 */
 .theme-classic2 svg {
   color: #f0e2cd !important;

@@ -87,15 +87,16 @@ export const MessageList: React.FC<MessageListProps> = ({
         </div>
       )}
 
-      {/* Floating Scroll to Bottom Button */}
+      {/* Floating Scroll to Bottom Button (居中悬浮，绝不遮挡右上角/左上角任何工具栏按钮) */}
       {showScrollBottom && (
         <button
           type="button"
           onClick={() => scrollToBottom(true)}
-          className="fixed bottom-28 right-6 z-30 p-2.5 rounded-full bg-white dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-700 shadow-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all cursor-pointer"
-          title="滚动到底部"
+          className="fixed bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] sm:bottom-28 left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/95 dark:bg-neutral-850/95 text-neutral-800 dark:text-neutral-100 border border-neutral-200/90 dark:border-neutral-750 shadow-xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all cursor-pointer text-xs font-medium backdrop-blur-md active:scale-95 animate-in fade-in slide-in-from-bottom-2 duration-150"
+          title="点击一键回到最新消息"
         >
-          <ArrowDown className="w-4 h-4" />
+          <ArrowDown className="w-3.5 h-3.5 text-indigo-500 stroke-[2.5]" />
+          <span>回到最新消息</span>
         </button>
       )}
     </div>
