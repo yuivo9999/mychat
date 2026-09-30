@@ -331,7 +331,13 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         <div className="relative">
           <button
             type="button"
-            onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+            onClick={() => {
+              // Collapse virtual keyboard if any input/textarea is currently focused
+              if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+              }
+              setModelDropdownOpen(!modelDropdownOpen);
+            }}
             className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full bg-white/90 dark:bg-neutral-900/90 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200/80 dark:border-neutral-800 text-xs font-mono font-medium transition cursor-pointer shadow-2xs max-w-[280px] sm:max-w-[360px]"
             title="点击切换 AI 模型或配置服务商"
           >
@@ -355,7 +361,6 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                     value={searchModelQuery}
                     onChange={(e) => setSearchModelQuery(e.target.value)}
                     className="flex-1 text-xs bg-neutral-100 dark:bg-neutral-800 rounded-lg px-2.5 py-1.5 text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 outline-hidden font-sans"
-                    autoFocus
                   />
                   {onOpenModelConfig && (
                     <button
