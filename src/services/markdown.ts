@@ -6,6 +6,10 @@ export interface MarkdownOptions {
   renderLatex?: boolean;
   showLineNumbers?: boolean;
   collapseLongCode?: boolean;
+  enableCodeHighlight?: boolean;
+  codeShowCopyBtn?: boolean;
+  codeShowDownloadBtn?: boolean;
+  codeShowAddToWorkspaceBtn?: boolean;
 }
 
 function escapeHtml(str: string): string {
@@ -89,6 +93,10 @@ export function renderMarkdown(content: string, options: MarkdownOptions = {}): 
     renderLatex = true,
     showLineNumbers = true,
     collapseLongCode = true,
+    enableCodeHighlight = true,
+    codeShowCopyBtn = true,
+    codeShowDownloadBtn = true,
+    codeShowAddToWorkspaceBtn = true,
   } = options;
 
   try {
@@ -102,20 +110,24 @@ export function renderMarkdown(content: string, options: MarkdownOptions = {}): 
     customMarked.use({
       renderer: {
         code({ text, lang }: { text: string; lang?: string }) {
-          const validLang = lang && hljs.getLanguage(lang) ? lang : '';
+          const displayLang = (lang || 'TEXT').toLowerCase();
+          const validLang = enableCodeHighlight && lang && hljs.getLanguage(lang) ? lang : '';
           let highlighted = '';
 
           try {
-            if (validLang) {
-              highlighted = hljs.highlight(text, { language: validLang, ignoreIllegals: true }).value;
+            if (enableCodeHighlight) {
+              if (validLang) {
+                highlighted = hljs.highlight(text, { language: validLang, ignoreIllegals: true }).value;
+              } else {
+                highlighted = hljs.highlightAuto(text).value;
+              }
             } else {
-              highlighted = hljs.highlightAuto(text).value;
+              highlighted = escapeHtml(text);
             }
           } catch {
             highlighted = escapeHtml(text);
           }
 
-          const displayLang = (lang || 'TEXT').toLowerCase();
           const encoded = encodeURIComponent(text);
           
           const rawLines = text.split('\n');
@@ -140,6 +152,33 @@ export function renderMarkdown(content: string, options: MarkdownOptions = {}): 
             </div>
           `;
 
+          // Generate dynamic toolbar buttons based on user options
+          let buttonsHtml = '';
+          if (codeShowCopyBtn) {
+            buttonsHtml += `
+              <button type="button" class="code-copy-btn inline-flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-neutral-700 dark:hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer text-xs" data-code="${encoded}" title="复制代码">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <span>复制</span>
+              </button>
+            `;
+          }
+          if (codeShowDownloadBtn) {
+            buttonsHtml += `
+              <button type="button" class="code-dl-btn inline-flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-neutral-700 dark:hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer text-xs" data-lang="${displayLang}" data-code="${encoded}" title="下载代码文件">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                <span>下载</span>
+              </button>
+            `;
+          }
+          if (codeShowAddToWorkspaceBtn) {
+            buttonsHtml += `
+              <button type="button" class="code-add-workspace-btn inline-flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-neutral-700 dark:hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer text-xs" data-lang="${displayLang}" data-code="${encoded}" title="保存到工作区成为文件">
+                <svg class="w-3.5 h-3.5 text-lime-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>加入工作区</span>
+              </button>
+            `;
+          }
+
           if (isLongCode) {
             return `
               <div class="code-block-wrapper my-3.5 rounded-xl border border-neutral-200/80 dark:border-neutral-800 bg-neutral-900 dark:bg-neutral-950 text-neutral-100 overflow-hidden shadow-sm not-prose">
@@ -149,14 +188,7 @@ export function renderMarkdown(content: string, options: MarkdownOptions = {}): 
                     <span class="text-[10px] px-1.5 py-0.2 rounded bg-neutral-700/60 dark:bg-neutral-800 text-neutral-400 font-sans">${lineCount} 行</span>
                   </div>
                   <div class="flex items-center gap-1.5">
-                    <button type="button" class="code-copy-btn inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-neutral-700 dark:hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer" data-code="${encoded}" title="复制代码">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                      <span>复制</span>
-                    </button>
-                    <button type="button" class="code-dl-btn inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-neutral-700 dark:hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer" data-lang="${displayLang}" data-code="${encoded}" title="下载代码文件">
-                      <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                      <span>下载</span>
-                    </button>
+                    ${buttonsHtml}
                   </div>
                 </div>
                 <div class="code-collapsible-wrapper relative max-h-[300px] overflow-hidden transition-all duration-300">
@@ -177,14 +209,7 @@ export function renderMarkdown(content: string, options: MarkdownOptions = {}): 
               <div class="code-header flex items-center justify-between px-3.5 py-1.5 bg-neutral-800/80 dark:bg-neutral-900/95 text-xs font-mono text-neutral-400 border-b border-neutral-700/50 dark:border-neutral-800 select-none">
                 <span class="font-medium text-neutral-300 uppercase tracking-wider">${displayLang}</span>
                 <div class="flex items-center gap-1.5">
-                  <button type="button" class="code-copy-btn inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-neutral-700 dark:hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer" data-code="${encoded}" title="复制代码">
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-                    <span>复制</span>
-                  </button>
-                  <button type="button" class="code-dl-btn inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-neutral-700 dark:hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors cursor-pointer" data-lang="${displayLang}" data-code="${encoded}" title="下载代码文件">
-                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                    <span>下载</span>
-                  </button>
+                  ${buttonsHtml}
                 </div>
               </div>
               ${codeContentHtml}

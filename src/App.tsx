@@ -2171,6 +2171,8 @@ export default function App() {
           onSwitchVersion={handleSwitchVersion}
           onSelectPrompt={(p) => handleSendMessage(p, [])}
           onDownloadWorkspaceZip={handleDownloadWorkspaceZipAction}
+          currentWorkspace={currentWorkspace}
+          onSaveWorkspace={handleSaveWorkspaceState}
         />
 
         {/* Large AI Composer Input Area */}

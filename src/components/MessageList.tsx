@@ -16,6 +16,8 @@ interface MessageListProps {
   onSwitchVersion: (messageId: string, versionIndex: number) => void;
   onSelectPrompt: (prompt: string) => void;
   onDownloadWorkspaceZip?: () => void;
+  currentWorkspace?: any;
+  onSaveWorkspace?: (workspace: any) => void;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -31,6 +33,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   onSwitchVersion,
   onSelectPrompt,
   onDownloadWorkspaceZip,
+  currentWorkspace,
+  onSaveWorkspace,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -81,6 +85,8 @@ export const MessageList: React.FC<MessageListProps> = ({
               onQuote={onQuote}
               onSwitchVersion={onSwitchVersion}
               onDownloadWorkspaceZip={onDownloadWorkspaceZip}
+              currentWorkspace={currentWorkspace}
+              onSaveWorkspace={onSaveWorkspace}
             />
           ))}
           <div ref={bottomRef} className="h-4" />

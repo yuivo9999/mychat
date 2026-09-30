@@ -37,6 +37,8 @@ interface ChatMessageProps {
   onQuote: (content: string) => void;
   onSwitchVersion: (messageId: string, versionIndex: number) => void;
   onDownloadWorkspaceZip?: () => void;
+  currentWorkspace?: any;
+  onSaveWorkspace?: (workspace: any) => void;
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
@@ -50,6 +52,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onQuote,
   onSwitchVersion,
   onDownloadWorkspaceZip,
+  currentWorkspace,
+  onSaveWorkspace,
 }) => {
   const isUser = message.role === 'user';
   const [copied, setCopied] = useState(false);
@@ -135,8 +139,23 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       renderLatex: settings.renderLatex ?? true,
       showLineNumbers: settings.showLineNumbers ?? true,
       collapseLongCode: settings.collapseLongCode ?? true,
+      enableCodeHighlight: settings.enableCodeHighlight ?? true,
+      codeShowCopyBtn: settings.codeShowCopyBtn ?? true,
+      codeShowDownloadBtn: settings.codeShowDownloadBtn ?? true,
+      codeShowAddToWorkspaceBtn: settings.codeShowAddToWorkspaceBtn ?? true,
     });
-  }, [mainContent, isUser, settings.enableMarkdown, settings.renderLatex, settings.showLineNumbers, settings.collapseLongCode]);
+  }, [
+    mainContent, 
+    isUser, 
+    settings.enableMarkdown, 
+    settings.renderLatex, 
+    settings.showLineNumbers, 
+    settings.collapseLongCode,
+    settings.enableCodeHighlight,
+    settings.codeShowCopyBtn,
+    settings.codeShowDownloadBtn,
+    settings.codeShowAddToWorkspaceBtn
+  ]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content);
@@ -265,6 +284,48 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       a.download = `code-${Date.now().toString().slice(-4)}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
+      return;
+    }
+
+    // Add to workspace button click
+    const addWorkspaceBtn = target.closest('.code-add-workspace-btn') as HTMLElement;
+    if (addWorkspaceBtn) {
+      if (!currentWorkspace || !onSaveWorkspace) {
+        alert('当前没有关联的活动工作区，请在右侧先创建一个工作区项目！');
+        return;
+      }
+      const rawCode = decodeURIComponent(addWorkspaceBtn.getAttribute('data-code') || '');
+      const lang = addWorkspaceBtn.getAttribute('data-lang') || 'txt';
+      const ext = getFileExtensionForLang(lang);
+      
+      const defaultFilename = `code_${Date.now().toString().slice(-4)}.${ext}`;
+      const path = prompt('请输入要加入当前工作区的文件路径与文件名:', defaultFilename);
+      if (path && path.trim()) {
+        const trimmedPath = path.trim();
+        const updatedFiles = {
+          ...currentWorkspace.files,
+          [trimmedPath]: {
+            path: trimmedPath,
+            content: rawCode,
+            size: new Blob([rawCode]).size,
+            updatedAt: Date.now()
+          }
+        };
+        const updatedWorkspace = {
+          ...currentWorkspace,
+          files: updatedFiles,
+          updatedAt: Date.now()
+        };
+        onSaveWorkspace(updatedWorkspace);
+        
+        // Visual indicator on the button
+        const span = addWorkspaceBtn.querySelector('span');
+        if (span) {
+          const original = span.innerText;
+          span.innerText = '已加入工作区!';
+          setTimeout(() => { span.innerText = original; }, 2000);
+        }
+      }
       return;
     }
 
@@ -738,9 +799,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     <span>{textStats.totalChars.toLocaleString()} 字</span>
                   </button>
 
-                  {/* 详细字数与结构统计浮层 (已放大为原来的 1.5 倍，靠右侧对齐展开，绝不超出右边界) */}
+                  {/* 详细字数与结构统计浮层 (已放大为原来的 1.5 倍，靠左侧对齐展开，防止被屏幕左边界遮挡) */}
                   {isStatsOpen && (
-                    <div className="absolute bottom-full mb-2 right-0 w-[240px] max-w-[calc(100vw-2.5rem)] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800 p-4 z-40 text-xs animate-in fade-in zoom-in-95 duration-150 select-none">
+                    <div className="absolute bottom-full mb-2 left-0 w-[240px] max-w-[calc(100vw-2.5rem)] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800 p-4 z-40 text-xs animate-in fade-in zoom-in-95 duration-150 select-none">
                       <div className="flex items-center justify-between pb-2 mb-2 border-b border-neutral-100 dark:border-neutral-800">
                         <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2 text-sm">
                           <BarChart2 className="w-4 h-4 text-lime-500" />

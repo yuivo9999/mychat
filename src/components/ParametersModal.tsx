@@ -468,24 +468,95 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </label>
 
                 {/* 代码块语法高亮与工具栏 */}
+              </div>
+            </div>
+          )}
+
+          {/* Section 3: 代码与 Markdown 边框工具配置 */}
+          {settings && onSaveSettings && (
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-1.5 text-neutral-300 font-bold text-xs pb-1 border-b border-neutral-800/80">
+                <FileCode className="param-icon w-3.5 h-3.5 text-lime-400" />
+                <span className="param-modal-title">代码与 Markdown 边框工具配置</span>
+              </div>
+
+              <div className="space-y-1.5">
+                {/* 1. 代码块语法高亮 */}
                 <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <FileCode className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">代码块语法高亮与工具栏</span>
-                    </div>
-                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
-                      语法高亮、快速复制与代码文件导出/下载
+                    <span className="param-item-label text-xs font-semibold text-neutral-200 block">代码块语法高亮与着色</span>
+                    <span className="param-item-sub text-[11px] text-neutral-400 block">
+                      自动根据代码语言（JS, Python, CSS 等）着色高亮展示
                     </span>
                   </div>
                   <input
                     type="checkbox"
-                    checked={settings.enableCodeHighlight}
+                    checked={settings.enableCodeHighlight ?? true}
                     onChange={() => handleToggleSetting('enableCodeHighlight')}
                     className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>
 
+                {/* 2. 复制代码按钮 */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                  <div className="space-y-0.5 pr-2">
+                    <span className="param-item-label text-xs font-semibold text-neutral-200 block">展示「复制」操作按钮</span>
+                    <span className="param-item-sub text-[11px] text-neutral-400 block">
+                      允许在代码或文本框右上角一键复制代码至剪贴板
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.codeShowCopyBtn ?? true}
+                    onChange={() => handleToggleSetting('codeShowCopyBtn')}
+                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {/* 3. 下载代码按钮 */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                  <div className="space-y-0.5 pr-2">
+                    <span className="param-item-label text-xs font-semibold text-neutral-200 block">展示「下载」操作按钮</span>
+                    <span className="param-item-sub text-[11px] text-neutral-400 block">
+                      允许将框内代码直接下载为对应格式的文件到本地
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.codeShowDownloadBtn ?? true}
+                    onChange={() => handleToggleSetting('codeShowDownloadBtn')}
+                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {/* 4. 加入工作区按钮 */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                  <div className="space-y-0.5 pr-2">
+                    <span className="param-item-label text-xs font-semibold text-neutral-200 block">展示「加入工作区 (+)」操作按钮</span>
+                    <span className="param-item-sub text-[11px] text-neutral-400 block">
+                      在代码框提供加号，一键保存至活动工作区并生成对应代码文件
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.codeShowAddToWorkspaceBtn ?? true}
+                    onChange={() => handleToggleSetting('codeShowAddToWorkspaceBtn')}
+                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Section 4: 通用会话设置 */}
+          {settings && onSaveSettings && (
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-1.5 text-neutral-300 font-bold text-xs pb-1 border-b border-neutral-800/80">
+                <Brain className="param-icon w-3.5 h-3.5 text-lime-400" />
+                <span className="param-modal-title">通用会话设置与记忆</span>
+              </div>
+
+              <div className="space-y-1.5">
                 {/* 会话专属上下文记忆 (默认关闭) */}
                 <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
