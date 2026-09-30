@@ -2164,6 +2164,39 @@ export default function App() {
           onToggleAgentMode={handleToggleAgentMode}
         />
 
+        {/* Top Inverted Ink Wave Pattern (顶部工具栏下方垂直+水平翻转淡墨色波浪纹，与底部加减号后波浪纹对齐呼应) */}
+        <div className="w-full max-w-4xl mx-auto px-3 md:px-6 relative pointer-events-none select-none z-10 h-0">
+          <div className="ink-wave-layer absolute inset-x-0 top-0 h-14 sm:h-16 md:h-18 pointer-events-none overflow-hidden opacity-90 dark:opacity-40 transition-opacity">
+            <svg
+              className="w-full h-full text-neutral-600 dark:text-neutral-400"
+              style={{ transform: 'scale(-1, -1)' }}
+              viewBox="0 0 1200 120"
+              preserveAspectRatio="none"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* Layer 1: Back soft ink wave */}
+              <path
+                d="M0 62 C 200 22, 400 78, 600 42 C 800 8, 1000 58, 1200 28 L1200 120 L0 120 Z"
+                fill="currentColor"
+                fillOpacity="0.08"
+              />
+              {/* Layer 2: Middle soft ink wave */}
+              <path
+                d="M0 80 C 180 46, 380 92, 580 56 C 780 22, 980 70, 1200 46 L1200 120 L0 120 Z"
+                fill="currentColor"
+                fillOpacity="0.10"
+              />
+              {/* Layer 3: Front soft ink wave */}
+              <path
+                d="M0 96 C 220 66, 440 106, 660 74 C 880 44, 1060 88, 1200 66 L1200 120 L0 120 Z"
+                fill="currentColor"
+                fillOpacity="0.14"
+              />
+            </svg>
+          </div>
+        </div>
+
         {/* Message Stream Central Area */}
         <MessageList
           messages={currentConversation?.messages || []}
