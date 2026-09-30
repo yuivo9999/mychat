@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Plus, 
@@ -18,7 +18,11 @@ import {
   EyeOff,
   Edit2,
   Copy,
-  RotateCcw
+  RotateCcw,
+  Download,
+  Upload,
+  FileJson,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   ProviderDefinition, 
@@ -89,6 +93,7 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
     currentModelId || settings.defaultModelId || 'deepseek-ai/deepseek-v4.1-flash'
   );
   const [modelToDelete, setModelToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [copiedModelId, setCopiedModelId] = useState<string | null>(null);
 
   // Add Group Modal/Form state
   const [isAddingGroup, setIsAddingGroup] = useState(false);
@@ -108,6 +113,18 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
   // Add Model Modal/Form state
   const [isAddingModel, setIsAddingModel] = useState(false);
   const [newModelId, setNewModelId] = useState('');
+
+  // Import Group Pending Conflict Payload
+  const [pendingImport, setPendingImport] = useState<{
+    importedProvider: ProviderDefinition;
+    importedKeys: ApiKeyConfig[];
+    importedModels: ModelItem[];
+    hasKeyDuplicates: boolean;
+    hasModelDuplicates: boolean;
+    duplicateKeyList: string[];
+    duplicateModelList: string[];
+  } | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
 
   // Testing connection state
   const [isTesting, setIsTesting] = useState(false);
@@ -194,7 +211,173 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
     setNewGroupUrl('');
   };
 
-  // Handle Delete Current Group (Allows deleting all groups to empty)
+  // Handle Export Current Group (Export provider info, base URL, all API Keys, and all Models)
+  const handleExportCurrentGroup = () => {
+    if (!currentGroup) return;
+
+    const exportPayload = {
+      version: '1.0',
+      type: 'ai_provider_group',
+      exportedAt: Date.now(),
+      provider: currentGroup,
+      apiKeys: groupKeys,
+      models: groupModels,
+    };
+
+    const jsonStr = JSON.stringify(exportPayload, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeName = (currentGroup.name || 'group').replace(/[^\w\u4e00-\u9fa5]/g, '_');
+    link.href = url;
+    link.download = `provider_group_${safeName}_${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Handle Import Group from JSON
+  const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+
+      let rawProvider: ProviderDefinition | null = parsed.provider || (Array.isArray(parsed.providers) ? parsed.providers[0] : null);
+      if (!rawProvider && parsed.name && (parsed.defaultBaseUrl || parsed.id)) {
+        rawProvider = parsed;
+      }
+
+      if (!rawProvider || !rawProvider.name) {
+        alert('无法识别该文件格式，请确保为包含服务商分组的 JSON 配置文件。');
+        return;
+      }
+
+      // 1. Check for Group Name Collision -> Rename to "Group Name (1)", "Group Name (2)", etc.
+      let finalGroupName = rawProvider.name;
+      let nameCounter = 1;
+      while (providers.some(p => p.name.trim() === finalGroupName.trim())) {
+        finalGroupName = `${rawProvider.name} (${nameCounter})`;
+        nameCounter++;
+      }
+
+      // Generate unique provider ID for the newly imported group
+      const newProviderId = `provider_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const newProvider: ProviderDefinition = {
+        ...rawProvider,
+        id: newProviderId,
+        name: finalGroupName,
+        defaultBaseUrl: rawProvider.defaultBaseUrl || 'https://api.openai.com/v1',
+      };
+
+      // Prepare Keys & Models with mapped providerId
+      const rawKeys: ApiKeyConfig[] = Array.isArray(parsed.apiKeys) ? parsed.apiKeys : [];
+      const rawModels: ModelItem[] = Array.isArray(parsed.models) ? parsed.models : [];
+
+      const preparedKeys: ApiKeyConfig[] = rawKeys.map((k, idx) => ({
+        ...k,
+        id: `key_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+        providerId: newProviderId,
+        baseUrl: k.baseUrl || newProvider.defaultBaseUrl,
+        createdAt: k.createdAt || Date.now(),
+      }));
+
+      const preparedModels: ModelItem[] = rawModels.map((m) => {
+        const rawId = getRawModelId(m);
+        return {
+          ...m,
+          id: buildUniqueModelId(newProviderId, rawId),
+          providerId: newProviderId,
+          rawModelId: rawId,
+        };
+      });
+
+      // 2. Check for Duplicate Keys or Models against existing system
+      const existingKeyValues = new Set(apiKeys.map(k => k.apiKey.trim()));
+      const duplicateKeyValues = preparedKeys.filter(k => existingKeyValues.has(k.apiKey.trim())).map(k => k.apiKey);
+
+      const existingRawModelIds = new Set(models.map(m => getRawModelId(m).toLowerCase()));
+      const duplicateModelIds = preparedModels.filter(m => existingRawModelIds.has(getRawModelId(m).toLowerCase())).map(m => getRawModelId(m));
+
+      const hasKeyDuplicates = duplicateKeyValues.length > 0;
+      const hasModelDuplicates = duplicateModelIds.length > 0;
+
+      if (hasKeyDuplicates || hasModelDuplicates) {
+        setPendingImport({
+          importedProvider: newProvider,
+          importedKeys: preparedKeys,
+          importedModels: preparedModels,
+          hasKeyDuplicates,
+          hasModelDuplicates,
+          duplicateKeyList: duplicateKeyValues,
+          duplicateModelList: duplicateModelIds,
+        });
+      } else {
+        executeImport(newProvider, preparedKeys, preparedModels, 'skip');
+      }
+    } catch (err) {
+      console.error('Failed to import provider group:', err);
+      alert('导入失败，请检查文件内容是否为符合规范的 JSON 格式。');
+    } finally {
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const executeImport = (
+    provider: ProviderDefinition,
+    keys: ApiKeyConfig[],
+    modelsToImport: ModelItem[],
+    conflictMode: 'overwrite' | 'skip'
+  ) => {
+    // 1. Save provider definition
+    onSaveProvider(provider);
+
+    // 2. Save Keys
+    for (const k of keys) {
+      const existingKey = apiKeys.find(ex => ex.apiKey.trim() === k.apiKey.trim());
+      if (existingKey) {
+        if (conflictMode === 'overwrite') {
+          onSaveApiKey({
+            ...existingKey,
+            baseUrl: k.baseUrl || existingKey.baseUrl,
+            label: k.label || existingKey.label,
+          });
+        }
+      } else {
+        onSaveApiKey(k);
+      }
+    }
+
+    // 3. Save Models
+    for (const m of modelsToImport) {
+      const mRaw = getRawModelId(m).toLowerCase();
+      const existingModel = models.find(ex => getRawModelId(ex).toLowerCase() === mRaw);
+      if (existingModel) {
+        if (conflictMode === 'overwrite') {
+          onSaveModel({
+            ...existingModel,
+            name: m.name || existingModel.name,
+            supportsVision: m.supportsVision ?? existingModel.supportsVision,
+            supportsStreaming: m.supportsStreaming ?? existingModel.supportsStreaming,
+            maxTokens: m.maxTokens || existingModel.maxTokens,
+            contextWindow: m.contextWindow || existingModel.contextWindow,
+          });
+        }
+      } else {
+        onSaveModel(m);
+      }
+    }
+
+    // 4. Select newly imported group
+    setSelectedGroupId(provider.id);
+    setGroupBaseUrl(provider.defaultBaseUrl || '');
+    setPendingImport(null);
+    setShowSavedToast(true);
+    setTimeout(() => setShowSavedToast(false), 2000);
+  };
   const handleDeleteCurrentGroup = () => {
     if (!currentGroup) return;
     if (confirm(`确定要删除服务商分组「${currentGroup.name}」及其关联设置吗？`)) {
@@ -646,14 +829,45 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                   </button>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => setIsAddingGroup(true)}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-medium shadow-xs transition active:scale-95 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>新增组</span>
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setIsAddingGroup(true)}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 text-white font-medium shadow-xs transition active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>新增组</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportCurrentGroup}
+                  disabled={!currentGroup}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-neutral-800/90 hover:bg-neutral-700/90 text-neutral-200 border border-neutral-700/70 font-medium shadow-xs transition active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="导出当前组（包含全部 Key 与模型数据）"
+                >
+                  <Download className="w-3.5 h-3.5 text-sky-400 stroke-[2]" />
+                  <span>导出组</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => importFileInputRef.current?.click()}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-neutral-800/90 hover:bg-neutral-700/90 text-neutral-200 border border-neutral-700/70 font-medium shadow-xs transition active:scale-95 cursor-pointer"
+                  title="导入服务商组 JSON 配置文件"
+                >
+                  <Upload className="w-3.5 h-3.5 text-emerald-400 stroke-[2]" />
+                  <span>导入组</span>
+                </button>
+
+                <input
+                  ref={importFileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportFileChange}
+                  className="hidden"
+                />
+              </div>
             </div>
 
             {/* Group List Cards */}
@@ -1015,9 +1229,22 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                               <span className="font-mono font-medium text-orange-300 truncate">
                                 {raw}
                               </span>
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 shrink-0">
-                                标准代号
-                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(raw);
+                                  setCopiedModelId(m.id);
+                                  setTimeout(() => setCopiedModelId(null), 1200);
+                                }}
+                                className={`text-[9px] px-1.5 py-0.5 rounded shrink-0 transition-all font-medium active:scale-95 cursor-pointer ${
+                                  copiedModelId === m.id
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white'
+                                }`}
+                                title="复制原始生态模型 ID (API 发包参数)"
+                              >
+                                {copiedModelId === m.id ? '已复制 ✓' : '复制'}
+                              </button>
                             </div>
                             {m.name && m.name !== raw && (
                               <span className="text-[11px] text-neutral-400 truncate mt-0.5">
@@ -1239,6 +1466,80 @@ export const AiModelConfigModal: React.FC<AiModelConfigModalProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Import Conflict Resolution Modal */}
+      {pendingImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-2xs p-4 animate-in fade-in duration-150 font-sans">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 shadow-2xl max-w-md w-full space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+              <div className="flex items-center gap-2 text-amber-400">
+                <AlertTriangle className="w-5 h-5 shrink-0" />
+                <h3 className="text-sm font-semibold text-neutral-100">
+                  组导入与重复数据提示
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingImport(null)}
+                className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-neutral-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-neutral-300 leading-relaxed">
+              <p>
+                即将导入服务商分组：
+                <span className="font-semibold text-amber-400 ml-1">「{pendingImport.importedProvider.name}」</span>
+              </p>
+
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2">
+                <div className="font-medium text-neutral-200 flex items-center gap-1.5">
+                  <FileJson className="w-3.5 h-3.5 text-amber-400" />
+                  <span>检测到重复配置内容：</span>
+                </div>
+                {pendingImport.hasKeyDuplicates && (
+                  <div className="text-[11px] text-neutral-400">
+                    • 包含 <span className="text-amber-400 font-mono font-semibold">{pendingImport.duplicateKeyList.length}</span> 个与现有记录相同的 API Key 账号
+                  </div>
+                )}
+                {pendingImport.hasModelDuplicates && (
+                  <div className="text-[11px] text-neutral-400">
+                    • 包含 <span className="text-amber-400 font-mono font-semibold">{pendingImport.duplicateModelList.length}</span> 个与现有记录相同的模型代号 ({pendingImport.duplicateModelList.slice(0, 3).join(', ')}{pendingImport.duplicateModelList.length > 3 ? '...' : ''})
+                  </div>
+                )}
+              </div>
+
+              <p className="text-[11px] text-neutral-400">
+                请选择重复记录的处理方式：
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-800 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setPendingImport(null)}
+                className="px-3.5 py-1.5 text-xs rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-medium transition cursor-pointer"
+              >
+                取消导入
+              </button>
+              <button
+                type="button"
+                onClick={() => executeImport(pendingImport.importedProvider, pendingImport.importedKeys, pendingImport.importedModels, 'skip')}
+                className="px-3.5 py-1.5 text-xs rounded-xl bg-neutral-700 hover:bg-neutral-600 text-white font-medium transition cursor-pointer"
+              >
+                保留原样 (跳过重复项)
+              </button>
+              <button
+                type="button"
+                onClick={() => executeImport(pendingImport.importedProvider, pendingImport.importedKeys, pendingImport.importedModels, 'overwrite')}
+                className="px-3.5 py-1.5 text-xs rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold transition cursor-pointer shadow-sm"
+              >
+                覆盖已有配置
+              </button>
+            </div>
           </div>
         </div>
       )}
