@@ -143,6 +143,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       codeShowCopyBtn: settings.codeShowCopyBtn ?? true,
       codeShowDownloadBtn: settings.codeShowDownloadBtn ?? true,
       codeShowAddToWorkspaceBtn: settings.codeShowAddToWorkspaceBtn ?? true,
+      useCodeBox: settings.useCodeBox ?? true,
+      useTextBox: settings.useTextBox ?? true,
     });
   }, [
     mainContent, 
@@ -154,7 +156,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     settings.enableCodeHighlight,
     settings.codeShowCopyBtn,
     settings.codeShowDownloadBtn,
-    settings.codeShowAddToWorkspaceBtn
+    settings.codeShowAddToWorkspaceBtn,
+    settings.useCodeBox,
+    settings.useTextBox
   ]);
 
   const handleCopy = () => {

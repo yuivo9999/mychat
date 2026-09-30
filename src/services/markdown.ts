@@ -10,6 +10,8 @@ export interface MarkdownOptions {
   codeShowCopyBtn?: boolean;
   codeShowDownloadBtn?: boolean;
   codeShowAddToWorkspaceBtn?: boolean;
+  useCodeBox?: boolean;
+  useTextBox?: boolean;
 }
 
 function escapeHtml(str: string): string {
@@ -97,6 +99,8 @@ export function renderMarkdown(content: string, options: MarkdownOptions = {}): 
     codeShowCopyBtn = true,
     codeShowDownloadBtn = true,
     codeShowAddToWorkspaceBtn = true,
+    useCodeBox = true,
+    useTextBox = true,
   } = options;
 
   try {
@@ -126,6 +130,13 @@ export function renderMarkdown(content: string, options: MarkdownOptions = {}): 
             }
           } catch {
             highlighted = escapeHtml(text);
+          }
+
+          if (!useCodeBox) {
+            // Render plain standard pre block if custom code box is disabled
+            return `
+              <pre class="my-2 p-3 bg-neutral-100 dark:bg-neutral-800 rounded-xl font-mono text-[12.5px] overflow-auto select-text border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200"><code>${highlighted}</code></pre>
+            `;
           }
 
           const encoded = encodeURIComponent(text);
@@ -235,6 +246,9 @@ export function renderMarkdown(content: string, options: MarkdownOptions = {}): 
           return `<div class="my-2.5 font-sans">${hashes} ${text}</div>`;
         },
         blockquote({ text }: { text: string }) {
+          if (!useTextBox) {
+            return `<div class="my-1.5 pl-2 text-neutral-500 italic font-sans">${text}</div>`;
+          }
           return `<div class="my-2 pl-3.5 border-l-2 border-neutral-300 dark:border-neutral-700 text-neutral-500 font-sans">${text}</div>`;
         },
         strong({ text }: { text: string }) {

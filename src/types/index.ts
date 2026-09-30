@@ -174,6 +174,9 @@ export interface UserSettings {
   codeShowCopyBtn?: boolean; // 显示快速复制按钮
   codeShowDownloadBtn?: boolean; // 显示下载文件按钮
   codeShowAddToWorkspaceBtn?: boolean; // 显示加入工作区按钮
+  useCodeBox?: boolean; // 使用/启用代码框容器
+  useTextBox?: boolean; // 使用/启用文本框容器
+  useMarkdownBox?: boolean; // 使用/启用 Markdown 解析框
   defaultProviderId: string;
   defaultModelId: string;
   defaultSystemPrompt: string;
