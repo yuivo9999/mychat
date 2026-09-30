@@ -131,8 +131,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     };
   }, [message.content, mainContent, thinkingText, isUser]);
 
+  const shouldRenderMarkdown = settings.enableMarkdown || settings.onlyParseMarkdownTables;
+
   const htmlContent = useMemo(() => {
-    if (isUser || !settings.enableMarkdown) {
+    if (isUser || !shouldRenderMarkdown) {
       return '';
     }
     return renderMarkdown(mainContent, {
@@ -145,11 +147,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       codeShowAddToWorkspaceBtn: settings.codeShowAddToWorkspaceBtn ?? true,
       useCodeBox: settings.useCodeBox ?? true,
       useTextBox: settings.useTextBox ?? true,
+      onlyParseMarkdownTables: settings.onlyParseMarkdownTables ?? false,
     });
   }, [
     mainContent, 
     isUser, 
-    settings.enableMarkdown, 
+    shouldRenderMarkdown, 
     settings.renderLatex, 
     settings.showLineNumbers, 
     settings.collapseLongCode,
@@ -158,7 +161,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     settings.codeShowDownloadBtn,
     settings.codeShowAddToWorkspaceBtn,
     settings.useCodeBox,
-    settings.useTextBox
+    settings.useTextBox,
+    settings.onlyParseMarkdownTables
   ]);
 
   const handleCopy = () => {
@@ -243,7 +247,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             const colorClasses = getHeadingClasses(titleText);
             return (
               <div key={idx} className="my-3">
-                <span className={`inline-block px-3 py-1 rounded-xl font-bold border shadow-xs transition-colors duration-150 ${colorClasses}`}>
+                <span className={`inline-block px-3 py-1 rounded-none font-bold border shadow-xs transition-colors duration-150 ${colorClasses}`}>
                   {titleText}
                 </span>
               </div>
@@ -574,7 +578,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               />
             )}
 
-            {isUser || !settings.enableMarkdown ? (
+            {isUser || !shouldRenderMarkdown ? (
               renderPlaintextContent(mainContent)
             ) : (
               <div 

@@ -12,6 +12,7 @@ export interface MarkdownOptions {
   codeShowAddToWorkspaceBtn?: boolean;
   useCodeBox?: boolean;
   useTextBox?: boolean;
+  onlyParseMarkdownTables?: boolean;
 }
 
 function escapeHtml(str: string): string {

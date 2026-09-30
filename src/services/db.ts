@@ -467,6 +467,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   compactMode: false,
   boldHeadings: true,
   enableChatContextMemory: false,
+  onlyParseMarkdownTables: false,
   codeShowCopyBtn: true,
   codeShowDownloadBtn: true,
   codeShowAddToWorkspaceBtn: true,

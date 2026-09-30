@@ -171,6 +171,7 @@ export interface UserSettings {
   compactMode?: boolean; // 🔍 紧凑排版模式
   boldHeadings?: boolean; // #️⃣ 加粗标题：加粗纯文本里的结构化标题（#，## 等）
   enableChatContextMemory?: boolean; // 🧠 启用单聊专属上下文记忆
+  onlyParseMarkdownTables?: boolean; // 仅解析 Markdown 数据表格
   codeShowCopyBtn?: boolean; // 显示快速复制按钮
   codeShowDownloadBtn?: boolean; // 显示下载文件按钮
   codeShowAddToWorkspaceBtn?: boolean; // 显示加入工作区按钮

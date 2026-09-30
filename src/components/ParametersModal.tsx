@@ -353,44 +353,6 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   />
                 </label>
 
-                {/* 2. 🔢 代码块显示行号 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
-                  <div className="space-y-0.5 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <ListOrdered className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">代码块显示行号 (Line Numbers)</span>
-                    </div>
-                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
-                      代码左侧附带灰度行号，长代码沟通与对比更清晰
-                    </span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.showLineNumbers ?? true}
-                    onChange={() => handleToggleSetting('showLineNumbers')}
-                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
-                  />
-                </label>
-
-                {/* 3. 📱 长代码块自动限制高度 / 折叠 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
-                  <div className="space-y-0.5 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <FoldVertical className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">长代码块自动折叠限制高度</span>
-                    </div>
-                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
-                      超长代码自动收起并提供“展开代码”按钮，移动端尤其顺畅
-                    </span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={settings.collapseLongCode ?? true}
-                    onChange={() => handleToggleSetting('collapseLongCode')}
-                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
-                  />
-                </label>
-
                 {/* 4. ▋ 流式输出呼吸光标动画 */}
                 <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
@@ -442,8 +404,8 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   </div>
                   <input
                     type="checkbox"
-                    checked={settings.enableMarkdown}
-                    onChange={() => handleToggleSetting('enableMarkdown')}
+                    checked={settings.onlyParseMarkdownTables ?? false}
+                    onChange={() => handleToggleSetting('onlyParseMarkdownTables')}
                     className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>
@@ -480,7 +442,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 <span className="param-modal-title">代码框、文本框及 Markdown 框开关</span>
               </div>
 
-              <div className="space-y-1.5">
+               <div className="space-y-1.5">
                 {/* 1. 代码框开关 */}
                 <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
                   <div className="space-y-0.5 pr-2">
@@ -496,6 +458,36 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                     className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>
+
+                {settings.useCodeBox && (
+                  <div className="pl-4 space-y-1.5 border-l border-neutral-800 ml-2 animate-in slide-in-from-top-1 duration-150">
+                    {/* 代码块显示行号 */}
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-800/40 border border-neutral-800/60 cursor-pointer hover:border-neutral-700 transition">
+                      <div className="space-y-0.5 pr-2">
+                        <span className="param-item-label text-[11px] font-medium text-neutral-300 block">代码块显示行号</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={settings.showLineNumbers ?? true}
+                        onChange={() => handleToggleSetting('showLineNumbers')}
+                        className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
+                      />
+                    </label>
+
+                    {/* 长代码块自动限制高度 */}
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-800/40 border border-neutral-800/60 cursor-pointer hover:border-neutral-700 transition">
+                      <div className="space-y-0.5 pr-2">
+                        <span className="param-item-label text-[11px] font-medium text-neutral-300 block">长代码块自动折叠</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={settings.collapseLongCode ?? true}
+                        onChange={() => handleToggleSetting('collapseLongCode')}
+                        className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                )}
 
                 {/* 2. 文本框开关 */}
                 <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
