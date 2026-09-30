@@ -29,6 +29,7 @@ import {
 import { Workspace, WorkspaceFile } from '../types/workspace';
 import { Attachment } from '../types';
 import { workspaceFileToAttachment, workspaceZipToAttachment } from '../services/workspaceFileAttachment';
+import { FileEditorModal } from './FileEditorModal';
 import { 
   importZipToNewWorkspace, 
   createEmptyWorkspace, 
@@ -223,6 +224,9 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
   const [selectedTargetFolder, setSelectedTargetFolder] = useState<string>('');
   const [customNewFolder, setCustomNewFolder] = useState<string>('');
 
+  // Editable File Modal State
+  const [editingFile, setEditingFile] = useState<WorkspaceFile | null>(null);
+
   // File Upload Conflict Dialog
   const [pendingUploadFiles, setPendingUploadFiles] = useState<{ path: string; content: string }[] | null>(null);
   const [conflictFilesList, setConflictFilesList] = useState<string[]>([]);
@@ -297,6 +301,30 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
       }
       return next;
     });
+  };
+
+  // Open File Editor Modal
+  const handleOpenFileEditor = (file: WorkspaceFile) => {
+    setEditingFile(file);
+    setActiveMenuPath(null);
+  };
+
+  // Save File Content Edits
+  const handleSaveFileContent = (filePath: string, newContent: string) => {
+    if (!currentWorkspace) return;
+    const ws = { ...currentWorkspace, files: { ...currentWorkspace.files } };
+    const fileData = ws.files[filePath];
+    if (fileData) {
+      ws.files[filePath] = {
+        ...fileData,
+        content: newContent,
+        size: new Blob([newContent]).size,
+        updatedAt: Date.now(),
+      };
+      ws.updatedAt = Date.now();
+      onSaveWorkspace(ws);
+      setEditingFile(prev => prev && prev.path === filePath ? { ...ws.files[filePath] } : prev);
+    }
   };
 
   // 1. Action: 围绕此文件展开对话 (Starts AI chat focused on this file)
@@ -655,12 +683,12 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
       >
         {/* Left: Icon and Name/Time info */}
         <div 
-          onClick={() => node.file && handleChatAroundFile(node.file)}
+          onClick={() => node.file && handleOpenFileEditor(node.file)}
           className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
         >
           {renderFileIcon(node.name)}
           <div className="min-w-0 flex-1">
-            <div className="font-medium text-sm text-neutral-800 dark:text-neutral-200 truncate">
+            <div className="font-medium text-sm text-neutral-800 dark:text-neutral-200 truncate group-hover:text-lime-500 transition-colors">
               {node.name}
             </div>
             <div className="text-xs text-neutral-400 dark:text-neutral-500 font-normal mt-0.5">
@@ -683,10 +711,23 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
             <MoreHorizontal className="w-4 h-4" />
           </button>
 
-          {/* 5-Item Popup Menu (Exact match to user requirement & screenshot) */}
+          {/* Popup Menu */}
           {isMenuOpen && node.file && (
             <div className="file-action-menu absolute right-0 top-8 z-50 w-52 bg-white dark:bg-neutral-800 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-700 py-2 text-xs animate-in fade-in zoom-in-95">
-              {/* 1. 围绕此内容展开对话 */}
+              {/* 编辑文件内容 */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenFileEditor(node.file!);
+                }}
+                className="w-full text-left px-4 py-2.5 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-3 text-lime-600 dark:text-lime-400 font-medium transition-colors"
+              >
+                <Edit3 className="w-4 h-4 text-lime-500" />
+                <span>编辑文件内容</span>
+              </button>
+
+              {/* 围绕此内容展开对话 */}
               <button
                 type="button"
                 onClick={(e) => {
@@ -1238,6 +1279,14 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Editable File Modal */}
+      <FileEditorModal
+        isOpen={!!editingFile}
+        file={editingFile}
+        onClose={() => setEditingFile(null)}
+        onSave={handleSaveFileContent}
+      />
     </>
   );
 };
