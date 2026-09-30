@@ -61,7 +61,22 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const [editText, setEditText] = useState(message.content);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const [placement, setPlacement] = useState<'top' | 'bottom'>('top');
   const statsContainerRef = useRef<HTMLDivElement>(null);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
+
+  const handleToggleStats = () => {
+    if (!isStatsOpen && triggerButtonRef.current) {
+      const rect = triggerButtonRef.current.getBoundingClientRect();
+      // If button top position is < 320px from top of screen, show below. Otherwise show above.
+      if (rect.top < 320) {
+        setPlacement('bottom');
+      } else {
+        setPlacement('top');
+      }
+    }
+    setIsStatsOpen(!isStatsOpen);
+  };
 
   // Close word count popover when clicking elsewhere
   useEffect(() => {
@@ -663,8 +678,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 {/* 用户消息字数统计（点击展示统计详情，点击其他地方收起） */}
                 <div className="relative inline-flex items-center" ref={statsContainerRef}>
                   <button
+                    ref={triggerButtonRef}
                     type="button"
-                    onClick={() => setIsStatsOpen(!isStatsOpen)}
+                    onClick={handleToggleStats}
                     className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-mono select-none transition-colors cursor-pointer ${
                       isStatsOpen
                         ? 'bg-neutral-200/90 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 font-semibold shadow-2xs'
@@ -674,9 +690,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     <span>{textStats.totalChars.toLocaleString()} 字</span>
                   </button>
 
-                  {/* 详细字数与结构统计浮层 (已放大为原来的 1.5 倍，靠右侧对齐展开，绝不超出右边界) */}
+                  {/* 详细字数与结构统计浮层 (居中，且支持上下自适应避免遮挡) */}
                   {isStatsOpen && (
-                    <div className="absolute bottom-full mb-2 right-0 w-[240px] max-w-[calc(100vw-2.5rem)] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800 p-4 z-40 text-xs animate-in fade-in zoom-in-95 duration-150 select-none">
+                    <div className={`absolute ${placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'} left-1/2 -translate-x-1/2 w-[240px] max-w-[calc(100vw-2.5rem)] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800 p-4 z-40 text-xs animate-in fade-in zoom-in-95 duration-150 select-none`}>
                       <div className="flex items-center justify-between pb-2 mb-2 border-b border-neutral-100 dark:border-neutral-800">
                         <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2 text-sm">
                           <BarChart2 className="w-4 h-4 text-lime-500" />
@@ -796,8 +812,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 {/* AI 消息字数统计（点击展示统计详情，点击其他地方收起） */}
                 <div className="relative inline-flex items-center" ref={statsContainerRef}>
                   <button
+                    ref={triggerButtonRef}
                     type="button"
-                    onClick={() => setIsStatsOpen(!isStatsOpen)}
+                    onClick={handleToggleStats}
                     className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-mono select-none transition-colors cursor-pointer ${
                       isStatsOpen
                         ? 'bg-neutral-200/90 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 font-semibold shadow-2xs'
@@ -807,9 +824,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     <span>{textStats.totalChars.toLocaleString()} 字</span>
                   </button>
 
-                  {/* 详细字数与结构统计浮层 (已放大为原来的 1.5 倍，靠左侧对齐展开，防止被屏幕左边界遮挡) */}
+                  {/* 详细字数与结构统计浮层 (居中，且支持上下自适应避免遮挡) */}
                   {isStatsOpen && (
-                    <div className="absolute bottom-full mb-2 left-0 w-[240px] max-w-[calc(100vw-2.5rem)] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800 p-4 z-40 text-xs animate-in fade-in zoom-in-95 duration-150 select-none">
+                    <div className={`absolute ${placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'} left-1/2 -translate-x-1/2 w-[240px] max-w-[calc(100vw-2.5rem)] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800 p-4 z-40 text-xs animate-in fade-in zoom-in-95 duration-150 select-none`}>
                       <div className="flex items-center justify-between pb-2 mb-2 border-b border-neutral-100 dark:border-neutral-800">
                         <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2 text-sm">
                           <BarChart2 className="w-4 h-4 text-lime-500" />
