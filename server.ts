@@ -68,133 +68,216 @@ async function startServer() {
       .trim();
   }
 
-  // 1. Web Search Endpoint (DuckDuckGo HTML + Direct URL crawler + Wikipedia Fallback)
+  // Helper: Parse XML RSS items
+  function parseRssItems(xmlText: string): Array<{ title: string; url: string; snippet: string }> {
+    const items: Array<{ title: string; url: string; snippet: string }> = [];
+    const itemMatches = xmlText.match(/<item>[\s\S]*?<\/item>/gi) || [];
+
+    for (const itemXml of itemMatches.slice(0, 6)) {
+      const titleMatch = itemXml.match(/<title>([\s\S]*?)<\/title>/i);
+      const linkMatch = itemXml.match(/<link>([\s\S]*?)<\/link>/i) || itemXml.match(/<guid[^>]*>([\s\S]*?)<\/guid>/i);
+      const descMatch = itemXml.match(/<description>([\s\S]*?)<\/description>/i);
+
+      const rawTitle = titleMatch ? cleanHtmlText(titleMatch[1]) : '';
+      let rawLink = linkMatch ? cleanHtmlText(linkMatch[1]) : '';
+      const rawSnippet = descMatch ? cleanHtmlText(descMatch[1]) : '';
+
+      if (rawTitle && (rawLink || rawSnippet)) {
+        items.push({
+          title: rawTitle,
+          url: rawLink,
+          snippet: rawSnippet || `网页资料：${rawTitle}`,
+        });
+      }
+    }
+    return items;
+  }
+
+  // 1. Ultra-Fast Parallel Web Search Endpoint (< 2.5s Timeout, Bing & Google Priority)
   app.post('/api/web-search', async (req, res) => {
-    const { query, urls = [] } = req.body;
+    const { query, urls = [], searchEngines, activeSearchEngineId } = req.body;
     const results: Array<{ title: string; url: string; snippet: string }> = [];
     const pageContents: Array<{ url: string; title: string; content: string }> = [];
+    const cleanQuery = (query || '').trim();
 
-    // Crawl specific URLs if provided in user's prompt
+    const tasks: Promise<void>[] = [];
+
+    // Parallel Task A: Crawl target URLs if user prompt contains https://...
     if (Array.isArray(urls) && urls.length > 0) {
-      for (const targetUrl of urls.slice(0, 3)) {
-        try {
-          const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 6000);
-          const pageRes = await fetch(targetUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            },
-            signal: controller.signal,
-          });
-          clearTimeout(timer);
-          if (pageRes.ok) {
-            const html = await pageRes.text();
-            const { title, text } = extractTextFromHtml(html);
-            if (text) {
-              pageContents.push({ url: targetUrl, title: cleanHtmlText(title), content: text });
-            }
-          }
-        } catch (pageErr) {
-          console.warn('Failed to crawl URL:', targetUrl, pageErr);
-        }
-      }
-    }
-
-    // Search DuckDuckGo HTML for query
-    if (query && query.trim()) {
-      try {
-        const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query.trim())}`;
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 7000);
-        const ddgRes = await fetch(ddgUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept': 'text/html',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-          },
-          signal: controller.signal,
-        });
-        clearTimeout(timer);
-
-        if (ddgRes.ok) {
-          const html = await ddgRes.text();
-          const blocks = html.split(/result__body/);
-          for (let i = 1; i < blocks.length && results.length < 6; i++) {
-            const block = blocks[i];
-            const urlMatch = block.match(/href="[^"]*uddg=([^"&]+)/);
-            let resultUrl = '';
-            if (urlMatch) {
-              try {
-                resultUrl = decodeURIComponent(urlMatch[1]);
-              } catch {}
-            }
-            if (!resultUrl) {
-              const rawHref = block.match(/href="([^"]+)"/);
-              if (rawHref && rawHref[1].startsWith('http')) {
-                resultUrl = rawHref[1];
+      tasks.push((async () => {
+        for (const targetUrl of urls.slice(0, 3)) {
+          try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 2500);
+            const pageRes = await fetch(targetUrl, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              },
+              signal: controller.signal,
+            });
+            clearTimeout(timer);
+            if (pageRes.ok) {
+              const html = await pageRes.text();
+              const { title, text } = extractTextFromHtml(html);
+              if (text) {
+                pageContents.push({ url: targetUrl, title: cleanHtmlText(title), content: text });
               }
             }
-
-            // Exclude advertising or redirect trackers
-            if (!resultUrl || resultUrl.includes('duckduckgo.com/y.js') || resultUrl.includes('ad_provider') || resultUrl.includes('ad_domain')) {
-              continue;
-            }
-
-            const titleMatch = block.match(/class="result__a"[^>]*>([\s\S]*?)<\/a>/);
-            const title = titleMatch ? cleanHtmlText(titleMatch[1]) : '';
-            const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
-            const snippet = snippetMatch ? cleanHtmlText(snippetMatch[1]) : '';
-
-            if (title && (resultUrl || snippet)) {
-              results.push({
-                title,
-                url: resultUrl,
-                snippet,
-              });
-            }
+          } catch (pageErr) {
+            console.warn('Failed to crawl URL:', targetUrl, pageErr);
           }
         }
-      } catch (ddgErr) {
-        console.warn('DuckDuckGo search error:', ddgErr);
+      })());
+    }
+
+    if (cleanQuery) {
+      // Determine active engines to query based on user's configuration in Parameters
+      const engineList = Array.isArray(searchEngines) && searchEngines.length > 0 
+        ? searchEngines 
+        : [
+            { id: 'bing', enabled: true, type: 'bing' },
+            { id: 'google', enabled: true, type: 'google' }
+          ];
+
+      // Primary engine task (Bing search engine)
+      const isBingEnabled = engineList.some((e: any) => (e.id === 'bing' || e.type === 'bing') && e.enabled !== false);
+      if (isBingEnabled || !activeSearchEngineId || activeSearchEngineId === 'bing') {
+        tasks.push((async () => {
+          try {
+            const bingUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(cleanQuery)}&format=rss`;
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 2500);
+            const bRes = await fetch(bingUrl, {
+              headers: { 
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+              },
+              signal: controller.signal,
+            });
+            clearTimeout(timer);
+            if (bRes.ok) {
+              const xml = await bRes.text();
+              const parsed = parseRssItems(xml);
+              results.push(...parsed);
+            }
+          } catch (e) {
+            console.warn('Bing Search error:', e);
+          }
+        })());
+      }
+
+      // Secondary engine task (Google search engine)
+      const isGoogleEnabled = engineList.some((e: any) => (e.id === 'google' || e.type === 'google') && e.enabled !== false);
+      if (isGoogleEnabled) {
+        tasks.push((async () => {
+          try {
+            const gNewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(cleanQuery)}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans`;
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 2500);
+            const gRes = await fetch(gNewsUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+              signal: controller.signal,
+            });
+            clearTimeout(timer);
+            if (gRes.ok) {
+              const xml = await gRes.text();
+              const parsed = parseRssItems(xml);
+              results.push(...parsed);
+            }
+          } catch (e) {
+            console.warn('Google Search error:', e);
+          }
+        })());
+      }
+
+      // Wikipedia task (if enabled by user)
+      const isWikiEnabled = engineList.some((e: any) => e.id === 'wikipedia' && e.enabled);
+      if (isWikiEnabled) {
+        tasks.push((async () => {
+          try {
+            const wikiUrl = `https://zh.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(cleanQuery)}&limit=5&namespace=0&format=json`;
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 2500);
+            const wikiRes = await fetch(wikiUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0' },
+              signal: controller.signal,
+            });
+            clearTimeout(timer);
+            if (wikiRes.ok) {
+              const data = await wikiRes.json();
+              const titles: string[] = data[1] || [];
+              const snippets: string[] = data[2] || [];
+              const links: string[] = data[3] || [];
+              for (let i = 0; i < titles.length; i++) {
+                if (titles[i] && links[i]) {
+                  results.push({
+                    title: cleanHtmlText(titles[i]),
+                    url: links[i],
+                    snippet: cleanHtmlText(snippets[i] || `维基百科词条：${titles[i]}`),
+                  });
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('Wikipedia search error:', e);
+          }
+        })());
+      }
+
+      // Custom user search engines (if user added custom RSS or search URL)
+      const customEngines = engineList.filter((e: any) => e.enabled && e.url && !['bing', 'google', 'wikipedia'].includes(e.id));
+      for (const customEng of customEngines) {
+        tasks.push((async () => {
+          try {
+            const targetEngineUrl = customEng.url.replace('{query}', encodeURIComponent(cleanQuery));
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 2500);
+            const customRes = await fetch(targetEngineUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+              signal: controller.signal,
+            });
+            clearTimeout(timer);
+            if (customRes.ok) {
+              const bodyText = await customRes.text();
+              if (bodyText.includes('<item>')) {
+                const parsed = parseRssItems(bodyText);
+                results.push(...parsed);
+              }
+            }
+          } catch (e) {
+            console.warn(`Custom search engine [${customEng.name}] error:`, e);
+          }
+        })());
       }
     }
 
-    // Fallback: If 0 results from DuckDuckGo, try Wikipedia OpenSearch
-    if (results.length === 0 && query && query.trim()) {
-      try {
-        const wikiUrl = `https://zh.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query.trim())}&limit=5&namespace=0&format=json`;
-        const wikiController = new AbortController();
-        const wikiTimer = setTimeout(() => wikiController.abort(), 5000);
-        const wikiRes = await fetch(wikiUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-          signal: wikiController.signal,
-        });
-        clearTimeout(wikiTimer);
-        if (wikiRes.ok) {
-          const data = await wikiRes.json();
-          const titles: string[] = data[1] || [];
-          const snippets: string[] = data[2] || [];
-          const links: string[] = data[3] || [];
-          for (let i = 0; i < titles.length; i++) {
-            if (titles[i] && links[i]) {
-              results.push({
-                title: cleanHtmlText(titles[i]),
-                url: links[i],
-                snippet: cleanHtmlText(snippets[i] || `维基百科词条：${titles[i]}`),
-              });
-            }
-          }
-        }
-      } catch (wikiErr) {
-        console.warn('Wikipedia search fallback error:', wikiErr);
-      }
+    // Execute all parallel search engines concurrently
+    await Promise.allSettled(tasks);
+
+    // Deduplicate search results by title/URL
+    const uniqueResults: Array<{ title: string; url: string; snippet: string }> = [];
+    const seenUrls = new Set<string>();
+    const seenTitles = new Set<string>();
+
+    for (const item of results) {
+      const cleanTitle = item.title.trim();
+      const cleanUrl = item.url.trim();
+
+      if (!cleanTitle || seenTitles.has(cleanTitle)) continue;
+      if (cleanUrl && seenUrls.has(cleanUrl)) continue;
+
+      seenTitles.add(cleanTitle);
+      if (cleanUrl) seenUrls.add(cleanUrl);
+
+      uniqueResults.push(item);
+      if (uniqueResults.length >= 8) break;
     }
 
     res.json({
       success: true,
-      query: query || '',
-      results,
+      query: cleanQuery,
+      results: uniqueResults,
       pageContents,
     });
   });

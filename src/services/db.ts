@@ -4,6 +4,7 @@ import {
   ModelItem, 
   ProviderDefinition, 
   UserSettings,
+  SearchEngineItem,
   Project
 } from '../types';
 import { getRawModelId, buildUniqueModelId } from './modelUtils';
@@ -449,6 +450,41 @@ export const DEFAULT_MODELS: ModelItem[] = [
 ];
 
 
+export const DEFAULT_SEARCH_ENGINES: SearchEngineItem[] = [
+  {
+    id: 'bing',
+    name: 'Bing 搜索引擎 (优先第一选择)',
+    enabled: true,
+    type: 'bing',
+    url: 'https://www.bing.com/news/search?q={query}&format=rss',
+    isDefault: true,
+  },
+  {
+    id: 'google',
+    name: 'Google 搜索引擎 (第二备选)',
+    enabled: true,
+    type: 'google',
+    url: 'https://news.google.com/rss/search?q={query}&hl=zh-CN&gl=CN&ceid=CN:zh-Hans',
+    isDefault: true,
+  },
+  {
+    id: 'baidu',
+    name: 'Baidu 百度搜索',
+    enabled: false,
+    type: 'baidu',
+    url: 'https://www.baidu.com/s?wd={query}',
+    isDefault: false,
+  },
+  {
+    id: 'wikipedia',
+    name: 'Wikipedia 维基百科',
+    enabled: false,
+    type: 'wikipedia',
+    url: 'https://zh.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json',
+    isDefault: false,
+  },
+];
+
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'system',
   fontSize: 'standard',
@@ -474,6 +510,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   useCodeBox: true,
   useTextBox: true,
   useMarkdownBox: true,
+  searchEngines: DEFAULT_SEARCH_ENGINES,
+  activeSearchEngineId: 'bing',
   defaultProviderId: 'google',
   defaultModelId: 'gemini-3.8-flash',
   defaultSystemPrompt: '',

@@ -863,7 +863,7 @@ export default function App() {
         // Model supports web search: Perform real-time search
         setStatusMessage('正在联网检索最新网页与资料...');
         try {
-          const searchRes = await performWebSearch(text);
+          const searchRes = await performWebSearch(text, settings.searchEngines, settings.activeSearchEngineId);
           if (searchRes.results.length > 0 || searchRes.pageContents.length > 0) {
             webResults = searchRes.results;
             webContext = buildWebSearchContext(searchRes);
@@ -1041,6 +1041,11 @@ export default function App() {
         } else {
           adaptedContent = `[系统提示：用户发送了文件，但当前大模型【${modelLabel}】暂不支持读取或解析文件附件。请礼貌告知用户您当前无法查看该文件内容，并建议用户使用支持文档分析的模型（如 Gemini 3.8 Flash、GPT-4o）或将文件文本直接粘贴至输入框。]`;
         }
+      }
+
+      // If Web Search returned grounding search context, append it to user prompt as well for 100% provider coverage
+      if (webContext) {
+        adaptedContent += `\n\n${webContext}`;
       }
 
       apiUserMessage = {

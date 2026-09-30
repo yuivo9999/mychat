@@ -152,6 +152,15 @@ export interface Conversation {
   messages: Message[];
 }
 
+export interface SearchEngineItem {
+  id: string;
+  name: string;
+  enabled: boolean;
+  type: 'bing' | 'google' | 'baidu' | 'wikipedia' | 'custom_rss' | 'custom_html';
+  url: string;
+  isDefault?: boolean;
+}
+
 export interface UserSettings {
   theme: 'light' | 'dark' | 'system' | 'classic1' | 'classic2' | 'modern1' | 'sangtian-shanhe' | string;
   fontSize: 'compact' | 'standard' | 'spacious';
@@ -178,6 +187,8 @@ export interface UserSettings {
   useCodeBox?: boolean; // 使用/启用代码框容器
   useTextBox?: boolean; // 使用/启用文本框容器
   useMarkdownBox?: boolean; // 使用/启用 Markdown 解析框
+  searchEngines?: SearchEngineItem[]; // 🔍 联网搜索引擎配置列表
+  activeSearchEngineId?: string; // 当前优先选中的搜索引擎 ID
   defaultProviderId: string;
   defaultModelId: string;
   defaultSystemPrompt: string;

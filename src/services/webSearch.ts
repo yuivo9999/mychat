@@ -1,3 +1,5 @@
+import { SearchEngineItem } from '../types';
+
 export interface WebSearchResult {
   title: string;
   url: string;
@@ -55,7 +57,11 @@ export function extractCleanQuery(text: string): { query: string; urls: string[]
 /**
  * Perform web search through backend proxy or fallback
  */
-export async function performWebSearch(rawText: string): Promise<WebSearchResponse> {
+export async function performWebSearch(
+  rawText: string,
+  searchEngines?: SearchEngineItem[],
+  activeSearchEngineId?: string
+): Promise<WebSearchResponse> {
   const { query, urls } = extractCleanQuery(rawText);
 
   try {
@@ -68,6 +74,8 @@ export async function performWebSearch(rawText: string): Promise<WebSearchRespon
         query,
         rawText,
         urls,
+        searchEngines,
+        activeSearchEngineId,
       }),
     });
 
