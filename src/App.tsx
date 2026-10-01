@@ -729,6 +729,7 @@ export default function App() {
     };
 
     const isPromptPerfectEnabled = Boolean((targetConv?.parameters || parameters)?.promptPerfect);
+    const isContext7Enabled = Boolean((targetConv?.parameters || parameters)?.context7);
 
     const initialThinkingSteps: ThinkingStep[] = [
       {
@@ -744,6 +745,15 @@ export default function App() {
         id: `step_prompt_perfect_${Date.now()}`,
         icon: 'lightning',
         title: '✨ Prompt Perfect 已启动：自动优化与升级您的提示词工程质量',
+        status: 'completed',
+      });
+    }
+
+    if (isContext7Enabled) {
+      initialThinkingSteps.push({
+        id: `step_context7_${Date.now()}`,
+        icon: 'lightning',
+        title: '⚡ Context 7 历史平衡已启动：限制最近 7 轮高精度对话，余项归档压缩',
         status: 'completed',
       });
     }
@@ -1101,8 +1111,11 @@ ${adaptedContent}
 
       // Extract previous history before the current turn (excluding the newly appended userMessage and streaming assistantMessage)
       const previousHistory = targetConv.messages.slice(0, -2);
+      // Check if Context 7 window balancing is enabled
+      const isContext7Enabled = Boolean((targetConv.parameters || parameters)?.context7);
+      const historyWindowSize = isContext7Enabled ? 7 : 10;
       // Prepare golden-balance hierarchical compaction (L3: Rolling Summary + L4: Code Decoupled Recent Window)
-      const { compactedSummary, effectiveMessages } = prepareChatHistoryWithHierarchicalCompaction(previousHistory, 10);
+      const { compactedSummary, effectiveMessages } = prepareChatHistoryWithHierarchicalCompaction(previousHistory, historyWindowSize);
       let currentHistoryMessages = [...effectiveMessages, apiUserMessage];
 
       if (compactedSummary) {

@@ -106,6 +106,7 @@ export interface ModelParameters {
   enableReasoning?: boolean; // 深度推理 (Reasoning)
   stream?: boolean; // 流式传输 (Stream)
   promptPerfect?: boolean; // 提示词优化 (Prompt Perfect)
+  context7?: boolean; // Context 7-turn history balancing
   limitMaxTokens?: boolean; // 是否限制最大 Token 数限制
   maxTokens?: number; // 最大 Token 数 (Max Tokens)
   temperature?: number; // 温度 / 随机性 (Temperature)

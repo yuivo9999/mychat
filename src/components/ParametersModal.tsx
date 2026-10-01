@@ -149,18 +149,20 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   const tooltips: Record<string, string> = {
     stream: '开启打字机逐字输出。关闭则等待整体生成完毕后一次性呈现。',
     promptPerfect: '开启后在发送给 AI 之前，由专用引擎自动将您的简短提示词重写为专业、结构清晰、完美的 Prompt 模板，提高生成质量。',
+    context7: '开启后系统将采用“智能 7 轮高精度平衡窗口”，精准维持最近的 7 轮对话为全保真高对比度上下文，超出部分自动由智能摘要压缩。兼顾超长对话记忆与极低 Token 资源消耗。',
     maxTokens: '单次回复允许生成的最大 Token 限制（4096 约合 2000 个汉字）。',
     temperature: '控制回答的多样性。0.0~0.3 严谨确定（代码/数学）；0.7~1.0 丰富发散（创意/写作）。',
     latex: '自动通过 KaTeX 引擎将数学公式/物理符号/微积分渲染为学术级排版。',
     lineNumbers: '在代码块左侧附带微弱灰度行号，长代码定位更清晰。',
     collapse: '代码超出高度时自动折叠收起，提供“展开完整代码”按钮，移动端浏览更流畅。',
     cursor: '打字机逐字生成时末尾伴随微闪的呼吸光标（▋），生成完毕自动隐去。',
-    compact: '缩小消息气泡上下边距、微调字号和间隙，大幅提升单屏信息展示密度。',
+    compact: '缩小消息气泡上下边距、微调字号 and 间隙，大幅提升单屏信息展示密度。',
     chatContextMemory: '允许 AI 记住历史对话中提取的重要需求与约定。关闭可大幅节省输入 Token 消耗。',
   };
 
   const streamVal = settings?.enableStreaming ?? parameters.stream ?? true;
   const promptPerfectVal = parameters.promptPerfect ?? false;
+  const context7Val = parameters.context7 ?? false;
 
   return (
     <div className="parameters-modal fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-150">
@@ -293,6 +295,46 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 <div
                   className={`bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
                     promptPerfectVal ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* 1.6. Context 7 轮高精度历史平衡 */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs">
+              <div className="space-y-0.5 pr-2">
+                <div className="flex items-center gap-1.5 relative">
+                  <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100">Context 7 历史平衡</span>
+                  <button
+                    type="button"
+                    onMouseEnter={() => setActiveTooltip('context7')}
+                    onMouseLeave={() => setActiveTooltip(null)}
+                    onClick={() => setActiveTooltip(activeTooltip === 'context7' ? null : 'context7')}
+                    className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                  >
+                    <Info className="w-3.5 h-3.5" />
+                  </button>
+                  {activeTooltip === 'context7' && (
+                    <div className="absolute left-0 top-6 z-20 w-56 p-2 bg-neutral-900 border border-neutral-700 text-[11px] text-neutral-300 rounded-xl shadow-xl">
+                      {tooltips.context7}
+                    </div>
+                  )}
+                </div>
+                <p className="param-item-sub text-[11px] text-neutral-500 dark:text-neutral-400">精准锁固 7 轮高保真上下文记忆</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  updateParam('context7', !context7Val);
+                }}
+                className={`param-toggle w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors shrink-0 ${
+                  context7Val ? 'bg-[#84cc16] bg-lime-500' : 'bg-neutral-300 dark:bg-neutral-800'
+                }`}
+              >
+                <div
+                  className={`bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    context7Val ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
               </button>
