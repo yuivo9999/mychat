@@ -112,11 +112,27 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [searchModelQuery, setSearchModelQuery] = useState('');
   const [modelToDelete, setModelToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const isComposingRef = useRef(false);
 
   // New Chat Popover Menu States (全新窗口 / 项目归档)
   const [isNewChatMenuOpen, setIsNewChatMenuOpen] = useState(false);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const newChatMenuRef = useRef<HTMLDivElement>(null);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Safely dismiss virtual keyboard without causing jitter
+  const dismissKeyboard = useCallback(() => {
+    if (textareaRef.current) {
+      textareaRef.current.blur();
+    }
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -132,10 +148,6 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isNewChatMenuOpen]);
-
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Sync external pendingPrompt and pendingAttachments
   useEffect(() => {
@@ -278,7 +290,17 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     // 1. Prevent sending if Chinese/Japanese/Korean input IME is active and composing
-    if (e.nativeEvent.isComposing) return;
+    if (isComposingRef.current || e.nativeEvent.isComposing) return;
+
+    if (e.key === 'Escape') {
+      if (isNewChatMenuOpen) {
+        setIsNewChatMenuOpen(false);
+        setShowProjectPicker(false);
+      } else {
+        dismissKeyboard();
+      }
+      return;
+    }
 
     if (settings.enterToSend) {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -350,7 +372,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         <div className="flex items-center gap-1.5 select-none">
           <button
             type="button"
-            onClick={handleIncreaseFontSize}
+            onClick={() => {
+              dismissKeyboard();
+              handleIncreaseFontSize();
+            }}
             className="w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full flex items-center justify-center bg-white/90 dark:bg-neutral-900/90 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200/80 dark:border-neutral-800 shadow-2xs transition active:scale-90 cursor-pointer"
             title={`增大聊天字体 (+1px, 当前: ${currentFontSize}px)`}
           >
@@ -358,7 +383,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           </button>
           <button
             type="button"
-            onClick={handleDecreaseFontSize}
+            onClick={() => {
+              dismissKeyboard();
+              handleDecreaseFontSize();
+            }}
             className="w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full flex items-center justify-center bg-white/90 dark:bg-neutral-900/90 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200/80 dark:border-neutral-800 shadow-2xs transition active:scale-90 cursor-pointer"
             title={`减小聊天字体 (-1px, 当前: ${currentFontSize}px)`}
           >
@@ -371,10 +399,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           <button
             type="button"
             onClick={() => {
-              // Collapse virtual keyboard if any input/textarea is currently focused
-              if (document.activeElement instanceof HTMLElement) {
-                document.activeElement.blur();
-              }
+              dismissKeyboard();
               setModelDropdownOpen(!modelDropdownOpen);
             }}
             className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full bg-white/90 dark:bg-neutral-900/90 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200/80 dark:border-neutral-800 text-xs font-mono font-medium transition cursor-pointer shadow-2xs max-w-[280px] sm:max-w-[360px]"
@@ -533,9 +558,11 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative ${isNewChatMenuOpen ? 'z-30' : 'z-10'} flex flex-col rounded-2xl border bg-white dark:bg-neutral-900 transition-all shadow-md ${
+        className={`relative ${isNewChatMenuOpen ? 'z-30' : 'z-10'} flex flex-col rounded-2xl border bg-white dark:bg-neutral-900 transition-all duration-200 shadow-md ${
           isDragging 
             ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/20 dark:bg-indigo-950/20' 
+            : isFocused
+            ? 'border-indigo-500/70 dark:border-indigo-500/60 ring-3 ring-indigo-500/15 dark:ring-indigo-400/15 shadow-lg'
             : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700'
         }`}
       >
@@ -553,7 +580,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
           <div className="flex items-center gap-3">
             {/* Reasoning Toggle: Minimalist switch */}
             <div 
-              onClick={() => onUpdateParameters({ ...parameters, enableReasoning: !parameters.enableReasoning })}
+              onClick={() => {
+                dismissKeyboard();
+                onUpdateParameters({ ...parameters, enableReasoning: !parameters.enableReasoning });
+              }}
               className="flex items-center gap-1.5 cursor-pointer select-none"
               title={parameters.enableReasoning ? '思考模式: 已开启 (Reasoning ON)' : '思考模式: 已关闭 (Reasoning OFF)'}
             >
@@ -572,7 +602,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             {/* Agent Toggle: Minimalist switch (right next to 思考模式, matching Section 4) */}
             {onToggleAgentMode && (
               <div 
-                onClick={() => onToggleAgentMode(!agentMode)}
+                onClick={() => {
+                  dismissKeyboard();
+                  onToggleAgentMode(!agentMode);
+                }}
                 className="flex items-center gap-1.5 cursor-pointer select-none"
                 title={agentMode ? 'Agent 模式: 已开启 (AI 可自主调用工具读写、创建与修改工作区)' : 'Agent 模式: 已关闭 (普通聊天/工作区只读模式，不执行任何写操作)'}
               >
@@ -597,6 +630,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    dismissKeyboard();
                     setIsNewChatMenuOpen(!isNewChatMenuOpen);
                     setShowProjectPicker(false);
                   }}
@@ -623,7 +657,11 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                         <button
                           type="button"
                           onClick={() => {
+                            dismissKeyboard();
                             setIsNewChatMenuOpen(false);
+                            setContent('');
+                            setAttachments([]);
+                            if (textareaRef.current) textareaRef.current.style.height = '100px';
                             onNewChat();
                           }}
                           className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left cursor-pointer group"
@@ -645,6 +683,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                         <button
                           type="button"
                           onClick={() => {
+                            dismissKeyboard();
                             setShowProjectPicker(true);
                           }}
                           className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left cursor-pointer group"
@@ -691,6 +730,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => {
+                                    dismissKeyboard();
                                     setIsNewChatMenuOpen(false);
                                     setShowProjectPicker(false);
                                     onCreateProject();
@@ -707,8 +747,12 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                                 key={proj.id}
                                 type="button"
                                 onClick={() => {
+                                  dismissKeyboard();
                                   setIsNewChatMenuOpen(false);
                                   setShowProjectPicker(false);
+                                  setContent('');
+                                  setAttachments([]);
+                                  if (textareaRef.current) textareaRef.current.style.height = '100px';
                                   onNewChatInProject?.(proj.id);
                                 }}
                                 className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left cursor-pointer group"
@@ -735,6 +779,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
                             <button
                               type="button"
                               onClick={() => {
+                                dismissKeyboard();
                                 setIsNewChatMenuOpen(false);
                                 setShowProjectPicker(false);
                                 onCreateProject();
@@ -756,7 +801,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             {onOpenModelConfig && (
               <button
                 type="button"
-                onClick={onOpenModelConfig}
+                onClick={() => {
+                  dismissKeyboard();
+                  onOpenModelConfig();
+                }}
                 className="p-1 rounded-lg hover:bg-orange-500/15 text-orange-600 dark:text-orange-400 transition cursor-pointer"
                 title="AI 模型与服务商配置"
               >
@@ -766,7 +814,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
             <button
               type="button"
-              onClick={onOpenParameters}
+              onClick={() => {
+                dismissKeyboard();
+                onOpenParameters?.();
+              }}
               className="p-1 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-[#84cc16] dark:hover:text-[#84cc16] transition cursor-pointer"
               title="模型运行参数 (Parameters)"
             >
@@ -817,12 +868,25 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            onFocus={() => {
+              setIsFocused(true);
+              setIsNewChatMenuOpen(false);
+              setModelDropdownOpen(false);
+              setShowProjectPicker(false);
+            }}
+            onBlur={() => setIsFocused(false)}
+            onCompositionStart={() => {
+              isComposingRef.current = true;
+            }}
+            onCompositionEnd={() => {
+              isComposingRef.current = false;
+            }}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder={
               isGenerating 
                 ? 'AI 正在生成中...' 
-                : '给 AI 发送消息...'
+                : '给 AI 发送消息... (Enter 发送, Shift+Enter 换行)'
             }
             rows={3}
             className="w-full bg-transparent resize-none border-0 text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 outline-hidden leading-relaxed min-h-[100px] max-h-[360px] font-sans"
@@ -852,7 +916,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                dismissKeyboard();
+                fileInputRef.current?.click();
+              }}
               className="p-1.5 rounded-xl text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center justify-center cursor-pointer"
               title="上传文档/代码/文件 (TXT, PDF, MD, JSON, CSV, DOCX)"
             >
@@ -861,7 +928,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
 
             <button
               type="button"
-              onClick={() => imageInputRef.current?.click()}
+              onClick={() => {
+                dismissKeyboard();
+                imageInputRef.current?.click();
+              }}
               className="p-1.5 rounded-xl text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center justify-center cursor-pointer"
               title="上传图片 (PNG, JPG, WEBP, GIF)"
             >
@@ -871,7 +941,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             {/* 访问网络按钮 (默认关闭) */}
             <button
               type="button"
-              onClick={() => onToggleWebAccess?.(!webAccessEnabled)}
+              onClick={() => {
+                dismissKeyboard();
+                onToggleWebAccess?.(!webAccessEnabled);
+              }}
               className={`p-1.5 rounded-xl transition flex items-center justify-center select-none cursor-pointer ${
                 webAccessEnabled
                   ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 font-medium shadow-2xs'
@@ -890,7 +963,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             {onOpenPreview && (
               <button
                 type="button"
-                onClick={onOpenPreview}
+                onClick={() => {
+                  dismissKeyboard();
+                  onOpenPreview();
+                }}
                 className="p-1.5 rounded-xl text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center justify-center cursor-pointer"
                 title="打开工作区实时预览 (Workspace Preview)"
               >
@@ -902,7 +978,10 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             {onOpenAuditHistory && (
               <button
                 type="button"
-                onClick={onOpenAuditHistory}
+                onClick={() => {
+                  dismissKeyboard();
+                  onOpenAuditHistory();
+                }}
                 className="p-1.5 rounded-xl text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center justify-center cursor-pointer"
                 title="查看工作区 AI 文件修改记录 (最多保留 1000 条审计记录)"
               >

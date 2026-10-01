@@ -48,6 +48,14 @@ export const MessageList: React.FC<MessageListProps> = ({
     setShowScrollBottom(!isNearBottom);
   };
 
+  // Dismiss keyboard when user swipes or touches the message list
+  const handleTouchDismiss = () => {
+    const active = document.activeElement;
+    if (active instanceof HTMLTextAreaElement || active instanceof HTMLInputElement) {
+      active.blur();
+    }
+  };
+
   const scrollToBottom = (smooth = true) => {
     bottomRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
   };
@@ -62,7 +70,8 @@ export const MessageList: React.FC<MessageListProps> = ({
     <div 
       ref={containerRef}
       onScroll={handleScroll}
-      className={`flex-1 overflow-y-auto relative flex flex-col ${settings.compactMode ? 'compact-mode' : ''}`}
+      onTouchStart={handleTouchDismiss}
+      className={`flex-1 overflow-y-auto overscroll-contain relative flex flex-col ${settings.compactMode ? 'compact-mode' : ''}`}
       style={{
         '--chat-font-size': `${settings.chatFontSizePx ?? 15}px`,
         fontSize: `${settings.chatFontSizePx ?? 15}px`,

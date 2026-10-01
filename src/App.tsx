@@ -2141,7 +2141,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans">
+    <div className="flex h-[100dvh] max-h-[100dvh] w-full overflow-hidden bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans">
       {/* Left Collapsible Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
