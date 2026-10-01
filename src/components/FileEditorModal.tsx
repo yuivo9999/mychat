@@ -18,6 +18,7 @@ import {
 import { WorkspaceFile } from '../types/workspace';
 import { formatFileSize, downloadWorkspaceFile } from '../services/fileParser';
 import { renderMarkdown } from '../services/markdown';
+import { ExcelEditorModal } from './ExcelEditorModal';
 
 interface FileEditorModalProps {
   isOpen: boolean;
@@ -159,6 +160,18 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
       gutterRef.current.scrollTop = textareaRef.current.scrollTop;
     }
   };
+
+  // Delegate Excel format files (.xlsx, .xls, .csv, .tsv) to dedicated Excel Editor Component
+  if (isOpen && file && file.path.toLowerCase().match(/\.(xlsx|xls|csv|tsv)$/)) {
+    return (
+      <ExcelEditorModal
+        isOpen={isOpen}
+        file={file}
+        onClose={onClose}
+        onSave={onSave}
+      />
+    );
+  }
 
   // Support Tab key indentation
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
