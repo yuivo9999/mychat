@@ -1025,7 +1025,8 @@ export default function App() {
           wsToOperate,
           targetConv.chatContext,
           effectiveSystemPrompt,
-          isDiagnosisMode
+          isDiagnosisMode,
+          activeParams.executeScript
         );
       } else {
         // Pure chat mode / Agent OFF: only append chat's own private memory if present AND enabled, ZERO workspace tools protocol or directory trees

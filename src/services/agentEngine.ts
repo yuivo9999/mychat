@@ -179,7 +179,8 @@ export function buildAgentSystemPrompt(
   workspace: Workspace | null,
   chatContext?: ChatContext,
   baseSystemPrompt?: string,
-  isDiagnosisMode?: boolean
+  isDiagnosisMode?: boolean,
+  executeScriptEnabled?: boolean
 ): string {
   const customPrompt = baseSystemPrompt || '你是一个专业严谨的高级编程助手。';
 
@@ -258,14 +259,20 @@ ${getWorkspaceDirectoryTree(workspace).slice(0, 1500)}${Object.keys(workspace.fi
 \`\`\`
 `;
 
+  const corePrinciples = executeScriptEnabled
+    ? `## 核心运行原则与边界声明（已获授权终端执行模式）:
+1. **支持并鼓励执行项目代码与终端命令**：您的服务器端终端执行权限已通过安全面板对当前 Agent 开启。如果您编写了代码、需要编译打包（如 npm run build）、运行测试或者执行 Python/Node.js 脚本，您可以通过调用 \`run_command\` 工具执行任意终端命令，控制台会实时反馈执行成果与退出状态，您可以据此直接优化代码，闭环解决问题。
+2. **工具规范**：您可以连贯组合代码修改与运行验证，直到编译完全通过或脚本运行产出正确结果。`
+    : `## 核心运行原则与边界声明（必须严格遵守）:
+1. **不执行项目代码**：当前权限未开启。本环境是一个安全纯净的代码分析与修改工作区。你绝对不能也无法在服务器端执行任何代码、命令行、测试、npm run/test 等。
+2. **职责分工**：你负责阅读、搜索代码并做出精确优雅的修改；由用户在本地自行运行和测试。若用户测试遇到错误，用户会将错误信息贴回本聊天中由你继续分析与修改。`;
+
   return `${customPrompt}
 
 ${workspaceSummary}
 ${chatPrivateMemory}
 ${isDiagnosisMode ? diagnosisProtocol : ''}
-## 核心运行原则与边界声明（必须严格遵守）:
-1. **不执行项目代码**：本环境是一个安全纯净的代码分析与修改工作区。你绝对不能也无法在服务器端执行任何代码、命令行、测试、npm run/test 等。
-2. **职责分工**：你负责阅读、搜索代码并做出精确优雅的修改；由用户在本地自行运行和测试。若用户测试遇到错误，用户会将错误信息贴回本聊天中由你继续分析与修改。
+${corePrinciples}
 
 ## 🤖 多轮自主探索、跨文件规划与多文件协同修改规范 (必须连贯执行):
 当 Agent 模式开启时，系统支持你在一个交互任务中【多次连续被调用（支持最高 12 轮自主交互）】。你应充分利用多轮自主迭代的能力，按部就班地完成从“查阅探查”到“多文件协同修改”的全闭环：
