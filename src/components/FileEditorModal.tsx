@@ -278,7 +278,7 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-sm text-neutral-100 truncate" title={file.path}>
+                <h3 className="file-editor-filename font-bold text-sm text-white truncate" title={file.path}>
                   {file.path}
                 </h3>
                 {isModified && (
@@ -368,10 +368,10 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('preview')}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
+                  className={`md-preview-tab px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 text-white ${
                     activeTab === 'preview'
-                      ? 'bg-neutral-800 text-neutral-100 shadow-xs'
-                      : 'text-neutral-400 hover:text-neutral-200'
+                      ? 'bg-neutral-800 text-white shadow-xs'
+                      : 'text-white hover:text-white'
                   }`}
                 >
                   <Eye className="w-3.5 h-3.5 shrink-0" />

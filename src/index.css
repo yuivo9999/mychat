@@ -981,3 +981,14 @@ html.theme-vermilion-textile,
   color: #6E4E18 !important;
 }
 
+/* 现代1与古典1皮肤下文件编辑器文件名与MD预览标签文字强制白色 */
+.theme-classic1 .file-editor-modal .file-editor-filename,
+.theme-modern1 .file-editor-modal .file-editor-filename,
+.theme-classic1 .file-editor-modal .md-preview-tab,
+.theme-modern1 .file-editor-modal .md-preview-tab,
+.theme-classic1 .file-editor-modal .md-preview-tab span,
+.theme-modern1 .file-editor-modal .md-preview-tab span {
+  color: #ffffff !important;
+}
+
+
