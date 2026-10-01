@@ -812,24 +812,50 @@ html.theme-sangtian-shanhe body {
   border-bottom: 1px solid #B18A4A !important;
 }
 
-/* 统一工作区抽屉头部所有 5 个操作按钮的背景、边框、高度与图标色彩 (Exact alignment & theme contrast) */
+/* 统一工作区抽屉头部所有 5 个操作按钮的背景、边框、高度与高对比度图标色彩 (Sangtian Shanhe Theme High Contrast) */
 .theme-sangtian-shanhe .workspace-drawer-header-btn {
-  background: rgba(255, 245, 220, 0.16) !important;
-  border: 1px solid #B18A4A !important;
-  color: #FFF5DC !important;
+  background: #FFF5DC !important;
+  border: 1px solid #B58E55 !important;
+  color: #3A261A !important;
   border-radius: 12px !important;
   height: 36px !important;
-  box-shadow: 0 1px 3px rgba(58, 38, 26, 0.25) !important;
+  box-shadow: 0 1px 4px rgba(58, 38, 26, 0.22) !important;
+  transition: all 0.15s ease-in-out !important;
 }
 
 .theme-sangtian-shanhe .workspace-drawer-header-btn:hover {
-  background: rgba(255, 245, 220, 0.3) !important;
-  border-color: #EAD8AD !important;
-  color: #FFFFFF !important;
+  background: #FFFFFF !important;
+  border-color: #8C5F2B !important;
+  color: #3A261A !important;
+  box-shadow: 0 2px 8px rgba(58, 38, 26, 0.3) !important;
+}
+
+.theme-sangtian-shanhe .workspace-drawer-header-btn span {
+  color: #3A261A !important;
+}
+
+.theme-sangtian-shanhe .workspace-drawer-header-btn span.text-neutral-400,
+.theme-sangtian-shanhe .workspace-drawer-header-btn span.text-\[9px\] {
+  color: #7A5835 !important;
 }
 
 .theme-sangtian-shanhe .workspace-drawer-header-btn svg {
-  color: #F4E8C8 !important;
+  color: #3A261A !important;
+  stroke: #3A261A !important;
+}
+
+/* Layers Icon Vermilion Accent */
+.theme-sangtian-shanhe .workspace-drawer-header-btn svg.text-indigo-600,
+.theme-sangtian-shanhe .workspace-drawer-header-btn svg.text-indigo-400,
+.theme-sangtian-shanhe .workspace-drawer-header-btn svg.text-indigo-500 {
+  color: #B83B24 !important;
+  stroke: #B83B24 !important;
+}
+
+/* Dropdown Chevron Icon */
+.theme-sangtian-shanhe .workspace-drawer-header-btn svg.text-neutral-400 {
+  color: #7A5835 !important;
+  stroke: #7A5835 !important;
 }
 
 .theme-sangtian-shanhe .workspace-drawer input {

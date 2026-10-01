@@ -134,6 +134,17 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
     }
   }, []);
 
+  // Prevent virtual keyboard scroll offset sticky bug on mobile (iOS/Android Safari/Firefox/Chrome)
+  useEffect(() => {
+    const handleWindowScrollReset = () => {
+      if (window.scrollY !== 0) {
+        window.scrollTo(0, 0);
+      }
+    };
+    window.addEventListener('scroll', handleWindowScrollReset, { passive: true });
+    return () => window.removeEventListener('scroll', handleWindowScrollReset);
+  }, []);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (newChatMenuRef.current && !newChatMenuRef.current.contains(event.target as Node)) {
@@ -874,7 +885,17 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
               setModelDropdownOpen(false);
               setShowProjectPicker(false);
             }}
-            onBlur={() => setIsFocused(false)}
+            onBlur={() => {
+              setIsFocused(false);
+              // Force-reset viewport scroll position on focus loss to fix sticky keyboard blank space bug on iOS/mobile browsers
+              setTimeout(() => {
+                window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                document.body.scrollTop = 0;
+                if (document.documentElement) {
+                  document.documentElement.scrollTop = 0;
+                }
+              }, 40);
+            }}
             onCompositionStart={() => {
               isComposingRef.current = true;
             }}
