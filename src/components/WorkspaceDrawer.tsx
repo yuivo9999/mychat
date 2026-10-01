@@ -933,7 +933,7 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                           return (
                             <div
                               key={w.id}
-                              className="flex items-center gap-1.5 p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-indigo-500 animate-in fade-in duration-150"
+                              className="flex items-center gap-1.5 min-w-0 p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-indigo-500 animate-in fade-in duration-150"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <input
@@ -946,12 +946,12 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                                 }}
                                 autoFocus
                                 placeholder="输入工作区名称..."
-                                className="flex-1 px-2 py-1 text-xs bg-transparent outline-hidden text-neutral-900 dark:text-neutral-100 font-medium"
+                                className="min-w-0 flex-1 px-2 py-1 text-xs bg-transparent outline-hidden text-neutral-900 dark:text-neutral-100 font-medium"
                               />
                               <button
                                 type="button"
                                 onClick={() => handleSaveWorkspaceRename(w.id)}
-                                className="p-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition cursor-pointer"
+                                className="p-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition cursor-pointer shrink-0"
                                 title="保存名称"
                               >
                                 <Check className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -959,7 +959,7 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setEditingWorkspaceId(null)}
-                                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition cursor-pointer"
+                                className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition cursor-pointer shrink-0"
                                 title="取消"
                               >
                                 <X className="w-3.5 h-3.5" />
@@ -1145,7 +1145,7 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
               <button
                 type="button"
                 onClick={handleDownloadZip}
-                className="workspace-drawer-header-btn h-9 px-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-800 dark:text-neutral-100 transition cursor-pointer shrink-0 shadow-2xs flex items-center justify-center gap-1"
+                className="workspace-drawer-header-btn h-9 w-9 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-800 dark:text-neutral-100 transition cursor-pointer shrink-0 shadow-2xs flex items-center justify-center"
                 title="打包下载整工作区 ZIP"
               >
                 <Download className="w-4 h-4 text-neutral-700 dark:text-neutral-200 stroke-[2] shrink-0" />
@@ -1155,7 +1155,7 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="workspace-drawer-header-btn h-9 px-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-800 dark:text-neutral-100 transition cursor-pointer shrink-0 shadow-2xs flex items-center justify-center gap-1"
+                className="workspace-drawer-header-btn h-9 w-9 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-800 dark:text-neutral-100 transition cursor-pointer shrink-0 shadow-2xs flex items-center justify-center"
                 title="关闭工作区"
               >
                 <X className="w-4 h-4 text-neutral-700 dark:text-neutral-200 stroke-[2] shrink-0" />

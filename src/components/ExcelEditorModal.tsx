@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { WorkspaceFile } from '../types/workspace';
-import { downloadWorkspaceFile, formatFileSize } from '../services/fileParser';
+import { downloadWorkspaceFile, formatFileSize, convertUtf16ToUtf8 } from '../services/fileParser';
 
 interface ExcelEditorModalProps {
   isOpen: boolean;
@@ -45,8 +45,8 @@ function indexToColLetter(index: number): string {
 export function parseCsvToGrid(csvText: string): (string | number | boolean)[][] {
   if (!csvText || !csvText.trim()) return [['']];
   
-  // Remove UTF-8 BOM if present
-  let cleanText = csvText.charCodeAt(0) === 0xFEFF ? csvText.slice(1) : csvText;
+  // Clean UTF-16LE / UTF-16 BOMs and null-bytes if present
+  let { text: cleanText } = convertUtf16ToUtf8(csvText);
   
   // Auto-detect delimiter: comma (,), semicolon (;), tab (\t), pipe (|)
   const firstLine = cleanText.split(/\r?\n/)[0] || '';
@@ -147,6 +147,20 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
   const [newSheetName, setNewSheetName] = useState<string>('');
   const [showAddSheetInput, setShowAddSheetInput] = useState<boolean>(false);
+  const [encodingConvertedToast, setEncodingConvertedToast] = useState<boolean>(false);
+
+  // Convert raw file content from UTF-16 / UTF-16LE to clean UTF-8
+  const handleConvertToUtf8 = () => {
+    if (!file) return;
+    const { text } = convertUtf16ToUtf8(file.content || '');
+    const newGrid = parseCsvToGrid(text);
+    setWorkbookSheets(prev => ({
+      ...prev,
+      [activeSheetName || 'Sheet1']: newGrid,
+    }));
+    setEncodingConvertedToast(true);
+    setTimeout(() => setEncodingConvertedToast(false), 3500);
+  };
 
   const cellInputRef = useRef<HTMLInputElement>(null);
 
@@ -486,6 +500,11 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
                     ✓ 保存成功
                   </span>
                 )}
+                {encodingConvertedToast && (
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-400 text-black animate-in fade-in">
+                    ✓ 已转为 UTF-8 编码，请点击“保存表格”
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-neutral-400 truncate mt-0.5">
                 {file.path} ({formatFileSize(file.size || file.content.length)})
@@ -495,6 +514,16 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
 
           {/* Top Actions */}
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleConvertToUtf8}
+              className="px-3 py-1.5 rounded-xl border border-amber-500/40 hover:border-amber-500 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer active:scale-95 shrink-0"
+              title="将 UTF-16 / UTF-16LE / 空字节 BOM 标记转为标准 UTF-8 编码"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>转 UTF-8</span>
+            </button>
+
             <button
               type="button"
               onClick={handleSaveToWorkspace}

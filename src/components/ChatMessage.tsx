@@ -163,6 +163,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       useCodeBox: settings.useCodeBox ?? true,
       useTextBox: settings.useTextBox ?? true,
       onlyParseMarkdownTables: settings.onlyParseMarkdownTables ?? false,
+      mdHeadings: settings.mdHeadings ?? true,
+      mdTextStyle: settings.mdTextStyle ?? true,
+      mdListsAndQuotes: settings.mdListsAndQuotes ?? true,
+      mdTables: settings.mdTables ?? true,
+      mdLinksAndImages: settings.mdLinksAndImages ?? true,
+      codeHeaderBar: settings.codeHeaderBar ?? true,
+      textBoxBorder: settings.textBoxBorder ?? true,
+      textBoxBackground: settings.textBoxBackground ?? true,
+      latexInline: settings.latexInline ?? true,
+      latexBlock: settings.latexBlock ?? true,
     });
   }, [
     mainContent, 

@@ -13,10 +13,12 @@ import {
   Download,
   AlertTriangle,
   Sparkles,
-  WrapText
+  WrapText,
+  RefreshCw,
+  Info
 } from 'lucide-react';
 import { WorkspaceFile } from '../types/workspace';
-import { formatFileSize, downloadWorkspaceFile } from '../services/fileParser';
+import { formatFileSize, downloadWorkspaceFile, convertUtf16ToUtf8 } from '../services/fileParser';
 import { renderMarkdown } from '../services/markdown';
 import { ExcelEditorModal } from './ExcelEditorModal';
 
@@ -83,8 +85,17 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
   const [isSavedToast, setIsSavedToast] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [encodingConvertedToast, setEncodingConvertedToast] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const gutterRef = useRef<HTMLDivElement>(null);
+
+  // Convert UTF-16 / UTF-16LE or null-byte-padded text to UTF-8
+  const handleConvertToUtf8 = () => {
+    const { text } = convertUtf16ToUtf8(content);
+    setContent(text);
+    setEncodingConvertedToast(true);
+    setTimeout(() => setEncodingConvertedToast(false), 3500);
+  };
 
   // Sync content when file opens
   useEffect(() => {
@@ -304,32 +315,32 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
         </div>
 
         {/* Toolbar & View Tabs */}
-        <div className="px-4 py-2 bg-neutral-950/80 border-b border-neutral-800/80 flex items-center justify-between text-xs text-neutral-400 shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="px-4 py-2 bg-neutral-950/80 border-b border-neutral-800/80 flex items-center justify-between text-xs text-neutral-400 shrink-0 gap-2 overflow-x-auto scrollbar-none">
+          <div className="flex items-center gap-2 shrink-0">
             {langInfo.isMarkdown && (
-              <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded-lg p-0.5">
+              <div className="flex items-center bg-neutral-900 border border-neutral-800 rounded-lg p-0.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => setActiveTab('edit')}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
                     activeTab === 'edit'
                       ? 'bg-neutral-800 text-neutral-100 shadow-xs'
                       : 'text-neutral-400 hover:text-neutral-200'
                   }`}
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
+                  <Edit3 className="w-3.5 h-3.5 shrink-0" />
                   <span>编辑内容</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('preview')}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
                     activeTab === 'preview'
                       ? 'bg-neutral-800 text-neutral-100 shadow-xs'
                       : 'text-neutral-400 hover:text-neutral-200'
                   }`}
                 >
-                  <Eye className="w-3.5 h-3.5" />
+                  <Eye className="w-3.5 h-3.5 shrink-0" />
                   <span>MD 渲染预览</span>
                 </button>
               </div>
@@ -338,19 +349,30 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
             <button
               type="button"
               onClick={() => setWordWrap(!wordWrap)}
-              className={`px-2.5 py-1 rounded-lg border text-xs flex items-center gap-1.5 transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg border text-xs flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
                 wordWrap
                   ? 'border-neutral-700 bg-neutral-800 text-neutral-200'
                   : 'border-neutral-800 bg-neutral-900/60 text-neutral-500'
               }`}
               title="自动换行切换"
             >
-              <WrapText className="w-3.5 h-3.5" />
+              <WrapText className="w-3.5 h-3.5 shrink-0" />
               <span>自动换行: {wordWrap ? '开' : '关'}</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Convert UTF-16 to UTF-8 Button */}
+            <button
+              type="button"
+              onClick={handleConvertToUtf8}
+              className="px-2.5 py-1 rounded-lg border border-amber-500/40 hover:border-amber-500 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-medium text-xs flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0"
+              title="将 UTF-16 / UTF-16LE / 空字节 BOM 标记转为标准 UTF-8 并写回保存"
+            >
+              <RefreshCw className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+              <span>转 UTF-8</span>
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -358,24 +380,48 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
                   downloadWorkspaceFile(file.path, content);
                 }
               }}
-              className="px-2.5 py-1 rounded-lg border border-neutral-800 hover:border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 transition cursor-pointer flex items-center gap-1.5"
+              className="px-2.5 py-1 rounded-lg border border-neutral-800 hover:border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0"
               title="下载保存原格式文件到本地"
             >
-              <Download className="w-3.5 h-3.5" />
+              <Download className="w-3.5 h-3.5 shrink-0" />
               <span>下载本文件</span>
             </button>
 
             <button
               type="button"
               onClick={handleCopyAll}
-              className="px-2.5 py-1 rounded-lg border border-neutral-800 hover:border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 transition cursor-pointer flex items-center gap-1.5"
+              className="px-2.5 py-1 rounded-lg border border-neutral-800 hover:border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 transition cursor-pointer flex items-center gap-1.5 whitespace-nowrap shrink-0"
               title="复制全文本"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-lime-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-lime-400 shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
               <span>{copied ? '已复制!' : '复制全文本'}</span>
             </button>
           </div>
         </div>
+
+        {/* Auto Detection Banner for UTF-16 / LE */}
+        {(content.includes('\x00') || content.charCodeAt(0) === 0xFEFF || content.charCodeAt(0) === 0xFFFE) && (
+          <div className="px-4 py-1.5 bg-amber-500/15 border-b border-amber-500/30 text-amber-300 text-xs flex items-center justify-between shrink-0 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>检测到此文件包含 UTF-16 / UTF-16LE 空字节或 BOM 标记</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleConvertToUtf8}
+              className="px-2.5 py-0.5 rounded-md bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-[11px] transition cursor-pointer shrink-0 shadow-xs"
+            >
+              一键转为 UTF-8 格式
+            </button>
+          </div>
+        )}
+
+        {/* Encoding Converted Toast */}
+        {encodingConvertedToast && (
+          <div className="px-4 py-1.5 bg-emerald-500/20 border-b border-emerald-500/40 text-emerald-300 text-xs flex items-center justify-between shrink-0 animate-in fade-in">
+            <span>✓ 已成功转为标准 UTF-8 编码！请点击右上角“保存”写回工作区。</span>
+          </div>
+        )}
 
         {/* Editor Body */}
         <div className="flex-1 min-h-0 bg-neutral-950 relative flex overflow-hidden">

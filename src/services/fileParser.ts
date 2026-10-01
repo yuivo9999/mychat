@@ -411,3 +411,50 @@ export function downloadWorkspaceFile(filePath: string, content: string): void {
     URL.revokeObjectURL(url);
   }
 }
+
+/**
+ * Converts UTF-16 / UTF-16LE / UTF-16BE or null-byte-padded text string to clean UTF-8 string.
+ */
+export function convertUtf16ToUtf8(content: string): { text: string; changed: boolean } {
+  if (!content) return { text: '', changed: false };
+
+  let text = content;
+  let changed = false;
+
+  // 1. Check for UTF-16 BOM (\uFEFF or \uFFFE)
+  if (text.charCodeAt(0) === 0xFEFF || text.charCodeAt(0) === 0xFFFE) {
+    text = text.slice(1);
+    changed = true;
+  }
+
+  // 2. Check for null byte padding (UTF-16LE read as 8-bit string)
+  if (text.includes('\x00')) {
+    const bytes = new Uint8Array(text.length);
+    for (let i = 0; i < text.length; i++) {
+      bytes[i] = text.charCodeAt(i) & 0xff;
+    }
+
+    try {
+      const decoded = new TextDecoder('utf-16le', { fatal: false }).decode(bytes);
+      if (decoded && decoded.length > 0) {
+        text = decoded.replace(/^\uFEFF/, '');
+        changed = true;
+      } else {
+        text = text.replace(/\x00/g, '');
+        changed = true;
+      }
+    } catch {
+      text = text.replace(/\x00/g, '');
+      changed = true;
+    }
+  }
+
+  // 3. Strip residual BOM or replacement characters
+  const cleaned = text.replace(/^\uFEFF/, '').replace(/\x00/g, '');
+  if (cleaned !== text) {
+    text = cleaned;
+    changed = true;
+  }
+
+  return { text, changed };
+}

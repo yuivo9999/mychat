@@ -213,16 +213,16 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
             </div>
 
             {/* 1. 流式输出 */}
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80">
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs">
               <div className="space-y-0.5 pr-2">
                 <div className="flex items-center gap-1.5 relative">
-                  <span className="param-item-label text-xs font-semibold text-neutral-100">流式输出</span>
+                  <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100">流式输出</span>
                   <button
                     type="button"
                     onMouseEnter={() => setActiveTooltip('stream')}
                     onMouseLeave={() => setActiveTooltip(null)}
                     onClick={() => setActiveTooltip(activeTooltip === 'stream' ? null : 'stream')}
-                    className="text-neutral-500 hover:text-neutral-300"
+                    className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
                   >
                     <Info className="w-3.5 h-3.5" />
                   </button>
@@ -232,7 +232,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                     </div>
                   )}
                 </div>
-                <p className="param-item-sub text-[11px] text-neutral-400">逐字实时呈现回答</p>
+                <p className="param-item-sub text-[11px] text-neutral-500 dark:text-neutral-400">逐字实时呈现回答</p>
               </div>
 
               <button
@@ -245,11 +245,11 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   }
                 }}
                 className={`param-toggle w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors shrink-0 ${
-                  streamVal ? 'bg-[#84cc16] bg-lime-500' : 'bg-neutral-800'
+                  streamVal ? 'bg-[#84cc16] bg-lime-500' : 'bg-neutral-300 dark:bg-neutral-800'
                 }`}
               >
                 <div
-                  className={`bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  className={`bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
                     streamVal ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
@@ -257,16 +257,16 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
             </div>
 
             {/* 2. 采样温度 */}
-            <div className="space-y-2 p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80">
+            <div className="space-y-2 p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 relative">
-                  <span className="param-item-label text-xs font-semibold text-neutral-200">采样温度</span>
+                  <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100">采样温度</span>
                   <button
                     type="button"
                     onMouseEnter={() => setActiveTooltip('temperature')}
                     onMouseLeave={() => setActiveTooltip(null)}
                     onClick={() => setActiveTooltip(activeTooltip === 'temperature' ? null : 'temperature')}
-                    className="text-neutral-500 hover:text-neutral-300"
+                    className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
                   >
                     <Info className="w-3.5 h-3.5" />
                   </button>
@@ -284,7 +284,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   step={0.05}
                   value={parameters.temperature ?? 0.7}
                   onChange={(e) => updateParam('temperature', parseFloat(e.target.value) || 0)}
-                  className="param-input w-16 text-right bg-neutral-900 border border-neutral-700 focus:border-lime-500 text-white px-2 py-0.5 rounded-lg text-xs font-mono outline-hidden"
+                  className="param-input w-16 text-right bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 focus:border-lime-500 text-neutral-900 dark:text-white px-2 py-0.5 rounded-lg text-xs font-mono outline-hidden"
                 />
               </div>
 
@@ -296,7 +296,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   step={0.05}
                   value={parameters.temperature ?? 0.7}
                   onChange={(e) => updateParam('temperature', parseFloat(e.target.value))}
-                  className="param-slider w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-lime-400"
+                  className="param-slider w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-lime-400"
                 />
                 <div className="flex justify-between text-[10px] param-slider-ticks text-neutral-500 font-mono mt-1 select-none">
                   <span>0 (代码/严谨)</span>
@@ -307,16 +307,16 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
             </div>
 
             {/* 3. 最大生成长度 */}
-            <div className="space-y-2 p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80">
+            <div className="space-y-2 p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 relative min-w-0">
-                  <span className="param-item-label text-xs font-semibold text-neutral-200 truncate">最大 Token 限制</span>
+                  <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 truncate">最大 Token 限制</span>
                   <button
                     type="button"
                     onMouseEnter={() => setActiveTooltip('maxTokens')}
                     onMouseLeave={() => setActiveTooltip(null)}
                     onClick={() => setActiveTooltip(activeTooltip === 'maxTokens' ? null : 'maxTokens')}
-                    className="text-neutral-500 hover:text-neutral-300 shrink-0"
+                    className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 shrink-0"
                   >
                     <Info className="w-3.5 h-3.5" />
                   </button>
@@ -328,18 +328,18 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-[10px] text-neutral-400 font-medium">
+                  <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-medium">
                     {parameters.limitMaxTokens ? '开启限制' : '默认自适应 (无限制)'}
                   </span>
                   <button
                     type="button"
                     onClick={() => updateParam('limitMaxTokens', !parameters.limitMaxTokens)}
                     className={`param-toggle w-8 h-4 flex items-center rounded-full p-0.5 cursor-pointer transition-colors shrink-0 ${
-                      parameters.limitMaxTokens ? 'bg-[#84cc16] bg-lime-500' : 'bg-neutral-900 border border-neutral-700'
+                      parameters.limitMaxTokens ? 'bg-[#84cc16] bg-lime-500' : 'bg-neutral-300 dark:bg-neutral-900 border border-neutral-400 dark:border-neutral-700'
                     }`}
                   >
                     <div
-                      className={`bg-black w-3 h-3 rounded-full shadow-md transform transition-transform ${
+                      className={`bg-white dark:bg-black w-3 h-3 rounded-full shadow-md transform transition-transform ${
                         parameters.limitMaxTokens ? 'translate-x-4' : 'translate-x-0'
                       }`}
                     />
@@ -350,14 +350,14 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
               {parameters.limitMaxTokens ? (
                 <div className="space-y-2 pt-1 animate-in fade-in duration-100">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-neutral-400">限制数值 (Tokens)</span>
+                    <span className="text-[10px] text-neutral-500 dark:text-neutral-400">限制数值 (Tokens)</span>
                     <input
                       type="number"
                       min={1}
                       max={32768}
                       value={parameters.maxTokens ?? 4096}
                       onChange={(e) => updateParam('maxTokens', parseInt(e.target.value) || 1)}
-                      className="param-input w-20 text-right bg-neutral-900 border border-neutral-700 focus:border-lime-500 text-white px-2 py-0.5 rounded-lg text-xs font-mono outline-hidden"
+                      className="param-input w-20 text-right bg-neutral-100 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 focus:border-lime-500 text-neutral-900 dark:text-white px-2 py-0.5 rounded-lg text-xs font-mono outline-hidden"
                     />
                   </div>
 
@@ -369,7 +369,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                       step={256}
                       value={parameters.maxTokens ?? 4096}
                       onChange={(e) => updateParam('maxTokens', parseInt(e.target.value))}
-                      className="param-slider w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-lime-400"
+                      className="param-slider w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-lime-400"
                     />
                     <div className="flex justify-between text-[10px] param-slider-ticks text-neutral-500 font-mono mt-1 select-none">
                       <span>256</span>
@@ -386,130 +386,106 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
             </div>
           </div>
 
-          {/* Section 2: AI 回复展示与阅读偏好 (5大高价值功能) */}
+          {/* Section 2: Markdown 元素能力分散拆解 (独立粒度开关，无相互干扰) */}
           {settings && onSaveSettings && (
             <div className="space-y-2 pt-2">
-              <div className="flex items-center gap-1.5 text-neutral-300 font-bold text-xs pb-1 border-b border-neutral-800/80">
-                <MessageSquare className="param-icon w-3.5 h-3.5 text-lime-400" />
-                <span className="param-modal-title">AI 回复展示与阅读偏好</span>
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-200 dark:border-neutral-800/80">
+                <div className="flex items-center gap-1.5 text-neutral-800 dark:text-neutral-300 font-bold text-xs">
+                  <FileText className="param-icon w-3.5 h-3.5 text-lime-600 dark:text-lime-400" />
+                  <span className="param-modal-title">Markdown 渲染能力细分拆解</span>
+                </div>
+                <span className="text-[10px] text-lime-600 dark:text-lime-400 font-mono font-medium">独立原子控制</span>
               </div>
 
               <div className="space-y-1.5">
-                {/* 1. 🧮 LaTeX 数学与科学公式渲染 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                {/* 1. 标题结构解析 */}
+                <label className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs cursor-pointer hover:border-lime-500/50 transition">
                   <div className="space-y-0.5 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <Calculator className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">LaTeX 数学与科学公式渲染</span>
-                    </div>
-                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
-                      KaTeX 引擎渲染微积分、矩阵与学术级公式
-                    </span>
+                    <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 block">标题结构解析 (#, ##, ###)</span>
+                    <span className="param-item-sub text-[10px] text-neutral-500 dark:text-neutral-400 block">控制 `#` 转换层级 Heading 标题与字体缩放</span>
                   </div>
                   <input
                     type="checkbox"
-                    checked={settings.renderLatex ?? true}
-                    onChange={() => handleToggleSetting('renderLatex')}
-                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                    checked={settings.mdHeadings ?? true}
+                    onChange={() => handleToggleSetting('mdHeadings')}
+                    className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>
 
-                {/* 4. ▋ 流式输出呼吸光标动画 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                {/* 2. 行内文本样式 */}
+                <label className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs cursor-pointer hover:border-lime-500/50 transition">
                   <div className="space-y-0.5 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <Terminal className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">流式输出呼吸光标动画</span>
-                    </div>
-                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
-                      打字机实时吐字末尾伴随微闪呼吸光标（▋）
-                    </span>
+                    <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 block">行内文本样式 (加粗/斜体/删除线)</span>
+                    <span className="param-item-sub text-[10px] text-neutral-500 dark:text-neutral-400 block">控制 `**加粗**`、`*斜体*`、`~删除线~` 与行内代码块</span>
                   </div>
                   <input
                     type="checkbox"
-                    checked={settings.showStreamingCursor ?? true}
-                    onChange={() => handleToggleSetting('showStreamingCursor')}
-                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                    checked={settings.mdTextStyle ?? true}
+                    onChange={() => handleToggleSetting('mdTextStyle')}
+                    className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>
 
-                {/* 5. 🔍 紧凑排版模式 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                {/* 3. 列表与段落引用 */}
+                <label className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs cursor-pointer hover:border-lime-500/50 transition">
                   <div className="space-y-0.5 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <Layers className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">紧凑排版模式 (Compact Mode)</span>
-                    </div>
-                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
-                      缩小消息气泡上下边距与行隙，大幅提升单屏信息密度
-                    </span>
+                    <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 block">列表与段落引用 (1., -, &gt;)</span>
+                    <span className="param-item-sub text-[10px] text-neutral-500 dark:text-neutral-400 block">控制有序/无序列表与 `&gt;` 段落引用缩进</span>
                   </div>
                   <input
                     type="checkbox"
-                    checked={settings.compactMode ?? false}
-                    onChange={() => handleToggleSetting('compactMode')}
-                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                    checked={settings.mdListsAndQuotes ?? true}
+                    onChange={() => handleToggleSetting('mdListsAndQuotes')}
+                    className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>
 
-                {/* Markdown 表格解析 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                {/* 4. 数据表格解析 */}
+                <label className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs cursor-pointer hover:border-lime-500/50 transition">
                   <div className="space-y-0.5 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <FileText className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">Markdown 表格解析</span>
-                    </div>
-                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
-                      仅完美格式化呈现数据表格，其余多余富文本样式一律保持原生纯文本展示
-                    </span>
+                    <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 block">数据表格排版 (| 标题 | 数据 |)</span>
+                    <span className="param-item-sub text-[10px] text-neutral-500 dark:text-neutral-400 block">独立控制 Markdown 数据表格的 DOM 卡片与网格渲染</span>
                   </div>
                   <input
                     type="checkbox"
-                    checked={settings.onlyParseMarkdownTables ?? false}
-                    onChange={() => handleToggleSetting('onlyParseMarkdownTables')}
-                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                    checked={settings.mdTables ?? true}
+                    onChange={() => handleToggleSetting('mdTables')}
+                    className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>
 
-                {/* 加粗标题 (纯文本结构优化) */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                {/* 5. 超链接与图片解析 */}
+                <label className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs cursor-pointer hover:border-lime-500/50 transition">
                   <div className="space-y-0.5 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <SlidersHorizontal className="param-icon w-3.5 h-3.5 text-lime-400 shrink-0" />
-                      <span className="param-item-label text-xs font-semibold text-neutral-200 block">加粗纯文本标题</span>
-                    </div>
-                    <span className="param-item-sub text-[11px] text-neutral-400 block pl-5">
-                      关闭 Markdown 解析时，自动隐藏 # 前缀，并为结构化标题加上自适应高反差色块背景
-                    </span>
+                    <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 block">超链接与嵌入图片 ([链接], ![图片])</span>
+                    <span className="param-item-sub text-[10px] text-neutral-500 dark:text-neutral-400 block">控制安全超链接跳转与图片富媒体卡片展示</span>
                   </div>
                   <input
                     type="checkbox"
-                    checked={settings.boldHeadings ?? false}
-                    onChange={() => handleToggleSetting('boldHeadings')}
-                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                    checked={settings.mdLinksAndImages ?? true}
+                    onChange={() => handleToggleSetting('mdLinksAndImages')}
+                    className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>
-
-                {/* 代码块语法高亮与工具栏 */}
               </div>
             </div>
           )}
 
-          {/* Section 3: 代码与 Markdown 边框工具配置 */}
+          {/* Section 3: 代码框能力细化拆解 */}
           {settings && onSaveSettings && (
             <div className="space-y-2 pt-2">
-              <div className="flex items-center gap-1.5 text-neutral-300 font-bold text-xs pb-1 border-b border-neutral-800/80">
-                <FileCode className="param-icon w-3.5 h-3.5 text-lime-400" />
-                <span className="param-modal-title">代码框、文本框及 Markdown 框开关</span>
+              <div className="flex items-center gap-1.5 text-neutral-800 dark:text-neutral-300 font-bold text-xs pb-1 border-b border-neutral-200 dark:border-neutral-800/80">
+                <FileCode className="param-icon w-3.5 h-3.5 text-lime-600 dark:text-lime-400" />
+                <span className="param-modal-title">代码框与工具栏能力细分</span>
               </div>
 
-               <div className="space-y-1.5">
-                {/* 1. 代码框开关 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+              <div className="space-y-1.5">
+                {/* 1. 代码框总开关 */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs cursor-pointer hover:border-lime-500/50 transition">
                   <div className="space-y-0.5 pr-2">
-                    <span className="param-item-label text-xs font-semibold text-neutral-200 block">启用「代码框」容器</span>
-                    <span className="param-item-sub text-[11px] text-neutral-400 block">
-                      开启代码块的高级黑色卡片边框、语言标识与复制/下载/加号工具栏
+                    <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 block">启用「代码框」高级卡片容器</span>
+                    <span className="param-item-sub text-[11px] text-neutral-500 dark:text-neutral-400 block">
+                      开启代码块的黑质感边框与下方独立细分工具按钮
                     </span>
                   </div>
                   <input
@@ -521,12 +497,54 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 </label>
 
                 {settings.useCodeBox && (
-                  <div className="pl-4 space-y-1.5 border-l border-neutral-800 ml-2 animate-in slide-in-from-top-1 duration-150">
+                  <div className="pl-3 space-y-1.5 border-l-2 border-lime-500/40 ml-2 animate-in slide-in-from-top-1 duration-150">
+                    {/* 代码头部栏 */}
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200 cursor-pointer hover:border-neutral-300 transition">
+                      <span className="param-item-label text-[11px] font-medium text-neutral-800 dark:text-neutral-200">显示代码语言头部 Bar</span>
+                      <input
+                        type="checkbox"
+                        checked={settings.codeHeaderBar ?? true}
+                        onChange={() => handleToggleSetting('codeHeaderBar')}
+                        className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
+                      />
+                    </label>
+
+                    {/* 复制代码按钮 */}
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200 cursor-pointer hover:border-neutral-300 transition">
+                      <span className="param-item-label text-[11px] font-medium text-neutral-800 dark:text-neutral-200">显示一键复制代码按钮</span>
+                      <input
+                        type="checkbox"
+                        checked={settings.codeShowCopyBtn ?? true}
+                        onChange={() => handleToggleSetting('codeShowCopyBtn')}
+                        className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
+                      />
+                    </label>
+
+                    {/* 下载代码文件按钮 */}
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200 cursor-pointer hover:border-neutral-300 transition">
+                      <span className="param-item-label text-[11px] font-medium text-neutral-800 dark:text-neutral-200">显示下载代码文件按钮</span>
+                      <input
+                        type="checkbox"
+                        checked={settings.codeShowDownloadBtn ?? true}
+                        onChange={() => handleToggleSetting('codeShowDownloadBtn')}
+                        className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
+                      />
+                    </label>
+
+                    {/* 加入工作区按钮 */}
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200 cursor-pointer hover:border-neutral-300 transition">
+                      <span className="param-item-label text-[11px] font-medium text-neutral-800 dark:text-neutral-200">显示同步入工作区按钮</span>
+                      <input
+                        type="checkbox"
+                        checked={settings.codeShowAddToWorkspaceBtn ?? true}
+                        onChange={() => handleToggleSetting('codeShowAddToWorkspaceBtn')}
+                        className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
+                      />
+                    </label>
+
                     {/* 代码块显示行号 */}
-                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-800/40 border border-neutral-800/60 cursor-pointer hover:border-neutral-700 transition">
-                      <div className="space-y-0.5 pr-2">
-                        <span className="param-item-label text-[11px] font-medium text-neutral-300 block">代码块显示行号</span>
-                      </div>
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200 cursor-pointer hover:border-neutral-300 transition">
+                      <span className="param-item-label text-[11px] font-medium text-neutral-800 dark:text-neutral-200">显示代码行号</span>
                       <input
                         type="checkbox"
                         checked={settings.showLineNumbers ?? true}
@@ -536,10 +554,8 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                     </label>
 
                     {/* 长代码块自动限制高度 */}
-                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-800/40 border border-neutral-800/60 cursor-pointer hover:border-neutral-700 transition">
-                      <div className="space-y-0.5 pr-2">
-                        <span className="param-item-label text-[11px] font-medium text-neutral-300 block">长代码块自动折叠</span>
-                      </div>
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200 cursor-pointer hover:border-neutral-300 transition">
+                      <span className="param-item-label text-[11px] font-medium text-neutral-800 dark:text-neutral-200">长代码块高度折叠 (≥14行)</span>
                       <input
                         type="checkbox"
                         checked={settings.collapseLongCode ?? true}
@@ -547,15 +563,26 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                         className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
                       />
                     </label>
+
+                    {/* 代码语法高亮 */}
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200 cursor-pointer hover:border-neutral-300 transition">
+                      <span className="param-item-label text-[11px] font-medium text-neutral-800 dark:text-neutral-200">语法高亮着色 (Highlight.js)</span>
+                      <input
+                        type="checkbox"
+                        checked={settings.enableCodeHighlight ?? true}
+                        onChange={() => handleToggleSetting('enableCodeHighlight')}
+                        className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
+                      />
+                    </label>
                   </div>
                 )}
 
-                {/* 2. 文本框开关 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                {/* 2. 文本框开关及子能力 */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs cursor-pointer hover:border-lime-500/50 transition">
                   <div className="space-y-0.5 pr-2">
-                    <span className="param-item-label text-xs font-semibold text-neutral-200 block">启用「文本框」容器</span>
-                    <span className="param-item-sub text-[11px] text-neutral-400 block">
-                      开启引用、普通文本引用段落（Blockquote）的卡片背景与左侧导向条
+                    <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 block">启用「文本框」引用段落容器</span>
+                    <span className="param-item-sub text-[11px] text-neutral-500 dark:text-neutral-400 block">
+                      开启引用、Blockquote 段落的卡片背景与左侧导向条
                     </span>
                   </div>
                   <input
@@ -566,18 +593,143 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   />
                 </label>
 
-                {/* 3. Markdown 解析框开关 */}
-                <label className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-800 border border-neutral-800/80 cursor-pointer hover:border-neutral-700 transition">
+                {settings.useTextBox && (
+                  <div className="pl-3 space-y-1.5 border-l-2 border-lime-500/40 ml-2 animate-in slide-in-from-top-1 duration-150">
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200 cursor-pointer hover:border-neutral-300 transition">
+                      <span className="param-item-label text-[11px] font-medium text-neutral-800 dark:text-neutral-200">文本框卡片边框与导向条</span>
+                      <input
+                        type="checkbox"
+                        checked={settings.textBoxBorder ?? true}
+                        onChange={() => handleToggleSetting('textBoxBorder')}
+                        className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200 cursor-pointer hover:border-neutral-300 transition">
+                      <span className="param-item-label text-[11px] font-medium text-neutral-800 dark:text-neutral-200">文本框柔和背景填充</span>
+                      <input
+                        type="checkbox"
+                        checked={settings.textBoxBackground ?? true}
+                        onChange={() => handleToggleSetting('textBoxBackground')}
+                        className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Section 4: LaTeX 科学公式细粒度能力拆解 */}
+          {settings && onSaveSettings && (
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-1.5 text-neutral-800 dark:text-neutral-300 font-bold text-xs pb-1 border-b border-neutral-200 dark:border-neutral-800/80">
+                <Calculator className="param-icon w-3.5 h-3.5 text-lime-600 dark:text-lime-400" />
+                <span className="param-modal-title">LaTeX 科学公式细粒度解析</span>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs cursor-pointer hover:border-lime-500/50 transition">
                   <div className="space-y-0.5 pr-2">
-                    <span className="param-item-label text-xs font-semibold text-neutral-200 block">启用「Markdown」富文本渲染框</span>
-                    <span className="param-item-sub text-[11px] text-neutral-400 block">
-                      开启后，将文本转换为排版优美的标题、斜体加粗、数学公式、表格等格式
+                    <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 block">启用 KaTeX 公式引擎</span>
+                    <span className="param-item-sub text-[11px] text-neutral-500 dark:text-neutral-400 block">学术级公式、微积分、矩阵渲染总开关</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.renderLatex ?? true}
+                    onChange={() => handleToggleSetting('renderLatex')}
+                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {settings.renderLatex && (
+                  <div className="pl-3 space-y-1.5 border-l-2 border-lime-500/40 ml-2 animate-in slide-in-from-top-1 duration-150">
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200 cursor-pointer hover:border-neutral-300 transition">
+                      <span className="param-item-label text-[11px] font-medium text-neutral-800 dark:text-neutral-200">行内即时公式 ($...$)</span>
+                      <input
+                        type="checkbox"
+                        checked={settings.latexInline ?? true}
+                        onChange={() => handleToggleSetting('latexInline')}
+                        className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-2 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200/80 dark:border-neutral-700/80 text-neutral-800 dark:text-neutral-200 cursor-pointer hover:border-neutral-300 transition">
+                      <span className="param-item-label text-[11px] font-medium text-neutral-800 dark:text-neutral-200">块级居中公式 ($$...$$)</span>
+                      <input
+                        type="checkbox"
+                        checked={settings.latexBlock ?? true}
+                        onChange={() => handleToggleSetting('latexBlock')}
+                        className="rounded text-lime-500 h-3.5 w-3.5 shrink-0 accent-lime-500 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Section 5: AI 回复展示与阅读偏好 */}
+          {settings && onSaveSettings && (
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-1.5 text-neutral-800 dark:text-neutral-300 font-bold text-xs pb-1 border-b border-neutral-200 dark:border-neutral-800/80">
+                <MessageSquare className="param-icon w-3.5 h-3.5 text-lime-600 dark:text-lime-400" />
+                <span className="param-modal-title">AI 回复展示与阅读偏好</span>
+              </div>
+
+              <div className="space-y-1.5">
+                {/* 1. ▋ 流式输出呼吸光标动画 */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs cursor-pointer hover:border-lime-500/50 transition">
+                  <div className="space-y-0.5 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <Terminal className="param-icon w-3.5 h-3.5 text-lime-600 dark:text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 block">流式输出呼吸光标动画</span>
+                    </div>
+                    <span className="param-item-sub text-[11px] text-neutral-500 dark:text-neutral-400 block pl-5">
+                      打字机实时吐字末尾伴随微闪呼吸光标（▋）
                     </span>
                   </div>
                   <input
                     type="checkbox"
-                    checked={settings.enableMarkdown}
-                    onChange={() => handleToggleSetting('enableMarkdown')}
+                    checked={settings.showStreamingCursor ?? true}
+                    onChange={() => handleToggleSetting('showStreamingCursor')}
+                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {/* 2. 🔍 紧凑排版模式 */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs cursor-pointer hover:border-lime-500/50 transition">
+                  <div className="space-y-0.5 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <Layers className="param-icon w-3.5 h-3.5 text-lime-600 dark:text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 block">紧凑排版模式 (Compact Mode)</span>
+                    </div>
+                    <span className="param-item-sub text-[11px] text-neutral-500 dark:text-neutral-400 block pl-5">
+                      缩小消息气泡上下边距与行隙，大幅提升单屏信息密度
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.compactMode ?? false}
+                    onChange={() => handleToggleSetting('compactMode')}
+                    className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
+                  />
+                </label>
+
+                {/* 3. 加粗纯文本标题 */}
+                <label className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs cursor-pointer hover:border-lime-500/50 transition">
+                  <div className="space-y-0.5 pr-2">
+                    <div className="flex items-center gap-1.5">
+                      <SlidersHorizontal className="param-icon w-3.5 h-3.5 text-lime-600 dark:text-lime-400 shrink-0" />
+                      <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100 block">加粗纯文本标题</span>
+                    </div>
+                    <span className="param-item-sub text-[11px] text-neutral-500 dark:text-neutral-400 block pl-5">
+                      关闭标题解析时生效，隐藏 # 前缀并高亮展示纯文本结构标题
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.boldHeadings ?? false}
+                    onChange={() => handleToggleSetting('boldHeadings')}
                     className="rounded text-lime-500 h-4 w-4 shrink-0 accent-lime-500 cursor-pointer"
                   />
                 </label>

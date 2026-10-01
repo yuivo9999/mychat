@@ -13,6 +13,16 @@ export interface MarkdownOptions {
   useCodeBox?: boolean;
   useTextBox?: boolean;
   onlyParseMarkdownTables?: boolean;
+  mdHeadings?: boolean;
+  mdTextStyle?: boolean;
+  mdListsAndQuotes?: boolean;
+  mdTables?: boolean;
+  mdLinksAndImages?: boolean;
+  codeHeaderBar?: boolean;
+  textBoxBorder?: boolean;
+  textBoxBackground?: boolean;
+  latexInline?: boolean;
+  latexBlock?: boolean;
 }
 
 function escapeHtml(str: string): string {
