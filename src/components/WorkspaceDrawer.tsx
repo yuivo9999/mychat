@@ -10,6 +10,7 @@ import {
   Trash2, 
   Search, 
   AlertTriangle,
+  Edit2,
   Edit3,
   MoreHorizontal,
   FileText, 
@@ -255,6 +256,42 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeMenuPath, isWorkspaceDropdownOpen, isUploadDropdownOpen, isNewDropdownOpen]);
+
+  // Workspace management state (Rename & Add)
+  const [editingWorkspaceId, setEditingWorkspaceId] = useState<string | null>(null);
+  const [editingWorkspaceName, setEditingWorkspaceName] = useState('');
+
+  const handleSaveWorkspaceRename = (workspaceId: string) => {
+    const trimmed = editingWorkspaceName.trim();
+    if (!trimmed) {
+      setEditingWorkspaceId(null);
+      return;
+    }
+    const ws = workspaces.find(w => w.id === workspaceId);
+    if (ws) {
+      onSaveWorkspace({ ...ws, name: trimmed, updatedAt: Date.now() });
+    }
+    setEditingWorkspaceId(null);
+  };
+
+  const handleCreateNewWorkspace = () => {
+    const nextNum = workspaces.length + 1;
+    const newWs = createEmptyWorkspace(`工作区 ${nextNum}`);
+    onSaveWorkspace(newWs);
+    onSelectWorkspace(newWs.id);
+    // Enter rename mode directly so user can type custom name immediately
+    setEditingWorkspaceId(newWs.id);
+    setEditingWorkspaceName(newWs.name);
+  };
+
+  const handleDeleteWorkspaceItem = (e: React.MouseEvent, workspaceId: string, workspaceName: string) => {
+    e.stopPropagation();
+    if (workspaces.length <= 1) {
+      alert('至少需要保留一个工作区，无法删除最后一个工作区。');
+      return;
+    }
+    onDeleteWorkspace(workspaceId);
+  };
 
   // Active workspace
   const currentWorkspace = useMemo(() => {
@@ -839,43 +876,177 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
         >
           {/* Header Bar */}
           <div className="px-5 py-3 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between shrink-0 bg-neutral-50/50 dark:bg-neutral-900/50 gap-3">
-            {/* Left: Workspace Icon / Selector */}
+            {/* Left: Workspace Icon / Selector & Manager */}
             <div className="relative workspace-dropdown shrink-0">
               <button
                 type="button"
-                onClick={() => workspaces.length > 1 && setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
-                className={`flex items-center gap-1 text-left group ${workspaces.length > 1 ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
-                title={workspaces.length > 1 ? "点击切换工作区" : "工作区"}
+                onClick={() => setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
+                className="flex items-center gap-1.5 p-1 pr-2 rounded-xl border border-neutral-200/80 dark:border-neutral-750 bg-white/80 dark:bg-neutral-800/80 hover:bg-neutral-100 dark:hover:bg-neutral-750 transition cursor-pointer shadow-2xs group"
+                title="点击管理与切换工作区（支持重命名、新建、删除）"
               >
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 shadow-2xs">
+                <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 shadow-2xs">
                   <Layers className="w-4 h-4" />
                 </div>
-                {workspaces.length > 1 && (
-                  <DropdownIcon className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                )}
+                <div className="flex flex-col text-left min-w-0 max-w-[100px] sm:max-w-[150px]">
+                  <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-100 truncate">
+                    {currentWorkspace?.name || '工作区'}
+                  </span>
+                  <span className="text-[9px] text-neutral-400 leading-none">
+                    切换与管理
+                  </span>
+                </div>
+                <DropdownIcon className={`w-3.5 h-3.5 text-neutral-400 shrink-0 transition-transform duration-200 ${isWorkspaceDropdownOpen ? 'rotate-180 text-indigo-500' : ''}`} />
               </button>
 
-              {/* Workspace Selector Dropdown */}
-              {isWorkspaceDropdownOpen && workspaces.length > 1 && (
-                <div className="absolute left-0 top-11 z-50 w-32 bg-white dark:bg-neutral-800 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-700 py-1 text-xs animate-in fade-in zoom-in-95">
-                  <div className="px-2.5 py-1 font-semibold text-[10px] text-neutral-400 uppercase tracking-wider whitespace-nowrap">
-                    切换工作区
-                  </div>
-                  {workspaces.map(w => (
+              {/* Workspace Selector & Manager Dropdown Popup */}
+              {isWorkspaceDropdownOpen && (
+                <div className="workspace-dropdown-menu absolute left-0 top-11 z-50 w-72 sm:w-80 bg-white dark:bg-neutral-850 rounded-2xl shadow-2xl border border-neutral-200/90 dark:border-neutral-750 p-2.5 text-xs animate-in fade-in zoom-in-95 select-none">
+                  {/* Top Bar: Title & Count & Quick Add */}
+                  <div className="flex items-center justify-between px-1 pb-2 border-b border-neutral-100 dark:border-neutral-750">
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-neutral-800 dark:text-neutral-200">
+                      <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>工作区管理</span>
+                      <span className="text-[10px] font-normal text-neutral-400">({workspaces.length})</span>
+                    </div>
                     <button
-                      key={w.id}
-                      onClick={() => {
-                        onSelectWorkspace(w.id);
-                        setIsWorkspaceDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-2.5 py-1.5 flex items-center justify-between hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors ${
-                        w.id === currentWorkspace?.id ? 'text-indigo-600 font-semibold' : 'text-neutral-700 dark:text-neutral-300'
-                      }`}
+                      type="button"
+                      onClick={handleCreateNewWorkspace}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 font-medium text-[11px] transition cursor-pointer"
+                      title="新建工作区"
                     >
-                      <span className="truncate">{w.name}</span>
-                      {w.id === currentWorkspace?.id && <Check className="w-3.5 h-3.5 shrink-0 ml-1" />}
+                      <Plus className="w-3 h-3 stroke-[2.5]" />
+                      <span>新建</span>
                     </button>
-                  ))}
+                  </div>
+
+                  {/* Workspace Items List */}
+                  <div className="max-h-60 overflow-y-auto space-y-1 my-1.5 pr-0.5">
+                    {workspaces.map((w) => {
+                      const isActive = w.id === currentWorkspace?.id;
+                      const isEditing = editingWorkspaceId === w.id;
+                      const fileCount = Object.keys(w.files || {}).length;
+
+                      if (isEditing) {
+                        return (
+                          <div
+                            key={w.id}
+                            className="flex items-center gap-1.5 p-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl border border-indigo-500 animate-in fade-in duration-150"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="text"
+                              value={editingWorkspaceName}
+                              onChange={(e) => setEditingWorkspaceName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveWorkspaceRename(w.id);
+                                if (e.key === 'Escape') setEditingWorkspaceId(null);
+                              }}
+                              autoFocus
+                              placeholder="输入工作区名称..."
+                              className="flex-1 px-2 py-1 text-xs bg-transparent outline-hidden text-neutral-900 dark:text-neutral-100 font-medium"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveWorkspaceRename(w.id)}
+                              className="p-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition cursor-pointer"
+                              title="保存名称"
+                            >
+                              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingWorkspaceId(null)}
+                              className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition cursor-pointer"
+                              title="取消"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={w.id}
+                          onClick={() => {
+                            onSelectWorkspace(w.id);
+                            setIsWorkspaceDropdownOpen(false);
+                          }}
+                          className={`group flex items-center justify-between p-2 rounded-xl transition cursor-pointer ${
+                            isActive
+                              ? 'bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-800/80 shadow-2xs'
+                              : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-transparent'
+                          }`}
+                        >
+                          {/* Left: Indicator, Name, Files Count */}
+                          <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                            <div
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                isActive
+                                  ? 'bg-indigo-600 dark:bg-indigo-400 ring-2 ring-indigo-500/20'
+                                  : 'bg-neutral-300 dark:bg-neutral-600 group-hover:bg-indigo-400'
+                              }`}
+                            />
+                            <span
+                              className={`truncate text-xs ${
+                                isActive
+                                  ? 'font-bold text-indigo-700 dark:text-indigo-300'
+                                  : 'text-neutral-700 dark:text-neutral-200'
+                              }`}
+                              title={w.name}
+                            >
+                              {w.name}
+                            </span>
+                            <span className="text-[10px] text-neutral-400 font-mono shrink-0">
+                              ({fileCount} 文件)
+                            </span>
+                          </div>
+
+                          {/* Right: Actions (Rename & Delete) */}
+                          <div
+                            className="flex items-center gap-1 shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {/* Rename Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingWorkspaceId(w.id);
+                                setEditingWorkspaceName(w.name);
+                              }}
+                              className="p-1 rounded-lg text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-neutral-700 transition cursor-pointer shadow-2xs"
+                              title={`重命名「${w.name}」`}
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteWorkspaceItem(e, w.id, w.name)}
+                              className="p-1 rounded-lg text-neutral-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-white dark:hover:bg-neutral-700 transition cursor-pointer shadow-2xs"
+                              title={`删除「${w.name}」`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Bottom Add Workspace Button */}
+                  <div className="pt-2 border-t border-neutral-100 dark:border-neutral-750">
+                    <button
+                      type="button"
+                      onClick={handleCreateNewWorkspace}
+                      className="w-full py-2 px-3 rounded-xl bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 text-white dark:text-neutral-900 font-semibold text-xs flex items-center justify-center gap-1.5 transition active:scale-[0.98] shadow-xs cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>添加新工作区</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

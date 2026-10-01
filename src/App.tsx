@@ -38,7 +38,8 @@ import {
   buildAgentSystemPrompt, 
   extractToolCallsFromResponse, 
   executeWorkspaceTool, 
-  cleanResponseText 
+  cleanResponseText,
+  formatToolOutcomeForModel
 } from './services/agentEngine';
 import {
   resolveMentionedWorkspaceFiles,
@@ -90,6 +91,7 @@ import { ParametersModal } from './components/ParametersModal';
 import { AiModelConfigModal } from './components/AiModelConfigModal';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { ArchiveProjectModal } from './components/ArchiveProjectModal';
+import { WorkspacePreviewModal } from './components/WorkspacePreviewModal';
 
 const DEFAULT_PARAMETERS: ModelParameters = {
   enableReasoning: false,
@@ -142,6 +144,7 @@ export default function App() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | undefined>(undefined);
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [agentMode, setAgentMode] = useState(false);
 
   // Pending Attachments & Prompt injected into ChatComposer from Workspace Drawer
@@ -978,10 +981,11 @@ export default function App() {
 
       let wsToOperate: Workspace | null = currentWorkspace ? JSON.parse(JSON.stringify(currentWorkspace)) : null;
 
-      // 1. Detect Workspace Intent (Strictly Conservative: workspace is on-demand, NOT default context!)
+      // 1. Detect Workspace Intent & Agent Mode Activation
       const workspaceIntent = detectWorkspaceIntent(text, targetConv.chatContext);
-      const workspaceContextEnabled = !!wsToOperate && workspaceIntent.shouldAccessWorkspace;
-      const workspaceAgentEnabled = agentMode && workspaceContextEnabled;
+      // When Agent Mode is explicitly turned ON, and a workspace is bound, Agent capability is 100% active
+      const workspaceContextEnabled = !!wsToOperate && (agentMode || workspaceIntent.shouldAccessWorkspace);
+      const workspaceAgentEnabled = agentMode && !!wsToOperate;
 
       // 2. Detect Code Diagnosis intent vs Normal task (only valid when workspace context is enabled)
       const diagIntent = detectDiagnosisIntent(text, targetConv.chatContext);
@@ -1018,7 +1022,7 @@ export default function App() {
       setStatusMessage(
         isDiagnosisMode 
           ? 'Agent 正在执行 10 步静态代码诊断与调用链分析...' 
-          : (workspaceAgentEnabled ? 'Agent 正在分析任务与工作区...' : 'AI 正在组织回答...')
+          : (workspaceAgentEnabled ? 'Agent 正在分析任务与查阅工作区文件...' : 'AI 正在组织回答...')
       );
 
       const executedToolCalls: ToolCallExecution[] = [];
@@ -1085,8 +1089,10 @@ export default function App() {
       const systemNotices = '';
 
       let turn = 0;
-      const maxAgentTurns = workspaceAgentEnabled ? 8 : 1;
+      // Provide ample turns (up to 12 turns) for multi-file inspection, plan formulation, and multi-file modification
+      const maxAgentTurns = workspaceAgentEnabled ? 12 : 1;
       let finalFullText = '';
+      let cumulativeAssistantNarrative = '';
 
       while (turn < maxAgentTurns) {
         let turnAccumulatedText = '';
@@ -1109,7 +1115,12 @@ export default function App() {
               const textChunk = safeExtractText(chunk);
               if (!textChunk) return;
               turnAccumulatedText += textChunk;
-              const displayContent = (systemNotices ? systemNotices : '') + cleanResponseText(turnAccumulatedText);
+              const cleanTurnText = cleanResponseText(turnAccumulatedText);
+              const fullNarrativeSoFar = cumulativeAssistantNarrative
+                ? (cleanTurnText ? `${cumulativeAssistantNarrative}\n\n${cleanTurnText}` : cumulativeAssistantNarrative)
+                : cleanTurnText;
+
+              const displayContent = (systemNotices ? systemNotices : '') + fullNarrativeSoFar;
               const completedSteps = currentThinkingSteps.map(s => ({ ...s, status: 'completed' as const }));
 
               setConversations(prev => prev.map(c => {
@@ -1146,6 +1157,12 @@ export default function App() {
         );
 
         finalFullText = turnAccumulatedText;
+        const cleanedThisTurn = cleanResponseText(turnAccumulatedText);
+        if (cleanedThisTurn) {
+          cumulativeAssistantNarrative = cumulativeAssistantNarrative
+            ? `${cumulativeAssistantNarrative}\n\n${cleanedThisTurn}`
+            : cleanedThisTurn;
+        }
 
         // Check if response contains tool calls (Protected by workspaceAgentEnabled)
         if (workspaceAgentEnabled && wsToOperate) {
@@ -1154,12 +1171,14 @@ export default function App() {
           if (detectedToolCalls.length > 0) {
             const toolResultsForPrompt: string[] = [];
 
-            for (const tc of detectedToolCalls) {
+            for (let i = 0; i < detectedToolCalls.length; i++) {
+              const tc = detectedToolCalls[i];
               const execId = `tool_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+              const targetIdentifier = tc.args.path || tc.args.query || '';
               setStatusMessage(
                 isDiagnosisMode 
-                  ? `[代码诊断中] Agent 正在调用: ${tc.tool}...` 
-                  : `Agent 正在执行: ${tc.tool}...`
+                  ? `[代码诊断中 ${turn + 1}/${maxAgentTurns}] 正在调用: ${tc.tool} (${targetIdentifier})...` 
+                  : `Agent [第 ${turn + 1} 轮 · 步骤 ${i + 1}/${detectedToolCalls.length}] 正在执行: ${tc.tool} (${targetIdentifier})...`
               );
 
               const outcome = await executeWorkspaceTool(tc.tool, tc.args, wsToOperate);
@@ -1188,8 +1207,9 @@ export default function App() {
                 status: 'completed',
               });
 
+              // Format clean markdown code block / structured outcome for AI ingestion
               toolResultsForPrompt.push(
-                `- 工具: ${tc.tool}\n  参数: ${JSON.stringify(tc.args)}\n  执行结果: ${JSON.stringify(outcome.result || outcome.errorMessage || '成功')}`
+                formatToolOutcomeForModel(tc.tool, tc.args, outcome)
               );
             }
 
@@ -1206,7 +1226,7 @@ export default function App() {
 
             const feedbackInstruction = isDiagnosisMode
               ? `[代码诊断工具执行结果反馈]\n${toolResultsForPrompt.join('\n\n')}\n\n请审查上述代码与检索结果。若还需要追踪调用方/被调用方、检查关联依赖或对比 diff，请继续输出只读工具调用；若已完成 10 步调查，请严格按照【代码诊断报告】格式输出结构化报告（明确区分：发现明确问题 / 暂未发现明确错误 / 无法确认三种结论），并严格保持只读、不修改任何代码。`
-              : `[工作区工具执行结果反馈]\n${toolResultsForPrompt.join('\n\n')}\n\n请审查执行结果。若还需查看其他文件、修改代码或对比 diff，请继续输出工具调用；若全部任务已完成，请给出结构化的中文总结，列出本次修改了哪些文件与改动内容。注意：你无法运行代码，提醒用户自行在本地运行测试。`;
+              : `[工作区工具执行结果反馈 (第 ${turn + 1} 轮)]\n${toolResultsForPrompt.join('\n\n')}\n\n请审查以上工具执行结果：\n1. 【继续查阅】：若还需查看其他相关文件，请继续输出 read_file 或 search_code；\n2. 【制定方案并批量修改】：若查阅已完备，请说明全局协同修改方案，并对目标文件连续发起 patch_file 或 write_file 调用（支持同轮或分轮连续调用）；\n3. 【自愈纠错】：若遇到 patch_file 失败，请根据最新反馈校准 target_content 或使用 write_file 完整覆盖；\n4. 【任务总结】：若所有目标文件已全部修改完成，请停止输出任何 tool_call 代码块，给出结构化的中文任务总结，并提醒用户在本地运行测试。`;
 
             currentHistoryMessages.push({
               id: `msg_tool_feedback_${turn}_${Date.now()}`,
@@ -1219,7 +1239,7 @@ export default function App() {
             setStatusMessage(
               isDiagnosisMode 
                 ? `Agent 正在进行第 ${turn + 1} 轮诊断分析与调用链追踪...` 
-                : `Agent 正在进行第 ${turn + 1} 轮推理与验证...`
+                : `Agent 正在进行第 ${turn + 1} 轮协同推进与推理修改...`
             );
             continue; // Continue loop
           }
@@ -1229,20 +1249,25 @@ export default function App() {
         break;
       }
 
-      // If files were modified in workspace, create a version snapshot (v2, v3...)
+      // If files were modified in workspace, create a unified version snapshot (v2, v3...)
       if (workspaceAgentEnabled && wsToOperate && modifiedPaths.size > 0) {
+        const modifiedList = Array.from(modifiedPaths);
+        const snapshotLabel = modifiedList.length === 1
+          ? `AI修改: ${modifiedList[0]}`
+          : `AI协同修改(${modifiedList.length}个文件): ${modifiedList.slice(0, 2).join(', ')}${modifiedList.length > 2 ? '等' : ''}`;
+
         wsToOperate = createWorkspaceSnapshot(
           wsToOperate,
-          `AI修改: ${text.slice(0, 24) || '批量代码修改'}`,
+          snapshotLabel,
           'agent'
         );
         await handleSaveWorkspaceState(wsToOperate);
       }
 
       // Clean final answer
-      let cleanedFinalAnswer = (systemNotices ? systemNotices : '') + cleanResponseText(finalFullText);
+      let cleanedFinalAnswer = (systemNotices ? systemNotices : '') + (cumulativeAssistantNarrative || cleanResponseText(finalFullText));
       if (modifiedPaths.size > 0) {
-        cleanedFinalAnswer += `\n\n> 📦 **项目工作区已更新**：AI 已修改文件 \`${Array.from(modifiedPaths).join('`, `')}\`。\n> ⚠️ **运行与测试提示**：AI 仅负责分析与修改代码，未在云端运行任何代码或执行测试。请您在本地运行并测试代码；若遇到报错，请将错误信息贴回本聊天中，AI 将继续为您排查修复。`;
+        cleanedFinalAnswer += `\n\n> 📦 **项目工作区已更新**：AI 已协同修改工作区文件 \`${Array.from(modifiedPaths).join('`, `')}\`。\n> ⚠️ **运行与测试提示**：AI 仅负责分析与修改代码，未在云端运行任何代码或执行测试。请您在本地运行并测试代码；若遇到报错，请将错误信息贴回本聊天中，AI 将继续为您排查修复。`;
       }
 
       // Update THIS chat's isolated private context memory
@@ -2170,6 +2195,7 @@ export default function App() {
           workspaceFilesCount={currentWorkspace ? Object.keys(currentWorkspace.files).length : 0}
           workspaceName={currentWorkspace?.name}
           modifiedFilesCount={modifiedFilesCountAgainstOriginal}
+          onOpenPreview={() => setIsPreviewOpen(true)}
           onOpenWorkspace={() => setIsWorkspaceOpen(true)}
           agentMode={agentMode}
           onToggleAgentMode={handleToggleAgentMode}
@@ -2371,6 +2397,15 @@ export default function App() {
           }
         }}
         aiStatusText={isGenerating ? (statusMessage || 'AI 正在处理...') : undefined}
+      />
+
+      {/* Workspace Web Project Live Preview Modal */}
+      <WorkspacePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        workspaces={workspaces}
+        initialWorkspaceId={currentWorkspace?.id}
+        onSaveWorkspace={handleSaveWorkspaceState}
       />
 
       {/* Create / Edit Project Modal (Image 1) */}

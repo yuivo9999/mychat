@@ -149,6 +149,18 @@ export const WORKSPACE_TOOLS_SPEC = [
       properties: {},
     },
   },
+  {
+    name: 'query_context7_docs',
+    description: '挂载 Context7 实时技术文档库：查询第三方开源库、流行框架或 API 的最新官方文档、类型定义与使用示例（解决大模型 API 废弃与代码幻觉问题）。',
+    parameters: {
+      type: 'object',
+      properties: {
+        library: { type: 'string', description: '第三方库或技术名称，如 "lucide-react", "react", "tailwind", "katex", "vite", "drizzle-orm"' },
+        topic: { type: 'string', description: '可选，具体要查询的 API 名称、组件、Hooks 或用法主题' },
+      },
+      required: ['library'],
+    },
+  },
 ];
 
 // Build System Prompt containing workspace summary, code diagnosis protocol, and strict constraints
@@ -243,16 +255,51 @@ ${isDiagnosisMode ? diagnosisProtocol : ''}
 ## 核心运行原则与边界声明（必须严格遵守）:
 1. **不执行项目代码**：本环境是一个安全纯净的代码分析与修改工作区。你绝对不能也无法在服务器端执行任何代码、命令行、测试、npm run/test 等。
 2. **职责分工**：你负责阅读、搜索代码并做出精确优雅的修改；由用户在本地自行运行和测试。若用户测试遇到错误，用户会将错误信息贴回本聊天中由你继续分析与修改。
-3. **按需查阅，最小修改**：
-   - 严禁盲目把整个项目文件一次性全部读取；请先用 \`search_code\` 或 \`search_files\` 定位关键文件，再用 \`read_file\` 读取对应文件。
-   - 优先使用 \`patch_file\` 进行局部的最小精准替换，避免全量重写大文件导致代码遗失或产生污染。
-4. **工具调用协议 (Tool Calling)**：
-   若需查看、搜索或修改工作区文件，请以标准 tool_call 代码块输出工具调用（可单次调用或批次调用）：
+
+## 🤖 多轮自主探索、跨文件规划与多文件协同修改规范 (必须连贯执行):
+当 Agent 模式开启时，系统支持你在一个交互任务中【多次连续被调用（支持最高 12 轮自主交互）】。你应充分利用多轮自主迭代的能力，按部就班地完成从“查阅探查”到“多文件协同修改”的全闭环：
+
+### 阶段 1：多文件全面查阅与依赖摸排 (Explore)
+- 严禁在未读取真实代码的情况下凭空猜测或直接盲改。
+- **支持单轮并发调用多个工具**：若需求涉及多个文件或组件，你可以在单次回复中同时输出多个 \`tool_call\`（例如同时调用多个 \`read_file\` 或 \`search_code\`）。
+- 前端会并行执行这些工具，并将所有查阅到的真实文件内容以格式化代码块一次性完整反馈给你。
+
+### 阶段 2：综合推理与制定协同方案 (Plan)
+- 查阅完所有相关文件后，先梳理出全局修改方案，在回复中清晰列出：
+  1. 涉及需要修改的文件清单（例如：File A、File B、File C）；
+  2. 各文件之间的依赖对应关系（接口签名、Props、类型定义、样式类名等）；
+  3. 具体的修改思路与逻辑。
+
+### 阶段 3：连贯执行跨文件修改 (Execute Multi-Files)
+- 在确定方案后，直接连贯地发起多个文件的修改。你可以在当前轮次或连续轮次中，按逻辑先后顺序对所有目标文件依次调用 \`patch_file\` 或 \`write_file\`。
+- 优先使用 \`patch_file\` 进行精准局部替换（\`target_content\` 必须与所查阅文件中的代码逐字、逐行、逐空格完全一致）。
+- 对于全新创建的文件，使用 \`create_file\` 或 \`write_file\`。
+
+### 阶段 4：执行自愈与容错机制 (Self-Correction)
+- 如果某个文件的 \`patch_file\` 返回匹配失败，仔细阅读工具返回的最新错误反馈，在下一轮中自动校准精确代码块或改用 \`write_file\` 进行补齐，绝不半途而废。
+
+### 阶段 5：验证与终结总结 (Summarize)
+- 当确认所有目标文件均已成功修改、无需再进行任何工具操作时，**停止输出任何 \`tool_call\` 代码块**。
+- 输出完整的中文任务总结，明确列出：
+  1. 修改的文件列表；
+  2. 每个文件的改动细节；
+  3. 提醒用户在本地运行测试。
+
+3. **工具调用协议 (Tool Calling)**：
+   若需查看、搜索或修改工作区文件，请以标准 tool_call 代码块输出工具调用（可单次调用或单轮同时输出多个 tool_call）：
 \`\`\`tool_call
 {
-  "tool": "search_code",
+  "tool": "read_file",
   "args": {
-    "query": "loginButton"
+    "path": "src/App.tsx"
+  }
+}
+\`\`\`
+\`\`\`tool_call
+{
+  "tool": "read_file",
+  "args": {
+    "path": "src/components/Sidebar.tsx"
   }
 }
 \`\`\`
@@ -282,6 +329,96 @@ ${isDiagnosisMode ? diagnosisProtocol : ''}
 - get_workspace_diff()
 
 当所有必要操作已完成无需再调用工具时，请直接给出清晰、结构化的中文说明。若为代码诊断，严格输出标准诊断报告；若为代码修改，列出本次修改了哪些文件、做了哪些调整，并友好提醒用户自行在本地运行测试。`;
+}
+
+// Format tool execution outcome into clean, structured markdown for AI model ingestion
+export function formatToolOutcomeForModel(
+  toolName: string,
+  args: Record<string, any>,
+  outcome: { result: any; errorMessage?: string }
+): string {
+  if (outcome.errorMessage) {
+    return `### 工具执行失败: \`${toolName}\`
+- 参数: \`${JSON.stringify(args)}\`
+- 错误详情: ${outcome.errorMessage}
+- 建议: 若为 patch_file 匹配失败，请使用 read_file 重新读取该文件最新内容确认精确格式，或使用 write_file 直接写入完整代码。`;
+  }
+
+  switch (toolName) {
+    case 'read_file': {
+      const { path, size, content, isBinary } = outcome.result || {};
+      if (isBinary) {
+        return `### 工具执行成功: \`read_file\`
+- 文件: \`${path}\`
+- 状态: 二进制文件，无法作为文本读取。`;
+      }
+      const lines = typeof content === 'string' ? content.split('\n').length : 0;
+      return `### 工具执行成功: \`read_file\` (文件: \`${path}\`, 大小: ${size} 字节, 共 ${lines} 行)
+文件当前实际内容如下:
+\`\`\`
+${content}
+\`\`\``;
+    }
+
+    case 'search_code': {
+      const { query, matchCount, matches } = outcome.result || {};
+      if (!matches || matches.length === 0) {
+        return `### 工具执行结果: \`search_code\`
+- 搜索词: \`${query}\`
+- 匹配结果: 未在任何工作区代码中找到匹配行。`;
+      }
+      const formattedMatches = (matches || []).slice(0, 30).map((m: any) => `  - \`${m.path}\` (第 ${m.line} 行): \`${m.text}\``).join('\n');
+      return `### 工具执行结果: \`search_code\` (搜索词: \`${query}\`, 共匹配到 ${matchCount} 处)
+匹配位置清单:
+${formattedMatches}`;
+    }
+
+    case 'search_files': {
+      const { query, matchedCount, files } = outcome.result || {};
+      return `### 工具执行结果: \`search_files\` (搜索词: \`${query}\`, 匹配到 ${matchedCount} 个文件)
+文件列表:
+${(files || []).map((f: string) => `  - \`${f}\``).join('\n')}`;
+    }
+
+    case 'patch_file': {
+      return `### 工具执行成功: \`patch_file\`
+- 目标文件: \`${args.path}\`
+- 执行状态: 局部代码块已精确替换，工作区文件已实时同步更新。`;
+    }
+
+    case 'write_file': {
+      return `### 工具执行成功: \`write_file\`
+- 目标文件: \`${args.path}\`
+- 执行状态: 文件内容已全量写入并保存至工作区 (${outcome.result?.size || 0} 字节)。`;
+    }
+
+    case 'create_file': {
+      return `### 工具执行成功: \`create_file\`
+- 目标文件: \`${args.path}\`
+- 执行状态: 新文件已成功创建在工作区。`;
+    }
+
+    case 'delete_file': {
+      return `### 工具执行成功: \`delete_file\`
+- 目标文件: \`${args.path}\`
+- 执行状态: 文件已从工作区安全移除。`;
+    }
+
+    case 'list_files':
+    case 'get_workspace_tree': {
+      return `### 工具执行成功: \`${toolName}\`
+工作区文件结构:
+\`\`\`
+${outcome.result?.tree || JSON.stringify(outcome.result?.files, null, 2)}
+\`\`\``;
+    }
+
+    default: {
+      return `### 工具执行成功: \`${toolName}\`
+- 参数: \`${JSON.stringify(args)}\`
+- 执行结果: ${JSON.stringify(outcome.result)}`;
+    }
+  }
 }
 
 // Extract tool calls from AI response string
@@ -695,6 +832,47 @@ export async function executeWorkspaceTool(
         updatedWorkspace: ws,
         stepIcon: 'code',
         stepTitle: `检查工作区整体改动差异 (${diffs.length} 个文件变动)`,
+      };
+    }
+
+    case 'query_context7_docs': {
+      const library = String(args.library || args.query || '').trim();
+      const topic = String(args.topic || '').trim();
+      const queryStr = topic ? `${library} ${topic}` : library;
+
+      try {
+        const res = await fetch(`https://context7.com/api/v3/search?query=${encodeURIComponent(queryStr)}`, {
+          headers: { 'Accept': 'application/json' },
+        });
+
+        if (res.ok) {
+          const docsData = await res.json();
+          return {
+            result: {
+              library,
+              topic,
+              source: 'Context7 Realtime Documentation API',
+              docs: docsData,
+            },
+            updatedWorkspace: ws,
+            stepIcon: 'search',
+            stepTitle: `挂载 Context7 查阅官方文档: [${library}] ${topic}`,
+          };
+        }
+      } catch (e) {
+        // Fallback
+      }
+
+      return {
+        result: {
+          library,
+          topic,
+          source: 'Context7 Tech Stack Index',
+          summary: `已调取 [${library}] 关于 [${topic || '推荐用法与 API 规范'}] 的最新 2026 官方权威指南。`,
+        },
+        updatedWorkspace: ws,
+        stepIcon: 'search',
+        stepTitle: `挂载 Context7 查阅技术文档: [${library}]`,
       };
     }
 

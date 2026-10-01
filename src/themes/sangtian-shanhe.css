@@ -836,6 +836,50 @@ html.theme-sangtian-shanhe body {
   border: 1px solid #C5A873 !important;
 }
 
+/* 工作区切换与管理弹窗 (Workspace Manager Dropdown) */
+.theme-sangtian-shanhe .workspace-dropdown-menu {
+  background: #FFF8EA !important;
+  border: 1px solid #B18A4A !important;
+  box-shadow: 0 12px 36px rgba(58, 38, 26, 0.35) !important;
+  color: var(--sth-ink) !important;
+  border-radius: 14px !important;
+}
+
+.theme-sangtian-shanhe .workspace-dropdown-menu .border-b,
+.theme-sangtian-shanhe .workspace-dropdown-menu .border-t {
+  border-color: rgba(181, 142, 85, 0.25) !important;
+}
+
+.theme-sangtian-shanhe .workspace-dropdown-menu input {
+  background: #FFF1D2 !important;
+  border: 1px solid #B18A4A !important;
+  color: var(--sth-ink) !important;
+}
+
+.theme-sangtian-shanhe .workspace-dropdown-menu .bg-indigo-50\/80,
+.theme-sangtian-shanhe .workspace-dropdown-menu .bg-indigo-950\/50 {
+  background: rgba(169, 54, 45, 0.12) !important;
+  border-color: rgba(169, 54, 45, 0.35) !important;
+}
+
+.theme-sangtian-shanhe .workspace-dropdown-menu .text-indigo-700,
+.theme-sangtian-shanhe .workspace-dropdown-menu .text-indigo-600 {
+  color: #A9362D !important;
+}
+
+.theme-sangtian-shanhe .workspace-dropdown-menu .bg-indigo-600 {
+  background: #A9362D !important;
+}
+
+.theme-sangtian-shanhe .workspace-dropdown-menu button.bg-neutral-900 {
+  background: #A9362D !important;
+  color: #FFF8EA !important;
+}
+
+.theme-sangtian-shanhe .workspace-dropdown-menu button.bg-neutral-900:hover {
+  background: #C74538 !important;
+}
+
 /* 17. 其它弹窗 (Search, Export, Batch, Project Modals) */
 .theme-sangtian-shanhe .fixed.inset-0.z-50 > div,
 .theme-sangtian-shanhe .fixed.inset-0.z-60 > div {

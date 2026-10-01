@@ -20,7 +20,8 @@ import {
   SlidersHorizontal,
   Server,
   Folder,
-  Bot
+  Bot,
+  Play
 } from 'lucide-react';
 import { Conversation, ModelItem, ProviderDefinition, ApiKeyConfig, ConnectionStatus } from '../types';
 
@@ -51,6 +52,7 @@ interface TopBarProps {
   workspaceName?: string;
   modifiedFilesCount?: number;
   onOpenWorkspace?: () => void;
+  onOpenPreview?: () => void;
   agentMode?: boolean;
   onToggleAgentMode?: (enabled: boolean) => void;
 }
@@ -82,6 +84,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   workspaceName,
   modifiedFilesCount = 0,
   onOpenWorkspace,
+  onOpenPreview,
   agentMode = false,
   onToggleAgentMode,
 }) => {
@@ -222,31 +225,15 @@ export const TopBar: React.FC<TopBarProps> = ({
           <span>新聊天</span>
         </button>
 
-        <div className="h-4 w-[1px] bg-neutral-200 dark:bg-neutral-800 mx-1 hidden sm:block" />
-
-        <div className="min-w-0 flex items-center gap-1.5">
+        {projectName && (
           <span 
-            className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 truncate max-w-[140px] md:max-w-[240px] cursor-pointer hover:underline decoration-neutral-400 underline-offset-2"
-            title="点击重命名"
-            onClick={() => {
-              const current = currentConversation?.title || '新对话';
-              const next = prompt('输入新的对话标题:', current);
-              if (next && next.trim()) onRenameChat(next.trim());
-            }}
+            className="hidden sm:inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium shrink-0 ml-1"
+            title={`所属项目: ${projectName} (共享项目记忆)`}
           >
-            {currentConversation?.title || '新对话'}
+            <Folder className="w-3 h-3 text-amber-500" />
+            <span className="max-w-[120px] truncate">{projectName}</span>
           </span>
-
-          {projectName && (
-            <span 
-              className="hidden sm:inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-medium shrink-0"
-              title={`所属项目: ${projectName} (共享项目记忆)`}
-            >
-              <Folder className="w-3 h-3 text-amber-500" />
-              <span className="max-w-[100px] truncate">{projectName}</span>
-            </span>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Center Spacer */}
@@ -316,6 +303,19 @@ export const TopBar: React.FC<TopBarProps> = ({
             <Bot className={`w-3.5 h-3.5 ${agentMode ? 'text-purple-500' : 'text-neutral-400'}`} />
             <span>Agent 模式</span>
             <span className={`w-1.5 h-1.5 rounded-full ${agentMode ? 'bg-purple-500 animate-pulse' : 'bg-neutral-400'}`} />
+          </button>
+        )}
+
+        {/* Workspace Web Preview Button (放置在“我的工作区”左侧) */}
+        {onOpenPreview && (
+          <button
+            type="button"
+            onClick={onOpenPreview}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-medium transition cursor-pointer shadow-2xs active:scale-[0.98]"
+            title="打开工作区网页实时预览区（直接运行查看静态网页/React项目）"
+          >
+            <Play className="w-3.5 h-3.5 fill-current text-emerald-600 dark:text-emerald-400" />
+            <span>预览区</span>
           </button>
         )}
 
