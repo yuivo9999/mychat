@@ -120,76 +120,288 @@ html.theme-sangtian-shanhe body {
   border-radius: var(--sth-radius);
 }
 
-/* 07. 左侧侧边栏 (Sidebar.tsx: 深乌木色古风侧栏) */
+/* 07. 左侧侧边栏 (Sidebar.tsx: 深乌木色古风侧栏 · 文字美化搭配体系) */
 .theme-sangtian-shanhe aside {
   background: linear-gradient(180deg, #3A261A 0%, #4A3021 50%, #5B3B25 100%) !important;
   border-right: 1px solid var(--sth-line-dark) !important;
-  color: var(--sth-paper) !important;
+  color: #F4E8C8 !important;
   box-shadow: 4px 0 20px rgba(58, 38, 26, 0.22);
 }
 
-.theme-sangtian-shanhe aside button,
-.theme-sangtian-shanhe aside [role="button"] {
-  border-radius: 8px !important;
-  color: var(--sth-paper) !important;
+/* 侧边栏内部整体文本重置：避免全局深墨黑字覆盖 */
+.theme-sangtian-shanhe aside,
+.theme-sangtian-shanhe aside * {
+  border-color: rgba(181, 142, 85, 0.2);
 }
 
-.theme-sangtian-shanhe aside button:hover,
-.theme-sangtian-shanhe aside [role="button"]:hover,
-.theme-sangtian-shanhe aside .hover\:bg-neutral-100:hover,
-.theme-sangtian-shanhe aside .hover\:bg-neutral-800:hover,
-.theme-sangtian-shanhe aside .hover\:bg-neutral-200\/60:hover,
-.theme-sangtian-shanhe aside .hover\:bg-neutral-700\/60:hover {
-  background: rgba(177, 138, 74, 0.18) !important;
+/* 顶部与边框分割线：含蓄暗金细线 */
+.theme-sangtian-shanhe aside .border-b,
+.theme-sangtian-shanhe aside .border-t,
+.theme-sangtian-shanhe aside .border-neutral-200\/70,
+.theme-sangtian-shanhe aside .border-neutral-800\/70 {
+  border-color: rgba(181, 142, 85, 0.22) !important;
+}
+
+/* 顶部「新聊天」主按钮：朱砂印泥红底 + 纯净羊脂白字 */
+.theme-sangtian-shanhe aside button.bg-neutral-900,
+.theme-sangtian-shanhe aside .bg-neutral-900,
+.theme-sangtian-shanhe aside .bg-indigo-600,
+.theme-sangtian-shanhe aside .bg-indigo-500 {
+  background: linear-gradient(135deg, #B53A2F 0%, #942B22 100%) !important;
+  color: #FFF9EE !important;
+  border: 1px solid rgba(255, 245, 220, 0.25) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 3px 10px rgba(134, 39, 31, 0.4) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em;
+}
+
+.theme-sangtian-shanhe aside button.bg-neutral-900:hover,
+.theme-sangtian-shanhe aside .bg-neutral-900:hover,
+.theme-sangtian-shanhe aside .bg-indigo-600:hover,
+.theme-sangtian-shanhe aside .bg-indigo-500:hover {
+  background: linear-gradient(135deg, #C74538 0%, #A23026 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 5px 16px rgba(134, 39, 31, 0.55) !important;
+  transform: translateY(-1px);
+}
+
+.theme-sangtian-shanhe aside button.bg-neutral-900 svg,
+.theme-sangtian-shanhe aside .bg-neutral-900 svg {
+  color: #FFF9EE !important;
+}
+
+/* 搜索框与快捷键（搜索聊天... / ⌘K）：淡宣纸竹韵底 + 浅茶色提示文字 */
+.theme-sangtian-shanhe aside .bg-neutral-200\/50,
+.theme-sangtian-shanhe aside .bg-neutral-800\/50 {
+  background: rgba(255, 248, 230, 0.07) !important;
+  border: 1px solid rgba(197, 168, 115, 0.22) !important;
+  color: #D6C2A2 !important;
+}
+
+.theme-sangtian-shanhe aside .bg-neutral-200\/50:hover,
+.theme-sangtian-shanhe aside .bg-neutral-800\/50:hover {
+  background: rgba(255, 248, 230, 0.12) !important;
+  border-color: rgba(226, 186, 118, 0.4) !important;
   color: #FFF5DC !important;
 }
 
+.theme-sangtian-shanhe aside kbd {
+  background: rgba(226, 186, 118, 0.16) !important;
+  color: #E8D5B5 !important;
+  border: 1px solid rgba(197, 168, 115, 0.35) !important;
+}
+
+/* 分类大标题：「项目」、「聊天」—— 典雅泥金古风标题 */
+.theme-sangtian-shanhe aside .tracking-wide,
+.theme-sangtian-shanhe aside span.text-sm.font-semibold,
+.theme-sangtian-shanhe aside .text-neutral-700,
+.theme-sangtian-shanhe aside .dark\:text-neutral-200 {
+  color: #E6BD76 !important; /* 华贵泥金色 */
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* 时间分组标签：「今天」、「昨天」、「最近 7 天」、「更早之前」—— 淡金茶素雅色 */
+.theme-sangtian-shanhe aside .uppercase.tracking-wider,
+.theme-sangtian-shanhe aside .text-\[10px\].font-semibold {
+  color: #CBB084 !important; /* 淡金茶色 */
+  letter-spacing: 0.06em !important;
+  opacity: 0.95;
+}
+
+/* 「置顶聊天」专属：朱砂暖金醒目标识 */
+.theme-sangtian-shanhe aside .text-amber-600,
+.theme-sangtian-shanhe aside .text-amber-400,
+.theme-sangtian-shanhe aside .text-amber-500 {
+  color: #F8B44A !important; /* 耀目暖金琥珀 */
+}
+
+/* 项目行：项目容器外框 */
+.theme-sangtian-shanhe aside .rounded-xl.bg-neutral-100\/40,
+.theme-sangtian-shanhe aside .rounded-xl.bg-neutral-800\/30 {
+  background: rgba(255, 245, 220, 0.05) !important;
+  border: 1px solid rgba(197, 168, 115, 0.18) !important;
+}
+
+/* 项目名称文字：温润玉脂素白 */
+.theme-sangtian-shanhe aside span.truncate.text-sm.font-medium,
+.theme-sangtian-shanhe aside .text-neutral-800 {
+  color: #FAF0D8 !important;
+  font-weight: 500 !important;
+}
+
+/* 项目文件夹图标：金珀色 */
+.theme-sangtian-shanhe aside .text-amber-500\/90,
+.theme-sangtian-shanhe aside svg.lucide-folder {
+  color: #E8AA42 !important;
+}
+
+/* 项目聊天计数气泡 (0, 1, 2...)：小巧淡金徽标 */
+.theme-sangtian-shanhe aside span.text-\[10px\].rounded-full {
+  background: rgba(226, 186, 118, 0.18) !important;
+  color: #F8E8C8 !important;
+  border: 1px solid rgba(197, 168, 115, 0.28) !important;
+}
+
+/* 会话列表 - 默认状态标题文字：温润宣白，清晰雅致 */
+.theme-sangtian-shanhe aside .truncate.text-\[13px\],
+.theme-sangtian-shanhe aside .text-neutral-600 {
+  color: #F2E4C4 !important;
+  font-weight: 450 !important;
+  transition: color 0.15s ease;
+}
+
+/* 会话列表 - 副标题（模型名字体）：淡轻檀色/浅绢素，优雅不喧宾夺主 */
+.theme-sangtian-shanhe aside .text-\[10px\].font-mono,
+.theme-sangtian-shanhe aside .text-\[10px\].text-neutral-400,
+.theme-sangtian-shanhe aside .text-\[10px\].text-neutral-500,
+.theme-sangtian-shanhe aside .text-neutral-500,
+.theme-sangtian-shanhe aside .text-neutral-400 {
+  color: #B59F85 !important;
+  letter-spacing: 0.02em;
+}
+
+/* 会话列表 - 鼠标悬停 (Hover) 状态：温润亮白文字与泥金微光底 */
+.theme-sangtian-shanhe aside .group:hover .truncate.text-\[13px\] {
+  color: #FFFDF5 !important;
+}
+
+.theme-sangtian-shanhe aside .group:hover .text-\[10px\].font-mono {
+  color: #D6C2A5 !important;
+}
+
+.theme-sangtian-shanhe aside .group:hover,
+.theme-sangtian-shanhe aside .hover\:bg-neutral-100\/80:hover,
+.theme-sangtian-shanhe aside .hover\:bg-neutral-200\/50:hover,
+.theme-sangtian-shanhe aside .hover\:bg-neutral-800\/60:hover {
+  background: rgba(226, 186, 118, 0.12) !important;
+}
+
+/* 会话列表 - 当前激活会话 (Active)：深朱砂暖棕底 + 鲜明朱砂红立柱线 + 凝脂纯白文字 */
+.theme-sangtian-shanhe aside .bg-neutral-200\/80,
+.theme-sangtian-shanhe aside .bg-neutral-800,
+.theme-sangtian-shanhe aside .bg-indigo-50,
+.theme-sangtian-shanhe aside .bg-indigo-100 {
+  background: linear-gradient(90deg, rgba(169, 54, 45, 0.38) 0%, rgba(134, 39, 31, 0.22) 100%) !important;
+  border-left: 3.5px solid #C75B46 !important;
+  border-radius: 3px 10px 10px 3px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22) !important;
+}
+
+.theme-sangtian-shanhe aside .bg-neutral-200\/80 .truncate.text-\[13px\],
+.theme-sangtian-shanhe aside .bg-neutral-800 .truncate.text-\[13px\],
+.theme-sangtian-shanhe aside .bg-indigo-50 .truncate.text-\[13px\],
+.theme-sangtian-shanhe aside .bg-indigo-100 .truncate.text-\[13px\] {
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.theme-sangtian-shanhe aside .bg-neutral-200\/80 .text-\[10px\].font-mono,
+.theme-sangtian-shanhe aside .bg-neutral-800 .text-\[10px\].font-mono,
+.theme-sangtian-shanhe aside .bg-indigo-50 .text-\[10px\].font-mono,
+.theme-sangtian-shanhe aside .bg-indigo-100 .text-\[10px\].font-mono {
+  color: #F1D8BC !important; /* 激活态副标题清晰柔和 */
+}
+
+.theme-sangtian-shanhe aside .bg-neutral-200\/80 svg.text-indigo-600,
+.theme-sangtian-shanhe aside .bg-neutral-800 svg.text-indigo-400,
+.theme-sangtian-shanhe aside .bg-neutral-200\/80 svg,
+.theme-sangtian-shanhe aside .bg-neutral-800 svg {
+  color: #FF8870 !important; /* 朱砂亮点图标 */
+}
+
+/* 图标统一定色：典雅金铜色，Hover 提亮 */
 .theme-sangtian-shanhe aside svg {
-  color: #C5AD83 !important;
+  color: #D4B684 !important;
+  transition: color 0.15s ease, transform 0.15s ease;
 }
 
 .theme-sangtian-shanhe aside button:hover svg,
-.theme-sangtian-shanhe aside [role="button"]:hover svg {
-  color: #F4E8C8 !important;
-}
-
-/* 新建聊天按钮：朱砂红底、浅米白文字、暗红 Hover */
-.theme-sangtian-shanhe aside .bg-indigo-600,
-.theme-sangtian-shanhe aside .bg-indigo-500 {
-  background: var(--sth-vermilion) !important;
-  color: #FFF3D8 !important;
-  border-radius: 8px !important;
-  border: 1px solid rgba(255, 243, 216, 0.15) !important;
-  box-shadow: 0 4px 12px rgba(134, 39, 31, 0.35) !important;
-}
-
-.theme-sangtian-shanhe aside .bg-indigo-600:hover,
-.theme-sangtian-shanhe aside .bg-indigo-500:hover {
-  background: var(--sth-vermilion-dark) !important;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(134, 39, 31, 0.45) !important;
-}
-
-.theme-sangtian-shanhe aside .bg-indigo-600 svg,
-.theme-sangtian-shanhe aside .bg-indigo-500 svg {
+.theme-sangtian-shanhe aside [role="button"]:hover svg,
+.theme-sangtian-shanhe aside .group:hover svg {
   color: #FFF3D8 !important;
 }
 
-/* 当前激活会话：深朱砂棕底、左侧 3px 朱砂红线 */
-.theme-sangtian-shanhe aside .bg-indigo-50,
-.theme-sangtian-shanhe aside .bg-indigo-100,
-.theme-sangtian-shanhe aside .bg-neutral-100,
-.theme-sangtian-shanhe aside .bg-neutral-200\/80,
-.theme-sangtian-shanhe aside .bg-neutral-700\/80 {
-  background: rgba(169, 54, 45, 0.24) !important;
-  color: #FFF5DC !important;
-  border-left: 3px solid var(--sth-vermilion) !important;
-  border-radius: 2px 8px 8px 2px !important;
+/* 按钮基础及悬停 */
+.theme-sangtian-shanhe aside button {
+  color: #EBD8B8 !important;
 }
 
-.theme-sangtian-shanhe aside .text-neutral-500,
-.theme-sangtian-shanhe aside .text-neutral-400 {
-  color: #C5AD83 !important;
+.theme-sangtian-shanhe aside button:hover {
+  background: rgba(226, 186, 118, 0.15) !important;
+  color: #FFFDF5 !important;
+}
+
+/* 空状态说明文字（"没有项目"、"暂无聊天..."、"暂无独立聊天记录"）*/
+.theme-sangtian-shanhe aside .italic,
+.theme-sangtian-shanhe aside .text-neutral-400\/80,
+.theme-sangtian-shanhe aside .py-6 p,
+.theme-sangtian-shanhe aside .font-normal.text-xs {
+  color: #AFA088 !important;
+  font-style: normal !important;
+}
+
+/* 侧边栏底部（Footer）：「数据本地存储」翡翠青碧色，安全宁静 */
+.theme-sangtian-shanhe aside .border-t .text-emerald-600,
+.theme-sangtian-shanhe aside .border-t .text-emerald-400,
+.theme-sangtian-shanhe aside .border-t span.font-medium {
+  color: #8ADCA0 !important; /* 翡翠翠玉绿 */
+}
+
+.theme-sangtian-shanhe aside .border-t .text-emerald-600 svg,
+.theme-sangtian-shanhe aside .border-t .text-emerald-400 svg {
+  color: #8ADCA0 !important;
+}
+
+/* 底部开启新窗口红印加号按钮 */
+.theme-sangtian-shanhe aside .border-t button[title="开启新窗口"] {
+  background: #A9362D !important;
+  border: 1px solid rgba(255, 245, 220, 0.3) !important;
+}
+
+.theme-sangtian-shanhe aside .border-t button[title="开启新窗口"]:hover {
+  background: #C74538 !important;
+  transform: scale(1.05);
+}
+
+.theme-sangtian-shanhe aside .border-t button[title="开启新窗口"] svg {
+  color: #FFF8EA !important;
+}
+
+/* 侧边栏内三点展开的气泡操作菜单 (Dropdown Menu) */
+.theme-sangtian-shanhe aside .absolute.bg-white,
+.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900,
+.theme-sangtian-shanhe .z-9999 {
+  background: #2D1D13 !important; /* 深乌木实色 */
+  border: 1px solid #8E6B40 !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 12px !important;
+}
+
+.theme-sangtian-shanhe aside .absolute.bg-white button,
+.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button,
+.theme-sangtian-shanhe .z-9999 button {
+  color: #EBD7B6 !important;
+}
+
+.theme-sangtian-shanhe aside .absolute.bg-white button:hover,
+.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button:hover,
+.theme-sangtian-shanhe .z-9999 button:hover {
+  background: rgba(169, 54, 45, 0.35) !important;
+  color: #FFFFFF !important;
+}
+
+.theme-sangtian-shanhe aside .absolute.bg-white button svg,
+.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button svg,
+.theme-sangtian-shanhe .z-9999 button svg {
+  color: #D9B36E !important;
+}
+
+.theme-sangtian-shanhe .z-9999 .border-t {
+  border-color: rgba(181, 142, 85, 0.25) !important;
 }
 
 /* 08. 顶部栏 (TopBar.tsx: 深乌木色古风顶部栏) */
