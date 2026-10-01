@@ -903,22 +903,13 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                 {/* Workspace Selector & Manager Dropdown Popup (Matching IMG_20261001_171254.jpg) */}
                 {isWorkspaceDropdownOpen && (
                   <div className="workspace-dropdown-menu absolute left-0 top-11 z-50 w-72 sm:w-80 bg-white dark:bg-neutral-850 rounded-2xl shadow-2xl border border-neutral-200/90 dark:border-neutral-750 p-2.5 text-xs animate-in fade-in zoom-in-95 select-none">
-                    {/* Top Bar: Title & Count & Quick Add */}
-                    <div className="flex items-center justify-between px-1 pb-2 border-b border-neutral-100 dark:border-neutral-750">
+                    {/* Top Bar: Title & Count */}
+                    <div className="flex items-center justify-between px-1.5 pb-2 border-b border-neutral-100 dark:border-neutral-750">
                       <div className="flex items-center gap-1.5 font-bold text-xs text-neutral-800 dark:text-neutral-200">
                         <Layers className="w-3.5 h-3.5 text-indigo-500" />
                         <span>工作区管理</span>
                         <span className="text-[10px] font-normal text-neutral-400">({workspaces.length})</span>
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleCreateNewWorkspace}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 font-medium text-[11px] transition cursor-pointer"
-                        title="新建工作区"
-                      >
-                        <Plus className="w-3 h-3 stroke-[2.5]" />
-                        <span>新建</span>
-                      </button>
                     </div>
 
                     {/* Workspace Items List */}
@@ -1090,19 +1081,6 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                     >
                       <FolderPlus className="w-4 h-4 text-neutral-500" />
                       <span>新建文件夹</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const newWs = createEmptyWorkspace(`新项目_${workspaces.length + 1}`);
-                        onSaveWorkspace(newWs);
-                        onSelectWorkspace(newWs.id);
-                        setIsNewDropdownOpen(false);
-                      }}
-                      className="w-full text-left px-3.5 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-700 flex items-center gap-2.5 text-neutral-700 dark:text-neutral-300"
-                    >
-                      <Layers className="w-4 h-4 text-indigo-500" />
-                      <span>新建空白工作区</span>
                     </button>
                   </div>
                 )}
