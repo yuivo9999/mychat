@@ -330,7 +330,9 @@ html.theme-classic1,
 }
 
 /* 古典1 皮肤下参数设置文字与辅助文字高对比度覆写 */
-.theme-classic1 .parameters-modal .param-modal-title,
+.theme-classic1 .parameters-modal h3.param-modal-title {
+  color: #ffffff !important;
+}
 .theme-classic1 .parameters-modal .param-item-label {
   color: #2c221e !important;
 }
@@ -343,7 +345,9 @@ html.theme-classic1,
 }
 
 /* 现代1 皮肤下参数设置文字与辅助文字高对比度覆写 */
-.theme-modern1 .parameters-modal .param-modal-title,
+.theme-modern1 .parameters-modal h3.param-modal-title {
+  color: #ffffff !important;
+}
 .theme-modern1 .parameters-modal .param-item-label {
   color: #1c2d42 !important;
 }
@@ -989,6 +993,29 @@ html.theme-vermilion-textile,
 .theme-classic1 .file-editor-modal .md-preview-tab span,
 .theme-modern1 .file-editor-modal .md-preview-tab span {
   color: #ffffff !important;
+}
+
+/* 古典2皮肤下“预览区”按钮颜色搭配的元素改成黑色背景和白色文字 */
+html.theme-classic2 .preview-area-btn,
+.theme-classic2 .preview-area-btn {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #3a322d !important;
+}
+html.theme-classic2 .preview-area-btn svg,
+html.theme-classic2 .preview-area-btn span,
+.theme-classic2 .preview-area-btn svg,
+.theme-classic2 .preview-area-btn span,
+html.theme-classic2 .preview-area-btn *,
+.theme-classic2 .preview-area-btn * {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+html.theme-classic2 .preview-area-btn:hover,
+.theme-classic2 .preview-area-btn:hover {
+  background-color: #1a1512 !important;
+  color: #ffffff !important;
+  border-color: #dfb15b !important;
 }
 
 

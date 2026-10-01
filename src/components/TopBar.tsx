@@ -311,7 +311,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           <button
             type="button"
             onClick={onOpenPreview}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-medium transition cursor-pointer shadow-2xs active:scale-[0.98]"
+            className="preview-area-btn inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 text-xs font-medium transition cursor-pointer shadow-2xs active:scale-[0.98]"
             title="打开工作区网页实时预览区（直接运行查看静态网页/React项目）"
           >
             <Play className="w-3.5 h-3.5 fill-current text-emerald-600 dark:text-emerald-400" />
