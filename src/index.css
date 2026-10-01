@@ -1018,4 +1018,31 @@ html.theme-classic2 .preview-area-btn:hover,
   border-color: #dfb15b !important;
 }
 
+/* 古典2皮肤下所有运行参数 Toggle 开关样式完全一致且高对比度可见 */
+html.theme-classic2 .param-toggle,
+.theme-classic2 .param-toggle {
+  border: 1px solid #dfb15b !important;
+}
+
+html.theme-classic2 .param-toggle.bg-\[\#84cc16\],
+.theme-classic2 .param-toggle.bg-\[\#84cc16\],
+html.theme-classic2 .param-toggle[class*="bg-[#84cc16]"],
+.theme-classic2 .param-toggle[class*="bg-[#84cc16]"],
+html.theme-classic2 .param-toggle[class*="bg-lime-500"],
+.theme-classic2 .param-toggle[class*="bg-lime-500"] {
+  background-color: #dfb15b !important; /* Gold for ON state */
+}
+
+html.theme-classic2 .param-toggle:not(.bg-\[\#84cc16\]):not([class*="bg-[#84cc16]"]):not([class*="bg-lime-500"]),
+.theme-classic2 .param-toggle:not(.bg-\[\#84cc16\]):not([class*="bg-[#84cc16]"]):not([class*="bg-lime-500"]) {
+  background-color: #2c221e !important; /* Elegant warm dark wood for OFF state */
+  border-color: #55443c !important;
+}
+
+/* 确保开关内的小圆点在 ON/OFF 状态下均高度清晰可见 */
+html.theme-classic2 .param-toggle-dot,
+.theme-classic2 .param-toggle-dot {
+  background-color: #ede3cd !important; /* Warm antique cream dot */
+}
+
 

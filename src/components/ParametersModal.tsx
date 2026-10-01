@@ -253,7 +253,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 }`}
               >
                 <div
-                  className={`bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  className={`param-toggle-dot bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
                     streamVal ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
@@ -293,7 +293,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 }`}
               >
                 <div
-                  className={`bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  className={`param-toggle-dot bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
                     promptPerfectVal ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
@@ -333,7 +333,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 }`}
               >
                 <div
-                  className={`bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                  className={`param-toggle-dot bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
                     context7Val ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
