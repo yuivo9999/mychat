@@ -518,10 +518,10 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl border border-neutral-800 hover:border-neutral-700 bg-neutral-800/60 hover:bg-neutral-800 text-neutral-400 hover:text-white transition cursor-pointer"
+              className="p-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white border border-red-500 transition cursor-pointer shadow-xs active:scale-95 flex items-center justify-center"
               title="关闭表格"
             >
-              <X className="w-4.5 h-4.5" />
+              <X className="w-4.5 h-4.5 text-white" />
             </button>
           </div>
         </div>
@@ -667,8 +667,8 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
                       key={originalIndex}
                       className="border-b border-neutral-850 hover:bg-neutral-900/60 transition group"
                     >
-                      {/* Row Index Header Number (1, 2, 3...) */}
-                      <td className="py-1.5 px-1 text-center font-mono text-[10px] text-neutral-500 bg-neutral-900/90 border-r border-neutral-800 select-none sticky left-0 z-10 group-hover:bg-neutral-850 group-hover:text-neutral-300">
+                      {/* Row Index Header Number (1, 2, 3...) with white color */}
+                      <td className="py-1.5 px-1 text-center font-mono text-[10px] text-white bg-neutral-900/90 border-r border-neutral-800 select-none sticky left-0 z-10 group-hover:bg-neutral-850 group-hover:text-white">
                         {originalIndex + 1}
                       </td>
 
@@ -681,10 +681,10 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
                           <td
                             key={cIdx}
                             onClick={() => handleSelectCell(originalIndex, cIdx)}
-                            className={`py-1.5 px-2.5 border-r border-neutral-850 font-mono text-xs truncate cursor-pointer transition select-text ${
+                            className={`py-1.5 px-2.5 border-r border-neutral-800 font-mono text-xs truncate cursor-pointer transition select-text ${
                               isSelected
-                                ? 'bg-emerald-950/70 text-emerald-200 ring-2 ring-emerald-500/80 z-10 font-medium'
-                                : 'text-neutral-200 hover:bg-neutral-850/80'
+                                ? 'bg-emerald-100 text-emerald-900 ring-2 ring-emerald-500/80 z-10 font-bold'
+                                : 'bg-white text-black hover:bg-neutral-100'
                             }`}
                             title={`单元格 [${indexToColLetter(cIdx)}${originalIndex + 1}]: ${String(cellVal)}`}
                           >
@@ -784,8 +784,8 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
 
           {/* Right: Grid Stats (Rows Count, Columns Count, Active Cell) */}
           <div className="flex items-center gap-3 shrink-0 text-neutral-400 font-mono text-[11px]">
-            <span>行数: <strong className="text-neutral-200">{currentGrid.length}</strong></span>
-            <span>列数: <strong className="text-neutral-200">{maxCols}</strong></span>
+            <span>行数: <strong className="text-blue-500 dark:text-blue-400 font-bold">{currentGrid.length}</strong></span>
+            <span>列数: <strong className="text-blue-500 dark:text-blue-400 font-bold">{maxCols}</strong></span>
             {selectedCell && (
               <span className="text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-800/60 font-bold">
                 [{selectedCellAddress}]

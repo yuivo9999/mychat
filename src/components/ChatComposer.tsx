@@ -346,7 +346,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-3 md:px-6 pt-1 pb-[calc(1.75rem+env(safe-area-inset-bottom,0px))] sm:pb-5 md:pb-4 shrink-0 relative select-none">
+    <div className="w-full max-w-4xl mx-auto px-3 md:px-6 pt-1 pb-[calc(0.35rem+env(safe-area-inset-bottom,0px))] sm:pb-2 md:pb-2 shrink-0 relative select-none">
       {/* Soft Ink Wave Pattern shifted up by another half text height (~8px) (淡墨色波浪纹/山水涟漪) */}
       <div className="ink-wave-layer absolute inset-x-0 -top-5 sm:-top-4 md:-top-3 h-14 sm:h-16 md:h-18 pointer-events-none overflow-hidden z-10 opacity-90 dark:opacity-40 transition-opacity">
         <svg
