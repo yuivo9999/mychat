@@ -148,6 +148,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
 
   const tooltips: Record<string, string> = {
     stream: '开启打字机逐字输出。关闭则等待整体生成完毕后一次性呈现。',
+    promptPerfect: '开启后在发送给 AI 之前，由专用引擎自动将您的简短提示词重写为专业、结构清晰、完美的 Prompt 模板，提高生成质量。',
     maxTokens: '单次回复允许生成的最大 Token 限制（4096 约合 2000 个汉字）。',
     temperature: '控制回答的多样性。0.0~0.3 严谨确定（代码/数学）；0.7~1.0 丰富发散（创意/写作）。',
     latex: '自动通过 KaTeX 引擎将数学公式/物理符号/微积分渲染为学术级排版。',
@@ -159,6 +160,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   };
 
   const streamVal = settings?.enableStreaming ?? parameters.stream ?? true;
+  const promptPerfectVal = parameters.promptPerfect ?? false;
 
   return (
     <div className="parameters-modal fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-150">
@@ -251,6 +253,46 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 <div
                   className={`bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
                     streamVal ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* 1.5. 提示词完美优化 (Prompt Perfect) */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs">
+              <div className="space-y-0.5 pr-2">
+                <div className="flex items-center gap-1.5 relative">
+                  <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100">Prompt Perfect 提示词优化</span>
+                  <button
+                    type="button"
+                    onMouseEnter={() => setActiveTooltip('promptPerfect')}
+                    onMouseLeave={() => setActiveTooltip(null)}
+                    onClick={() => setActiveTooltip(activeTooltip === 'promptPerfect' ? null : 'promptPerfect')}
+                    className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                  >
+                    <Info className="w-3.5 h-3.5" />
+                  </button>
+                  {activeTooltip === 'promptPerfect' && (
+                    <div className="absolute left-0 top-6 z-20 w-56 p-2 bg-neutral-900 border border-neutral-700 text-[11px] text-neutral-300 rounded-xl shadow-xl">
+                      {tooltips.promptPerfect}
+                    </div>
+                  )}
+                </div>
+                <p className="param-item-sub text-[11px] text-neutral-500 dark:text-neutral-400">自动改写并极速提升提示词质量</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  updateParam('promptPerfect', !promptPerfectVal);
+                }}
+                className={`param-toggle w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors shrink-0 ${
+                  promptPerfectVal ? 'bg-[#84cc16] bg-lime-500' : 'bg-neutral-300 dark:bg-neutral-800'
+                }`}
+              >
+                <div
+                  className={`bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    promptPerfectVal ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
               </button>

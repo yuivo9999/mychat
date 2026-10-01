@@ -728,6 +728,8 @@ export default function App() {
       attachments: effectiveAttachments,
     };
 
+    const isPromptPerfectEnabled = Boolean((targetConv?.parameters || parameters)?.promptPerfect);
+
     const initialThinkingSteps: ThinkingStep[] = [
       {
         id: `step_analyze_${Date.now()}`,
@@ -736,6 +738,15 @@ export default function App() {
         status: 'completed',
       },
     ];
+
+    if (isPromptPerfectEnabled) {
+      initialThinkingSteps.push({
+        id: `step_prompt_perfect_${Date.now()}`,
+        icon: 'lightning',
+        title: '✨ Prompt Perfect 已启动：自动优化与升级您的提示词工程质量',
+        status: 'completed',
+      });
+    }
 
     // Check vision capabilities for image attachments
     const hasImageAttachments = (effectiveAttachments || []).some(a => a.type.startsWith('image/'));
@@ -1046,6 +1057,19 @@ export default function App() {
       });
 
       let adaptedContent = userMessage.content || '';
+
+      if (isPromptPerfectEnabled) {
+        adaptedContent = `[Prompt Perfect 提示词优化开启 - 系统已将用户原描述重构为如下专业工程指令]
+请作为该领域的顶级专家/资深软件架构师，针对以下用户真实需求，产出最具专业性、高度健壮、完美无瑕的解决方案。
+
+【核心需求描述】
+${adaptedContent}
+
+【专业执行标准】
+1. **深度架构设计**：挖掘需求深处的边界情况、多线程安全/异常流捕获，并选择最优技术方案；
+2. **完整工业级代码**：如有代码编写，提供无任何占位符的完整、健壮、注释规范的标准方案；
+3. **结构化章节答复**：用清晰的结构（思路分析、核心方案、扩展考量）分层呈现，保证最佳的可读性。`;
+      }
 
       // Append natural guidance if attachments were omitted
       if (hasImageAttachments && !isVisionSupported) {
