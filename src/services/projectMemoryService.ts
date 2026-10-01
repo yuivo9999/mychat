@@ -1,8 +1,11 @@
 import { Project, Conversation } from '../types';
 
 /**
- * Format the shared Project Memory prompt for inclusion in the model's system prompt.
+ * 黄金平衡分层记忆架构 (Hierarchical Project Shared Memory)
  * Multiple chat windows inside the same project share this collective memory.
+ * - L1: Global project conventions & instructions (Immutable / Semi-static)
+ * - L2: Structured key decisions & technical agreements (Compact Key Decisions)
+ * - L3: Peer conversation summaries (Active context of other chats in this project)
  */
 export function formatProjectMemoryPrompt(
   project: Project,
@@ -11,35 +14,37 @@ export function formatProjectMemoryPrompt(
 ): string {
   const sections: string[] = [];
 
-  // 1. Basic Project Identity & Mode
-  sections.push(
-    `### 所属项目: 【${project.name}】\n` +
-    `- **记忆隔离模式**: ${
-      project.memoryMode === 'isolated' 
-        ? '仅限项目记忆 (此项目只能访问自己的记忆，记忆对外部独立聊天不可见)' 
-        : '默认记忆 (此项目与常规聊天记忆互通)'
-    }\n` +
-    `- **项目内会话总数**: ${projectConversations.length} 个协同聊天窗口`
-  );
+  // L1: Basic Project Identity & Global Directives
+  const identityLines = [
+    `所属项目: 【${project.name}】`,
+    `项目内协同会话数: ${projectConversations.length} 个`,
+    `记忆隔离机制: ${
+      project.memoryMode === 'isolated'
+        ? '项目严格隔离 (此项目记忆仅在组内互通，外部独立聊天不可见)'
+        : '全局共享 (此项目记忆可与全局常规会话互通)'
+    }`,
+  ];
+  sections.push(`### [L1 项目全局静态共识与约束]\n${identityLines.map(l => `- ${l}`).join('\n')}`);
 
-  // 2. Custom Project Instructions (if specified)
   if (project.customInstructions?.trim()) {
-    sections.push(`### 项目全局自定义指令:\n${project.customInstructions.trim()}`);
+    sections.push(`### [L1 项目全局自定义指令]\n${project.customInstructions.trim()}`);
   }
 
-  // 3. Project Shared Summary / Memory Points
   if (project.sharedMemory?.summary?.trim()) {
-    sections.push(`### 项目共享背景与全局共识:\n${project.sharedMemory.summary.trim()}`);
+    sections.push(`### [L1 项目核心背景]\n${project.sharedMemory.summary.trim()}`);
   }
 
-  if (project.sharedMemory?.keyPoints && project.sharedMemory.keyPoints.length > 0) {
+  // L2: Structured Key Decisions & Technical Agreements (Deduplicated high-value bullets)
+  const keyPoints = project.sharedMemory?.keyPoints || [];
+  if (keyPoints.length > 0) {
     sections.push(
-      `### 项目核心关键约定与决策点:\n` +
-      project.sharedMemory.keyPoints.map(kp => `- ${kp}`).join('\n')
+      `### [L2 跨会话累计沉淀的核心决策与设计约定 (Key Decisions)]\n` +
+      `*(注意: 以下为本项目跨所有聊天窗口已确认达成的重要结论，请严格遵守，无需用户重复说明)*\n` +
+      keyPoints.map((kp, idx) => `${idx + 1}. ${kp}`).join('\n')
     );
   }
 
-  // 4. Summaries of other conversations in this same project (Collective project knowledge)
+  // L3: Summaries of other conversations in this same project (Collective project knowledge)
   const peerConversations = projectConversations.filter(c => c.id !== currentConvId);
   const peerSummaries: string[] = [];
 
@@ -52,17 +57,17 @@ export function formatProjectMemoryPrompt(
     if (task || reqs.length > 0 || decisions.length > 0) {
       const details: string[] = [];
       if (task) details.push(`最近议题: ${task}`);
-      if (reqs.length > 0) details.push(`要点: ${reqs.slice(-2).join('; ')}`);
-      if (decisions.length > 0) details.push(`结论: ${decisions.slice(-2).join('; ')}`);
+      if (decisions.length > 0) details.push(`关键产出: ${decisions.slice(-2).join('; ')}`);
+      else if (reqs.length > 0) details.push(`要点: ${reqs.slice(-2).join('; ')}`);
       peerSummaries.push(`- **会话「${chatTitle}」**: ${details.join(' | ')}`);
     }
   }
 
   if (peerSummaries.length > 0) {
     sections.push(
-      `### 项目内同组其它聊天窗口共享记忆:\n` +
+      `### [L3 同组其它协同聊天窗口最新进展]\n` +
       peerSummaries.join('\n') +
-      `\n*(提示: 你可以无缝参考同项目其它聊天窗口已确认的信息与共识。)*`
+      `\n*(提示: 你可以无缝参考同项目其它聊天窗口已确认的成果，避免重复劳动。)*`
     );
   }
 
@@ -70,7 +75,7 @@ export function formatProjectMemoryPrompt(
 
   return (
     `\n========================================\n` +
-    `## 项目共享记忆库 (Project Shared Memory)\n` +
+    `## 项目多会话共享记忆库 (Project Shared Memory)\n` +
     `========================================\n` +
     sections.join('\n\n') +
     `\n========================================\n`
@@ -86,17 +91,25 @@ export function updateProjectCollectiveMemory(
 ): Project {
   const allDecisions = new Set<string>(project.sharedMemory?.keyPoints || []);
 
+  // Aggregate decisions from all conversations in the project
   for (const conv of projectConversations) {
     const decisions = conv.chatContext?.importantDecisions || [];
-    decisions.forEach(d => allDecisions.add(d));
+    decisions.forEach(d => {
+      if (d && d.trim().length >= 6) {
+        allDecisions.add(d.trim());
+      }
+    });
   }
+
+  // Cap to top 15 most recent and valuable key points to prevent context bloat
+  const cappedPoints = Array.from(allDecisions).slice(-15);
 
   return {
     ...project,
     updatedAt: Date.now(),
     sharedMemory: {
       ...project.sharedMemory,
-      keyPoints: Array.from(allDecisions).slice(-15),
+      keyPoints: cappedPoints,
     },
   };
 }

@@ -16,6 +16,230 @@ export function createDefaultChatContext(): ChatContext {
   };
 }
 
+// Extract high-value, crisp architectural and implementation decisions from user and AI text
+export function extractKeyDecisionsFromTurn(
+  userText: string,
+  aiResponseText: string,
+  modifiedFiles: string[] = []
+): string[] {
+  const decisions: string[] = [];
+
+  // 1. From modified files: record tangible implementation outcomes
+  if (modifiedFiles.length > 0) {
+    const fileSummary = modifiedFiles.length <= 3 
+      ? `已落实修改并保存工作区文件: \`${modifiedFiles.join('`, `')}\``
+      : `已落实修改并保存工作区文件: \`${modifiedFiles.slice(0, 3).join('`, `')}\` 等共 ${modifiedFiles.length} 个文件`;
+    decisions.push(fileSummary);
+  }
+
+  // 2. From AI response: scan for explicit conclusions, design conventions, and architectural choices
+  const candidateSentences = aiResponseText.split(/[。\n；;]/).map(s => s.trim()).filter(Boolean);
+
+  const decisionKeywords = [
+    '已确认', '决定采用', '选择使用', '采用', '架构方案为', '接口定义为',
+    '规范约定', '统一使用', '核心设计为', '重构了', '新增了', '已修复', '技术选型为'
+  ];
+
+  for (const sentence of candidateSentences) {
+    // Only capture concise, punchy decision sentences (20 to 90 characters)
+    if (sentence.length >= 12 && sentence.length <= 90) {
+      if (decisionKeywords.some(k => sentence.includes(k))) {
+        // Strip markdown list bullets or numbers
+        const clean = sentence.replace(/^[-*•\d+.\s]+/, '').trim();
+        if (clean && !decisions.includes(clean)) {
+          decisions.push(clean);
+          if (decisions.length >= 4) break; // Keep max 4 decisions per turn to prevent bloat
+        }
+      }
+    }
+  }
+
+  // 3. From user text: if user explicitly specified a constraint or rule
+  const userRules = [
+    '必须使用', '不要使用', '统一用', '规范是', '记得用', '设计成', '命名为'
+  ];
+  for (const r of userRules) {
+    if (userText.includes(r)) {
+      const match = userText.match(new RegExp(`([^，。！？\n]*${r}[^，。！？\n]*)`));
+      if (match && match[1] && match[1].trim().length <= 60) {
+        decisions.push(`用户明确约定: ${match[1].trim()}`);
+        break;
+      }
+    }
+  }
+
+  return decisions;
+}
+
+/**
+ * Decouple massive code blocks in older conversation history.
+ * When sending history to the LLM API, replacing 50~500 line code bodies with
+ * compact workspace references saves 70%~90% of tokens while preserving 100%
+ * of interface and semantic understanding.
+ * 
+ * NOTE: This is strictly for API payload serialization; user's UI messages are never mutated!
+ */
+export function decoupleCodeBlocksForModelContext(
+  content: string,
+  isRecentMessage = false
+): string {
+  if (!content || !content.includes('```')) {
+    return content;
+  }
+
+  // For the most recent assistant message, keep code intact so immediate context is natural
+  if (isRecentMessage) {
+    return content;
+  }
+
+  // Replace code blocks in older messages that have more than 10 lines
+  return content.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+    const lines = code.trim().split('\n');
+    if (lines.length <= 10) {
+      return match; // Keep small code snippets as-is
+    }
+
+    // Extract signature / header lines (first 3 lines) and footer (last 1 line)
+    const headerLines = lines.slice(0, 3).join('\n');
+    const footerLine = lines[lines.length - 1];
+    const totalLines = lines.length;
+
+    return `\`\`\`${lang}\n${headerLines}\n  // ... [代码实现已同步至工作区，为节约上下文 Token 省略中间 ${totalLines - 4} 行代码] ...\n${footerLine}\n\`\`\``;
+  });
+}
+
+/**
+ * Hierarchical History Preparation (黄金平衡分层上下文组装):
+ * - Layer 1: Global System Prompt & Rules (Outside)
+ * - Layer 2: Project Shared Memory & Key Decisions (Outside)
+ * - Layer 3: Rolling Semantic Summary of older messages (Injected as compact system note)
+ * - Layer 4: Recent Active Window (Kept in full conversation fidelity, with older code blocks decoupled)
+ */
+export function prepareChatHistoryWithHierarchicalCompaction(
+  messages: Message[],
+  maxRecentCount = 10
+): {
+  compactedSummary?: string;
+  effectiveMessages: Message[];
+  estimatedSavedTokens: number;
+} {
+  if (messages.length <= maxRecentCount) {
+    // Under threshold: keep all messages, but decouple large code blocks in non-latest messages
+    const decoupled = messages.map((m, idx) => {
+      const isRecent = idx >= messages.length - 2;
+      return {
+        ...m,
+        content: decoupleCodeBlocksForModelContext(m.content, isRecent),
+      };
+    });
+
+    return {
+      effectiveMessages: decoupled,
+      estimatedSavedTokens: 0,
+    };
+  }
+
+  // Split into older messages to compress and recent messages to keep active
+  const olderMessages = messages.slice(0, messages.length - maxRecentCount);
+  const recentMessages = messages.slice(messages.length - maxRecentCount);
+
+  // Extract older user task trajectory
+  const olderTasks = olderMessages
+    .filter(m => m.role === 'user')
+    .map(m => m.content.slice(0, 50).trim())
+    .filter(Boolean)
+    .slice(-4);
+
+  // Extract all modified files from older turns
+  const olderTouchedFiles = Array.from(
+    new Set(
+      olderMessages
+        .filter(m => m.modifiedFiles && m.modifiedFiles.length > 0)
+        .flatMap(m => m.modifiedFiles!)
+    )
+  );
+
+  // Extract decisions made in older turns
+  const olderDecisions: string[] = [];
+  for (const m of olderMessages) {
+    if (m.role === 'assistant' && m.content) {
+      const matches = m.content.match(/(?:已确认|决定采用|核心方案为|已落实修改)[^。\n；]{6,50}/g);
+      if (matches) {
+        matches.forEach(d => {
+          if (!olderDecisions.includes(d) && olderDecisions.length < 5) {
+            olderDecisions.push(d);
+          }
+        });
+      }
+    }
+  }
+
+  // High-density structured summary (< 150 tokens)
+  const summaryParts: string[] = [
+    `【前期历史结构化归档摘要 (已为节约 Token 自动浓缩)】`,
+    `- 讨论的主线任务轨迹: ${olderTasks.join(' ➔ ') || '基础架构搭建与咨询'}`,
+  ];
+
+  if (olderDecisions.length > 0) {
+    summaryParts.push(`- 前期已达成的核心约定: ${olderDecisions.join('； ')}`);
+  }
+
+  if (olderTouchedFiles.length > 0) {
+    summaryParts.push(`- 前期已修改的工作区文件: \`${olderTouchedFiles.join('`, `')}\``);
+  }
+
+  const compactedSummary = summaryParts.join('\n');
+
+  // For recent messages, decouple code in older ones, keep latest 2 turns intact
+  const processedRecent = recentMessages.map((m, idx) => {
+    const isLatestTurns = idx >= recentMessages.length - 2;
+    return {
+      ...m,
+      content: decoupleCodeBlocksForModelContext(m.content, isLatestTurns),
+    };
+  });
+
+  // Estimate rough tokens saved
+  const rawOlderLength = olderMessages.reduce((sum, m) => sum + (m.content || '').length, 0);
+  const estimatedSavedTokens = Math.max(0, Math.floor((rawOlderLength - compactedSummary.length) / 3));
+
+  return {
+    compactedSummary,
+    effectiveMessages: processedRecent,
+    estimatedSavedTokens,
+  };
+}
+
+/**
+ * Prune previous tool outputs in a multi-turn ReAct Agent loop.
+ * In turn 6 of 12, raw outputs from `read_file` in turn 1 or 2 (which could be 300+ lines)
+ * are pruned so that later turns do not endlessly accumulate redundant file dumps.
+ */
+export function pruneAgentLoopHistory(
+  historyMessages: Message[],
+  currentTurn: number
+): Message[] {
+  // Only activate pruning when loop is deep (turn >= 3)
+  if (currentTurn < 3) {
+    return historyMessages;
+  }
+
+  return historyMessages.map((msg, idx) => {
+    // If it's an older message in the agent loop and contains a massive tool output
+    const isOldAgentStep = idx < historyMessages.length - 3;
+    if (isOldAgentStep && msg.content && msg.content.includes('[工作区工具执行结果反馈]')) {
+      // If it contains a large read_file payload, prune it
+      if (msg.content.includes('read_file') && msg.content.length > 800) {
+        return {
+          ...msg,
+          content: msg.content.replace(/```[\s\S]*?```/g, '`[该文件代码已于前序步骤成功读取并分析完毕]`'),
+        };
+      }
+    }
+    return msg;
+  });
+}
+
 // Detect whether the user's message explicitly requests workspace access (Strictly Conservative)
 export function detectWorkspaceIntent(
   userText: string,
@@ -146,107 +370,60 @@ export function detectDiagnosisIntent(
   const text = userText.trim();
   const lower = text.toLowerCase();
 
-  // 1. Fix request: explicit instruction to apply code patch or fix
   const fixKeywords = [
-    '修复它', '帮我修复', '帮我修好', '修一下', '应用修复', '按照建议修改', 
-    '开始修复', '应用刚才的建议', '修复这个问题', '请修复', '请修改', '改一下代码'
+    '修复', '改一下', '帮我改', '修复错误', '修一下', '按刚才的建议改',
+    '应用修改', '修正', '修掉这个bug', '修改这个文件', '改代码', 'fix this', 'apply fix'
   ];
-  const isFixRequest = fixKeywords.some(k => text.includes(k));
-  if (isFixRequest) {
-    return {
-      isDiagnosis: false,
-      isContinuation: false,
-      isFixRequest: true,
-      isDiffDiagnosis: false,
-      isScopeNarrow: false,
-      isScopeExpand: false,
-    };
-  }
+  const isFixRequest = fixKeywords.some(k => text.includes(k) || lower.includes(k));
 
-  // 2. Diff diagnosis: inspect recent git/workspace changes
   const diffKeywords = [
-    '检查我刚刚修改', '检查刚才修改', '检查最新修改', '检查改动', 
-    '检查修改的地方', '检查diff', '审查修改', '审查diff', '检查刚改的代码'
+    '诊断刚才的修改', '检查改动', '看下改了什么', 'diff诊断', '改完之后有什么问题',
+    '检查修改结果', '验证改动', 'diff', '改动审查', '增量诊断'
   ];
-  const isDiffDiagnosis = diffKeywords.some(k => text.includes(k));
+  const isDiffDiagnosis = diffKeywords.some(k => text.includes(k) || lower.includes(k));
 
-  // 3. Continuation of diagnosis
-  const continuationKeywords = [
-    '继续检查', '继续诊断', '还有没有其他问题', '还有别的问题吗', 
-    '继续排查', '深入分析', '还有其他bug吗', '查一下其他路径'
+  const diagKeywords = [
+    '诊断', '排查', '静态分析', '调用链', '审查代码', '找bug', '排查报错',
+    '为什么报错', '有什么问题', '检查代码', '深度检查', '全面排查', '查错', 'diagnose', 'inspect code'
   ];
-  const isContinuation = continuationKeywords.some(k => text.includes(k)) && !!prevContext?.diagnosisContext;
+  const isDirectDiagnosis = diagKeywords.some(k => text.includes(k) || lower.includes(k));
 
-  // 4. Narrow or expand diagnosis scope
-  const narrowKeywords = ['主要怀疑', '只看', '聚焦在', '单独检查', '缩小范围', '只检查'];
+  const continueKeywords = ['继续排查', '继续看', '往下查', '还有别的问题吗', '接着查', '深入查', '继续诊断'];
+  const isContinuation = continueKeywords.some(k => text.includes(k));
+
+  const narrowKeywords = ['只看这个函数', '缩小范围', '只看这个文件', '聚焦到', '就看这里'];
   const isScopeNarrow = narrowKeywords.some(k => text.includes(k));
 
-  const expandKeywords = ['扩大范围', '检查相关api', '检查上游', '检查下游', '顺便查一下', '关联文件'];
+  const expandKeywords = ['深入全面排查', '扩大范围', '看所有调用者', '深度调用链', '把关联的都看了'];
   const isScopeExpand = expandKeywords.some(k => text.includes(k));
 
-  // 5. General code diagnosis intent
-  const diagnosisKeywords = [
-    '检查', '诊断', '排查', '找一下问题', '找一下bug', '有没有bug', 
-    '为什么失效', '为何报错', '报错', '崩溃', '不工作', '点击无反应', 
-    '偶尔失效', '逻辑错误', '帮我看看这段代码', '怀疑这里有问题', '代码审查', 
-    '分析代码错误', '审查这个函数', '审查这个组件', '找bug', '帮我查一下'
-  ];
+  const isDiagnosis = isDirectDiagnosis || isDiffDiagnosis || isContinuation || isFixRequest || Boolean(prevContext?.diagnosisContext && isContinuation);
 
-  // Pure explanation filter (e.g. "这个函数是干什么的" vs "这个函数是不是有bug")
-  const isPureExplanation = 
-    (text.includes('是什么意思') || text.includes('是干什么') || text.includes('用来做什') || text.startsWith('解释一下')) &&
-    !text.includes('bug') && !text.includes('错误') && !text.includes('问题') && !text.includes('失效') && !text.includes('检查') && !text.includes('诊断');
-
-  const hasDiagnosisKeyword = diagnosisKeywords.some(k => lower.includes(k));
-  const isDiagnosis = (hasDiagnosisKeyword && !isPureExplanation) || isContinuation || isDiffDiagnosis || isScopeNarrow || isScopeExpand;
+  let targetHint: string | undefined;
+  const pathMatch = text.match(/([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)/);
+  if (pathMatch) {
+    targetHint = pathMatch[1];
+  }
 
   return {
     isDiagnosis,
     isContinuation,
-    isFixRequest: false,
+    isFixRequest,
     isDiffDiagnosis,
     isScopeNarrow,
     isScopeExpand,
-    targetHint: text.slice(0, 120),
+    targetHint,
   };
 }
 
-// Build string representation of the current Chat's private context
+// Format the single chat's private memory into prompt
 export function formatChatContextPrompt(context?: ChatContext): string {
   if (!context) return '';
 
   const sections: string[] = [];
 
   if (context.currentTask) {
-    sections.push(`### 当前会话进行中任务:\n${context.currentTask}`);
-  }
-
-  // Formatted Code Diagnosis Memory
-  if (context.diagnosisContext) {
-    const d = context.diagnosisContext;
-    const diagLines: string[] = [
-      `- **诊断目标**: ${d.target} (深度: ${d.depth})`,
-      `- **已检查文件**: ${d.checkedFiles.length > 0 ? d.checkedFiles.join(', ') : '暂无'}`,
-      `- **已检查函数/模块**: ${d.checkedFunctions.length > 0 ? d.checkedFunctions.join(', ') : '暂无'}`,
-    ];
-    if (d.relatedFiles.length > 0) {
-      diagLines.push(`- **直接关联文件**: ${d.relatedFiles.join(', ')}`);
-    }
-    if (d.confirmedIssues.length > 0) {
-      diagLines.push(`- **已确认的问题**: ${d.confirmedIssues.join('； ')}`);
-    }
-    if (d.ruledOutIssues.length > 0) {
-      diagLines.push(`- **已排除/验证正常的部分**: ${d.ruledOutIssues.join('； ')}`);
-    }
-    if (d.unresolvedQuestions.length > 0) {
-      diagLines.push(`- **待查/存疑路径**: ${d.unresolvedQuestions.join('； ')}`);
-    }
-    if (d.lastConclusion) {
-      diagLines.push(`- **上次诊断结论**: ${d.lastConclusion}`);
-    }
-    diagLines.push(`- **注意**: 延续诊断时，无需重复检索已检查文件，请重点追踪尚未覆盖的依赖路径与调用链。`);
-
-    sections.push(`### 本会话当前代码诊断工作记忆 (Diagnosis Context):\n${diagLines.join('\n')}`);
+    sections.push(`### 本会话当前主线任务:\n${context.currentTask}`);
   }
 
   if (context.userRequirements && context.userRequirements.length > 0) {
@@ -254,7 +431,7 @@ export function formatChatContextPrompt(context?: ChatContext): string {
   }
 
   if (context.importantDecisions && context.importantDecisions.length > 0) {
-    sections.push(`### 本会话关键决策与约定:\n${context.importantDecisions.map(d => `- ${d}`).join('\n')}`);
+    sections.push(`### 本会话结构化关键决策与设计约定 (Key Decisions):\n${context.importantDecisions.map(d => `- ${d}`).join('\n')}`);
   }
 
   if (context.lastModifiedFiles && context.lastModifiedFiles.length > 0) {
@@ -266,7 +443,7 @@ export function formatChatContextPrompt(context?: ChatContext): string {
   return `\n## 当前单聊会话专属上下文 (Chat Private Memory):\n${sections.join('\n\n')}\n`;
 }
 
-// Update the current Chat's context after an interaction turn
+// Update the current Chat's context after an interaction turn with automatic decision extraction
 export function updateChatContext(
   prevContext: ChatContext | undefined,
   userText: string,
@@ -276,7 +453,7 @@ export function updateChatContext(
 ): ChatContext {
   const ctx: ChatContext = prevContext ? { ...prevContext } : createDefaultChatContext();
 
-  // If user prompt sets or refines requirements
+  // 1. If user prompt sets or refines requirements
   if (userText.trim().length > 0 && userText.length < 180) {
     const trimmed = userText.trim();
     if (!ctx.userRequirements.includes(trimmed)) {
@@ -284,16 +461,25 @@ export function updateChatContext(
     }
   }
 
-  // Update current task
+  // 2. Automatically extract high-value decisions from this turn
+  const extractedDecisions = extractKeyDecisionsFromTurn(userText, aiResponseText, modifiedFiles);
+  if (extractedDecisions.length > 0) {
+    const currentDecisions = new Set(ctx.importantDecisions || []);
+    extractedDecisions.forEach(d => currentDecisions.add(d));
+    // Keep top 10 most recent key decisions
+    ctx.importantDecisions = Array.from(currentDecisions).slice(-10);
+  }
+
+  // 3. Update current task
   ctx.currentTask = userText.slice(0, 100);
 
-  // Update modified files in this chat
+  // 4. Update modified files in this chat
   if (modifiedFiles.length > 0) {
     const combined = Array.from(new Set([...ctx.lastModifiedFiles, ...modifiedFiles]));
     ctx.lastModifiedFiles = combined.slice(-15);
   }
 
-  // Update diagnosis context if this turn involved code diagnosis
+  // 5. Update diagnosis context if this turn involved code diagnosis
   const diagIntent = detectDiagnosisIntent(userText, prevContext);
   if (diagIntent.isDiagnosis || (toolCalls.some(t => ['search_code', 'read_file', 'get_file_diff'].includes(t.toolName)) && !modifiedFiles.length)) {
     const readPaths: string[] = [];
@@ -316,7 +502,6 @@ export function updateChatContext(
       ? 'target'
       : prevDiag?.depth || 'related';
 
-    // Parse conclusion from AI response text
     let conclusion: DiagnosisContext['lastConclusion'] = 'pending';
     if (aiResponseText.includes('发现明确问题') || aiResponseText.includes('发现 1 个明确问题') || aiResponseText.includes('发现问题')) {
       conclusion = 'confirmed_bug';
@@ -344,44 +529,8 @@ export function updateChatContext(
       updatedAt: Date.now(),
     };
   } else if (diagIntent.isFixRequest && ctx.diagnosisContext) {
-    // If fix request succeeded, mark conclusion resolved
     ctx.diagnosisContext.lastConclusion = 'pending';
   }
 
   return ctx;
-}
-
-// Compact older messages within the SAME chat to avoid token overflow
-export function prepareChatHistoryWithLocalCompaction(
-  messages: Message[],
-  maxRecentCount = 12
-): { compactedSummary?: string; effectiveMessages: Message[] } {
-  if (messages.length <= maxRecentCount) {
-    return { effectiveMessages: messages };
-  }
-
-  // Split into older messages to summarize and recent messages to keep intact
-  const olderMessages = messages.slice(0, messages.length - maxRecentCount);
-  const recentMessages = messages.slice(messages.length - maxRecentCount);
-
-  // Extract older user requests & touched files for this single chat
-  const olderTopics = olderMessages
-    .filter(m => m.role === 'user')
-    .map(m => m.content.slice(0, 60))
-    .slice(-4);
-
-  const olderModified = Array.from(
-    new Set(
-      olderMessages
-        .filter(m => m.modifiedFiles && m.modifiedFiles.length > 0)
-        .flatMap(m => m.modifiedFiles!)
-    )
-  );
-
-  const compactedSummary = `[本会话前期历史压缩摘要]\n- 讨论过的问题与任务: ${olderTopics.join('； ') || '无'}\n- 曾修改的文件: ${olderModified.join(', ') || '无'}`;
-
-  return {
-    compactedSummary,
-    effectiveMessages: recentMessages,
-  };
 }

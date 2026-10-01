@@ -812,9 +812,24 @@ html.theme-sangtian-shanhe body {
   border-bottom: 1px solid #B18A4A !important;
 }
 
-.theme-sangtian-shanhe .workspace-drawer .bg-neutral-50\/50 svg,
-.theme-sangtian-shanhe .workspace-drawer .bg-neutral-900\/50 svg {
-  color: #EAD8AD !important;
+/* 统一工作区抽屉头部所有 5 个操作按钮的背景、边框、高度与图标色彩 (Exact alignment & theme contrast) */
+.theme-sangtian-shanhe .workspace-drawer-header-btn {
+  background: rgba(255, 245, 220, 0.16) !important;
+  border: 1px solid #B18A4A !important;
+  color: #FFF5DC !important;
+  border-radius: 12px !important;
+  height: 36px !important;
+  box-shadow: 0 1px 3px rgba(58, 38, 26, 0.25) !important;
+}
+
+.theme-sangtian-shanhe .workspace-drawer-header-btn:hover {
+  background: rgba(255, 245, 220, 0.3) !important;
+  border-color: #EAD8AD !important;
+  color: #FFFFFF !important;
+}
+
+.theme-sangtian-shanhe .workspace-drawer-header-btn svg {
+  color: #F4E8C8 !important;
 }
 
 .theme-sangtian-shanhe .workspace-drawer input {

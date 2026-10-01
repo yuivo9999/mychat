@@ -29,7 +29,8 @@ import {
 } from './services/workspaceService';
 import { 
   updateChatContext, 
-  prepareChatHistoryWithLocalCompaction,
+  prepareChatHistoryWithHierarchicalCompaction,
+  pruneAgentLoopHistory,
   detectDiagnosisIntent,
   detectWorkspaceIntent,
   formatChatContextPrompt
@@ -92,6 +93,8 @@ import { AiModelConfigModal } from './components/AiModelConfigModal';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { ArchiveProjectModal } from './components/ArchiveProjectModal';
 import { WorkspacePreviewModal } from './components/WorkspacePreviewModal';
+import { AiFileAuditModal } from './components/AiFileAuditModal';
+import { recordAiFileModifications, backfillAuditRecordsFromConversations } from './services/aiFileAuditService';
 
 const DEFAULT_PARAMETERS: ModelParameters = {
   enableReasoning: false,
@@ -145,6 +148,7 @@ export default function App() {
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | undefined>(undefined);
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [agentMode, setAgentMode] = useState(false);
 
   // Pending Attachments & Prompt injected into ChatComposer from Workspace Drawer
@@ -250,6 +254,9 @@ export default function App() {
         setWorkspaces(loadedWorkspaces);
         setActiveWorkspaceId(loadedWorkspaces[0]?.id);
         setProjects(loadedProjects);
+
+        // Backfill historical AI file modifications to audit service if needed
+        backfillAuditRecordsFromConversations(loadedConversations, loadedWorkspaces);
 
         const initialModel =
           loadedModels.find(m => m.id === loadedSettings.defaultModelId) || loadedModels[0];
@@ -1070,8 +1077,8 @@ export default function App() {
 
       // Extract previous history before the current turn (excluding the newly appended userMessage and streaming assistantMessage)
       const previousHistory = targetConv.messages.slice(0, -2);
-      // Prepare local compaction for THIS single chat (Chat A never shares history with Chat B)
-      const { compactedSummary, effectiveMessages } = prepareChatHistoryWithLocalCompaction(previousHistory);
+      // Prepare golden-balance hierarchical compaction (L3: Rolling Summary + L4: Code Decoupled Recent Window)
+      const { compactedSummary, effectiveMessages } = prepareChatHistoryWithHierarchicalCompaction(previousHistory, 10);
       let currentHistoryMessages = [...effectiveMessages, apiUserMessage];
 
       if (compactedSummary) {
@@ -1097,11 +1104,14 @@ export default function App() {
       while (turn < maxAgentTurns) {
         let turnAccumulatedText = '';
 
+        // Token Budget Guard: Prune deep tool outputs from earlier turns to prevent quadratic token growth
+        const prunedMessagesForTurn = pruneAgentLoopHistory(currentHistoryMessages, turn);
+
         await adapter.sendMessage(
           {
             model: currentModel,
             apiKeyConfig: currentApiKey,
-            messages: currentHistoryMessages,
+            messages: prunedMessagesForTurn,
             systemPrompt: effectiveSystemPrompt,
             temperature: currentModel.temperature,
             maxTokens: currentModel.maxTokens,
@@ -1262,6 +1272,23 @@ export default function App() {
           'agent'
         );
         await handleSaveWorkspaceState(wsToOperate);
+
+        // Record in Workspace AI File Modification Audit Log (up to 1000 items)
+        recordAiFileModifications(
+          modifiedList.map(filePath => ({
+            filePath,
+            modelId: currentModel.id,
+            modelName: currentModel.name || currentModel.id,
+            providerId: currentModel.providerId,
+            workspaceId: wsToOperate?.id,
+            workspaceName: wsToOperate?.name || '当前工作区',
+            conversationId: targetConv.id,
+            conversationTitle: targetConv.title || '当前会话',
+            actionType: 'patch',
+            actionDetail: `AI 协同修改工作区文件: ${filePath}`,
+            timestamp: Date.now(),
+          }))
+        );
       }
 
       // Clean final answer
@@ -2272,6 +2299,15 @@ export default function App() {
             setIsSettingsOpen(true);
           }}
           onOpenModelConfig={() => setIsModelConfigOpen(true)}
+          onNewChat={handleNewChat}
+          projects={projects}
+          onNewChatInProject={handleNewChatInProject}
+          onCreateProject={() => {
+            setProjectToEdit(null);
+            setIsCreateProjectOpen(true);
+          }}
+          onOpenPreview={() => setIsPreviewOpen(true)}
+          onOpenAuditHistory={() => setIsAuditModalOpen(true)}
           quotedText={quotedText}
           onClearQuote={() => setQuotedText(null)}
           parameters={parameters}
@@ -2406,6 +2442,16 @@ export default function App() {
         workspaces={workspaces}
         initialWorkspaceId={currentWorkspace?.id}
         onSaveWorkspace={handleSaveWorkspaceState}
+      />
+
+      {/* Workspace AI File Modification Audit Modal (up to 1000 records) */}
+      <AiFileAuditModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        onOpenFileInWorkspace={(path) => {
+          setIsAuditModalOpen(false);
+          setIsWorkspaceOpen(true);
+        }}
       />
 
       {/* Create / Edit Project Modal (Image 1) */}

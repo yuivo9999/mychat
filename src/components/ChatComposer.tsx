@@ -19,9 +19,16 @@ import {
   RefreshCw,
   Plus,
   Minus,
-  Trash2
+  Trash2,
+  SquarePen,
+  MonitorPlay,
+  History,
+  Folder,
+  FolderPlus,
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
-import { Attachment, ModelItem, ProviderDefinition, ApiKeyConfig, UserSettings, ModelParameters } from '../types';
+import { Attachment, ModelItem, ProviderDefinition, ApiKeyConfig, UserSettings, ModelParameters, Project } from '../types';
 import { parseFileToAttachment, formatFileSize } from '../services/fileParser';
 import { isModelWebSearchSupported, isModelVisionCapable } from '../services/modelUtils';
 
@@ -39,6 +46,12 @@ interface ChatComposerProps {
   settings: UserSettings;
   onOpenSettings: (tab?: string) => void;
   onOpenModelConfig?: () => void;
+  onNewChat?: () => void;
+  projects?: Project[];
+  onNewChatInProject?: (projectId: string) => void;
+  onCreateProject?: () => void;
+  onOpenPreview?: () => void;
+  onOpenAuditHistory?: () => void;
   quotedText?: string | null;
   onClearQuote?: () => void;
   parameters: ModelParameters;
@@ -72,6 +85,12 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   onSaveSettings,
   onOpenSettings,
   onOpenModelConfig,
+  onNewChat,
+  projects = [],
+  onNewChatInProject,
+  onCreateProject,
+  onOpenPreview,
+  onOpenAuditHistory,
   quotedText,
   onClearQuote,
   parameters,
@@ -93,6 +112,26 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [searchModelQuery, setSearchModelQuery] = useState('');
   const [modelToDelete, setModelToDelete] = useState<{ id: string; name: string } | null>(null);
+
+  // New Chat Popover Menu States (全新窗口 / 项目归档)
+  const [isNewChatMenuOpen, setIsNewChatMenuOpen] = useState(false);
+  const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const newChatMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (newChatMenuRef.current && !newChatMenuRef.current.contains(event.target as Node)) {
+        setIsNewChatMenuOpen(false);
+        setShowProjectPicker(false);
+      }
+    }
+    if (isNewChatMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNewChatMenuOpen]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -306,7 +345,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
       </div>
 
       {/* Top row: Font Size adjustment buttons on left, Model Name display on right */}
-      <div className="flex items-center justify-between px-1 mb-1.5 min-h-[26px] relative z-20">
+      <div className={`flex items-center justify-between px-1 mb-1.5 min-h-[26px] relative ${modelDropdownOpen ? 'z-40' : 'z-10'}`}>
         {/* Left: Font size adjuster buttons with circular ○ backgrounds */}
         <div className="flex items-center gap-1.5 select-none">
           <button
@@ -494,7 +533,7 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`relative z-10 flex flex-col rounded-2xl border bg-white dark:bg-neutral-900 transition-all shadow-md ${
+        className={`relative ${isNewChatMenuOpen ? 'z-30' : 'z-10'} flex flex-col rounded-2xl border bg-white dark:bg-neutral-900 transition-all shadow-md ${
           isDragging 
             ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/20 dark:bg-indigo-950/20' 
             : 'border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700'
@@ -551,8 +590,169 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             )}
           </div>
 
-          {/* Parameters & Model Config Buttons (Icon-only) */}
-          <div className="flex items-center gap-1">
+          {/* Action Buttons: New Chat, Model Config, Parameters (Icon-only) */}
+          <div className="flex items-center gap-1 relative" ref={newChatMenuRef}>
+            {onNewChat && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNewChatMenuOpen(!isNewChatMenuOpen);
+                    setShowProjectPicker(false);
+                  }}
+                  className={`p-1 rounded-lg transition cursor-pointer ${
+                    isNewChatMenuOpen
+                      ? 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
+                      : 'hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-indigo-600 dark:hover:text-indigo-400'
+                  }`}
+                  title="新建聊天窗口（全新窗口 / 项目归档）"
+                >
+                  <SquarePen className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Upward Popover Menu (上拉菜单) */}
+                {isNewChatMenuOpen && (
+                  <div className="absolute bottom-full mb-2 right-0 sm:right-auto sm:left-0 z-50 w-72 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl shadow-2xl p-1.5 select-none animate-in zoom-in-95 duration-150">
+                    {!showProjectPicker ? (
+                      <div className="space-y-1">
+                        <div className="px-2.5 py-1 text-[11px] font-semibold text-neutral-400 tracking-wider">
+                          新建聊天窗口
+                        </div>
+
+                        {/* Option 1: 全新窗口 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsNewChatMenuOpen(false);
+                            onNewChat();
+                          }}
+                          className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left cursor-pointer group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-200/50 dark:border-indigo-800/50">
+                            <SquarePen className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
+                              全新窗口
+                            </div>
+                            <div className="text-[10px] text-neutral-400 truncate">
+                              创建独立新会话，不归属任何项目
+                            </div>
+                          </div>
+                        </button>
+
+                        {/* Option 2: 项目归档 */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowProjectPicker(true);
+                          }}
+                          className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left cursor-pointer group"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-200/50 dark:border-amber-800/50">
+                            <FolderPlus className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 group-hover:text-amber-600 dark:group-hover:text-amber-400 flex items-center justify-between">
+                              <span>项目归档</span>
+                              <ChevronRight className="w-3.5 h-3.5 text-neutral-400 group-hover:translate-x-0.5 transition-transform" />
+                            </div>
+                            <div className="text-[10px] text-neutral-400 truncate">
+                              在项目下创建新窗口，共享项目记忆
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        {/* Header with Back button */}
+                        <div className="flex items-center justify-between px-2 py-1.5 border-b border-neutral-100 dark:border-neutral-800 mb-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowProjectPicker(false)}
+                            className="flex items-center gap-1 text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                            <span>选择归档项目</span>
+                          </button>
+                          <span className="text-[10px] text-neutral-400 font-mono">
+                            {projects.length} 个
+                          </span>
+                        </div>
+
+                        {/* Project List */}
+                        <div className="max-h-52 overflow-y-auto space-y-1 p-0.5 pr-1">
+                          {projects.length === 0 ? (
+                            <div className="py-4 text-center px-2">
+                              <Folder className="w-6 h-6 text-neutral-300 dark:text-neutral-600 mx-auto mb-1.5" />
+                              <p className="text-xs text-neutral-500 dark:text-neutral-400">目前暂无项目</p>
+                              <p className="text-[10px] text-neutral-400 mt-0.5">请先创建项目即可在该项目下开启新窗口</p>
+                              {onCreateProject && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsNewChatMenuOpen(false);
+                                    setShowProjectPicker(false);
+                                    onCreateProject();
+                                  }}
+                                  className="mt-2.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium cursor-pointer"
+                                >
+                                  + 新建项目
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            projects.map(proj => (
+                              <button
+                                key={proj.id}
+                                type="button"
+                                onClick={() => {
+                                  setIsNewChatMenuOpen(false);
+                                  setShowProjectPicker(false);
+                                  onNewChatInProject?.(proj.id);
+                                }}
+                                className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left cursor-pointer group"
+                              >
+                                <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform">
+                                  <Folder className="w-3.5 h-3.5" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs font-medium text-neutral-800 dark:text-neutral-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate">
+                                    {proj.name}
+                                  </div>
+                                  <div className="text-[10px] text-neutral-400 truncate">
+                                    {proj.memoryMode === 'isolated' ? '仅限项目记忆' : '默认记忆'}
+                                  </div>
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Bottom Action: Create Project */}
+                        {projects.length > 0 && onCreateProject && (
+                          <div className="pt-1 mt-1 border-t border-neutral-100 dark:border-neutral-800">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsNewChatMenuOpen(false);
+                                setShowProjectPicker(false);
+                                onCreateProject();
+                              }}
+                              className="w-full flex items-center justify-center gap-1.5 p-1.5 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-indigo-600 dark:text-indigo-400 text-xs font-medium transition cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>新建项目</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
             {onOpenModelConfig && (
               <button
                 type="button"
@@ -685,6 +885,30 @@ export const ChatComposer: React.FC<ChatComposerProps> = ({
             >
               <Globe className={`w-6 h-6 stroke-[1.8] ${webAccessEnabled ? 'text-blue-600 dark:text-blue-400' : ''}`} />
             </button>
+
+            {/* 1. 预览区入口按钮 (纯图标，无文字) */}
+            {onOpenPreview && (
+              <button
+                type="button"
+                onClick={onOpenPreview}
+                className="p-1.5 rounded-xl text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center justify-center cursor-pointer"
+                title="打开工作区实时预览 (Workspace Preview)"
+              >
+                <MonitorPlay className="w-6 h-6 stroke-[1.8]" />
+              </button>
+            )}
+
+            {/* 2. 工作区 AI 文件修改记录入口按钮 (纯图标，无文字，弹窗显示最多 1000 条审计记录) */}
+            {onOpenAuditHistory && (
+              <button
+                type="button"
+                onClick={onOpenAuditHistory}
+                className="p-1.5 rounded-xl text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 transition flex items-center justify-center cursor-pointer"
+                title="查看工作区 AI 文件修改记录 (最多保留 1000 条审计记录)"
+              >
+                <History className="w-6 h-6 stroke-[1.8]" />
+              </button>
+            )}
           </div>
 
           {/* Right Action: Send or Stop */}

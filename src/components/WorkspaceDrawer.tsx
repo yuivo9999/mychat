@@ -883,14 +883,12 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
-                  className="flex items-center gap-1.5 p-1 pr-2 rounded-xl border border-neutral-200/80 dark:border-neutral-750 bg-white/80 dark:bg-neutral-800/80 hover:bg-neutral-100 dark:hover:bg-neutral-750 transition cursor-pointer shadow-2xs group"
+                  className="workspace-drawer-header-btn h-9 px-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-800 dark:text-neutral-100 transition cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0"
                   title="点击管理与切换工作区（支持重命名、新建、删除）"
                 >
-                  <div className="w-7 h-7 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 shadow-2xs">
-                    <Layers className="w-4 h-4" />
-                  </div>
+                  <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                   <div className="flex flex-col text-left min-w-0 max-w-[100px] sm:max-w-[150px]">
-                    <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-100 truncate">
+                    <span className="text-xs font-semibold leading-tight truncate">
                       {currentWorkspace?.name || '我的工作区'}
                     </span>
                     <span className="text-[9px] text-neutral-400 leading-none">
@@ -1044,16 +1042,16 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                 )}
               </div>
 
-              {/* New/Plus Dropdown (Moved to the right of "我的工作区" button, with text "新建" removed) */}
+              {/* New/Plus Dropdown */}
               <div className="relative new-dropdown shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsNewDropdownOpen(!isNewDropdownOpen)}
-                  className="flex items-center gap-0.5 p-2 rounded-xl border border-neutral-200/80 dark:border-neutral-750 bg-white/80 dark:bg-neutral-800/80 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-600 dark:text-neutral-300 transition cursor-pointer shrink-0 shadow-2xs"
-                  title="新建文件、文件夹或空白工作区"
+                  className="workspace-drawer-header-btn h-9 px-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-800 dark:text-neutral-100 transition cursor-pointer shrink-0 shadow-2xs flex items-center justify-center gap-1"
+                  title="新建文件或文件夹"
                 >
-                  <Plus className="w-4 h-4 text-neutral-600 dark:text-neutral-300 stroke-[2.2]" />
-                  <DropdownIcon className="w-3 h-3 text-neutral-400" />
+                  <Plus className="w-4 h-4 text-neutral-700 dark:text-neutral-200 stroke-[2] shrink-0" />
+                  <DropdownIcon className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
                 </button>
 
                 {isNewDropdownOpen && (
@@ -1089,16 +1087,16 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
 
             {/* Right: Actions (Upload with text removed, Download ZIP, Close) */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              {/* Upload Dropdown (text "上传" removed) */}
+              {/* Upload Dropdown */}
               <div className="relative upload-dropdown shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsUploadDropdownOpen(!isUploadDropdownOpen)}
-                  className="flex items-center gap-0.5 p-2 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 transition cursor-pointer shrink-0 shadow-2xs"
+                  className="workspace-drawer-header-btn h-9 px-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-800 dark:text-neutral-100 transition cursor-pointer shrink-0 shadow-2xs flex items-center justify-center gap-1"
                   title="上传文件、文件夹或导入 ZIP"
                 >
-                  <Upload className="w-4 h-4 text-neutral-500 shrink-0" />
-                  <DropdownIcon className="w-3 h-3 text-neutral-400 shrink-0" />
+                  <Upload className="w-4 h-4 text-neutral-700 dark:text-neutral-200 stroke-[2] shrink-0" />
+                  <DropdownIcon className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
                 </button>
 
                 {isUploadDropdownOpen && (
@@ -1135,20 +1133,20 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
               <button
                 type="button"
                 onClick={handleDownloadZip}
-                className="p-2 rounded-xl border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 transition cursor-pointer shrink-0 shadow-2xs"
+                className="workspace-drawer-header-btn h-9 px-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-800 dark:text-neutral-100 transition cursor-pointer shrink-0 shadow-2xs flex items-center justify-center gap-1"
                 title="打包下载整工作区 ZIP"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-4 h-4 text-neutral-700 dark:text-neutral-200 stroke-[2] shrink-0" />
               </button>
 
               {/* Close Button */}
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-xl hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer shrink-0"
+                className="workspace-drawer-header-btn h-9 px-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-800 dark:text-neutral-100 transition cursor-pointer shrink-0 shadow-2xs flex items-center justify-center gap-1"
                 title="关闭工作区"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 text-neutral-700 dark:text-neutral-200 stroke-[2] shrink-0" />
               </button>
             </div>
           </div>
