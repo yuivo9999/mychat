@@ -204,8 +204,68 @@ function base64ToBytes(base64: string): Uint8Array {
   return bytes;
 }
 
+/**
+ * Robustly decodes raw text bytes into a clean JavaScript string.
+ * Automatically handles UTF-16LE, UTF-16BE, UTF-8 (with or without BOM), and GBK/GB2312
+ * to prevent Chinese character encoding issues / garbled output (乱码).
+ */
+export function decodeTextFile(arrayBuffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(arrayBuffer);
+  if (bytes.length < 2) {
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+
+  // 1. Detect UTF-16LE BOM: 0xFF 0xFE
+  if (bytes[0] === 0xFF && bytes[1] === 0xFE) {
+    return new TextDecoder('utf-16le').decode(bytes.slice(2));
+  }
+
+  // 2. Detect UTF-16BE BOM: 0xFE 0xFF
+  if (bytes[0] === 0xFE && bytes[1] === 0xFF) {
+    return new TextDecoder('utf-16be').decode(bytes.slice(2));
+  }
+
+  // 3. Detect UTF-8 BOM: 0xEF 0xBB 0xBF
+  if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+    return new TextDecoder('utf-8').decode(bytes.slice(3));
+  }
+
+  // 4. Heuristic for UTF-16LE/BE without BOM (Windows files)
+  let nullCount = 0;
+  let evenNulls = 0;
+  let oddNulls = 0;
+  const sampleSize = Math.min(bytes.length, 1000);
+  for (let i = 0; i < sampleSize; i++) {
+    if (bytes[i] === 0) {
+      nullCount++;
+      if (i % 2 === 0) evenNulls++;
+      else oddNulls++;
+    }
+  }
+
+  if (nullCount > 5) {
+    if (oddNulls > evenNulls * 4) {
+      return new TextDecoder('utf-16le').decode(bytes);
+    } else if (evenNulls > oddNulls * 4) {
+      return new TextDecoder('utf-16be').decode(bytes);
+    }
+  }
+
+  // 5. Try UTF-8 with fatal: true. If it fails, fallback to GBK/GB2312 or general UTF-8
+  try {
+    const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+    return utf8Decoder.decode(bytes);
+  } catch {
+    try {
+      return new TextDecoder('gbk').decode(bytes);
+    } catch {
+      return new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+    }
+  }
+}
+
 export function decodeBase64Text(base64: string): string {
-  return new TextDecoder('utf-8', { fatal: false }).decode(base64ToBytes(base64));
+  return decodeTextFile(base64ToBytes(base64).buffer as ArrayBuffer);
 }
 
 export function extractPdfRoughText(base64: string, fileName: string): string {

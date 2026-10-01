@@ -234,14 +234,14 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
       <div className="bg-neutral-900 border border-neutral-800 text-neutral-100 rounded-2xl sm:rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col overflow-hidden max-h-[92vh] min-h-[500px]">
         
         {/* Header Bar */}
-        <div className="px-4 py-3 bg-neutral-900/90 border-b border-neutral-800 flex items-center justify-between shrink-0 gap-3">
+        <div className="px-4 py-3 bg-neutral-900/90 border-b border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between shrink-0 gap-3">
           {/* File Info */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="w-9 h-9 rounded-xl border border-sky-500/30 bg-sky-500/10 flex items-center justify-center text-sky-400 shrink-0">
               {langInfo.isCode ? <Code2 className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-bold text-sm text-neutral-100 truncate" title={file.path}>
                   {file.path}
                 </h3>
@@ -267,8 +267,8 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
             </div>
           </div>
 
-          {/* Action Buttons: 撤销, 保存, 关闭 (Exact user request) */}
-          <div className="flex items-center gap-2 shrink-0">
+          {/* Action Buttons: 撤销, 保存, 关闭 */}
+          <div className="flex items-center justify-end gap-2 shrink-0 self-end sm:self-auto pt-1 sm:pt-0 border-t sm:border-t-0 border-neutral-800/80 w-full sm:w-auto">
             {/* 撤销 (Undo) 按钮 */}
             <button
               type="button"

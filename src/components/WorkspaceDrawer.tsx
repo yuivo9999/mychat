@@ -41,7 +41,7 @@ import {
   deleteFolderFromWorkspace,
   renameFolderInWorkspace
 } from '../services/workspaceService';
-import { downloadWorkspaceFile } from '../services/fileParser';
+import { downloadWorkspaceFile, decodeTextFile } from '../services/fileParser';
 
 interface WorkspaceDrawerProps {
   isOpen: boolean;
@@ -542,7 +542,8 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
           reader.readAsDataURL(f);
         });
       } else {
-        fileContent = await f.text();
+        const buffer = await f.arrayBuffer();
+        fileContent = decodeTextFile(buffer);
       }
 
       if (currentWorkspace.files[cleanPath]) {
