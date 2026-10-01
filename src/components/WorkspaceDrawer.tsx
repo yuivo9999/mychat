@@ -25,12 +25,14 @@ import {
   FolderPlus,
   FilePlus,
   Layers,
+  FileSpreadsheet,
   ChevronDown as DropdownIcon
 } from 'lucide-react';
 import { Workspace, WorkspaceFile } from '../types/workspace';
 import { Attachment } from '../types';
 import { workspaceFileToAttachment, workspaceZipToAttachment } from '../services/workspaceFileAttachment';
 import { FileEditorModal } from './FileEditorModal';
+import { ExcelEditorModal } from './ExcelEditorModal';
 import { 
   importZipToNewWorkspace, 
   createEmptyWorkspace, 
@@ -163,6 +165,13 @@ function renderFileIcon(fileName: string) {
     return (
       <div className="w-10 h-10 rounded-xl border border-amber-200/70 dark:border-amber-800/50 bg-amber-50/80 dark:bg-amber-950/40 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-2xs">
         <Archive className="w-5 h-5" />
+      </div>
+    );
+  }
+  if (lower.endsWith('.xlsx') || lower.endsWith('.xls') || lower.endsWith('.csv') || lower.endsWith('.tsv')) {
+    return (
+      <div className="w-10 h-10 rounded-xl border border-emerald-200/70 dark:border-emerald-800/50 bg-emerald-50/80 dark:bg-emerald-950/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-2xs">
+        <FileSpreadsheet className="w-5 h-5" />
       </div>
     );
   }
@@ -523,12 +532,23 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
       const f = fileList[i];
       const relPath = (f as any).webkitRelativePath || f.name;
       const cleanPath = relPath.replace(/^\/+/, '');
-      const text = await f.text();
+      
+      let fileContent = '';
+      const isBinary = /\.(xlsx|xls|pdf|png|jpg|jpeg|gif|webp|ico|bmp|zip)$/i.test(cleanPath);
+      if (isBinary) {
+        fileContent = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(f);
+        });
+      } else {
+        fileContent = await f.text();
+      }
 
       if (currentWorkspace.files[cleanPath]) {
         conflicts.push(cleanPath);
       }
-      filesToUpload.push({ path: cleanPath, content: text });
+      filesToUpload.push({ path: cleanPath, content: fileContent });
     }
 
     if (conflicts.length > 0) {
@@ -1421,12 +1441,23 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
       )}
 
       {/* Editable File Modal */}
-      <FileEditorModal
-        isOpen={!!editingFile}
-        file={editingFile}
-        onClose={() => setEditingFile(null)}
-        onSave={handleSaveFileContent}
-      />
+      {editingFile && (
+        /\.(xlsx|xls|csv|tsv)$/i.test(editingFile.path) ? (
+          <ExcelEditorModal
+            isOpen={!!editingFile}
+            file={editingFile}
+            onClose={() => setEditingFile(null)}
+            onSave={handleSaveFileContent}
+          />
+        ) : (
+          <FileEditorModal
+            isOpen={!!editingFile}
+            file={editingFile}
+            onClose={() => setEditingFile(null)}
+            onSave={handleSaveFileContent}
+          />
+        )
+      )}
     </>
   );
 };

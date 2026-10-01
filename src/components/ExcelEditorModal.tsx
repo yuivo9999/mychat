@@ -41,6 +41,93 @@ function indexToColLetter(index: number): string {
   return letter;
 }
 
+// RFC 4180 compliant CSV / TSV text parser
+export function parseCsvToGrid(csvText: string): (string | number | boolean)[][] {
+  if (!csvText || !csvText.trim()) return [['']];
+  
+  // Remove UTF-8 BOM if present
+  let cleanText = csvText.charCodeAt(0) === 0xFEFF ? csvText.slice(1) : csvText;
+  
+  // Auto-detect delimiter: comma (,), semicolon (;), tab (\t), pipe (|)
+  const firstLine = cleanText.split(/\r?\n/)[0] || '';
+  let delimiter = ',';
+  if (!firstLine.includes(',') && firstLine.includes(';')) {
+    delimiter = ';';
+  } else if (!firstLine.includes(',') && firstLine.includes('\t')) {
+    delimiter = '\t';
+  }
+
+  const rows: (string | number | boolean)[][] = [];
+  let currentRow: (string | number | boolean)[] = [];
+  let currentField = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < cleanText.length; i++) {
+    const char = cleanText[i];
+    const nextChar = cleanText[i + 1];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (nextChar === '"') {
+          currentField += '"';
+          i++; // skip escaped quote
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        currentField += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === delimiter) {
+        currentRow.push(currentField.trim());
+        currentField = '';
+      } else if (char === '\r') {
+        if (nextChar === '\n') i++;
+        currentRow.push(currentField.trim());
+        rows.push(currentRow);
+        currentRow = [];
+        currentField = '';
+      } else if (char === '\n') {
+        currentRow.push(currentField.trim());
+        rows.push(currentRow);
+        currentRow = [];
+        currentField = '';
+      } else {
+        currentField += char;
+      }
+    }
+  }
+
+  if (currentField || currentRow.length > 0) {
+    currentRow.push(currentField.trim());
+    rows.push(currentRow);
+  }
+
+  // Remove trailing blank rows
+  while (rows.length > 1 && rows[rows.length - 1].every(cell => String(cell).trim() === '')) {
+    rows.pop();
+  }
+
+  return rows.length > 0 ? rows : [['']];
+}
+
+// Convert 2D array grid back to standard CSV string
+export function gridToCsv(grid: (string | number | boolean)[][]): string {
+  return grid
+    .map(row => 
+      row.map(cell => {
+        const str = String(cell ?? '');
+        if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      }).join(',')
+    )
+    .join('\n');
+}
+
 export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
   isOpen,
   file,
@@ -63,13 +150,29 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
 
   const cellInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize and parse Excel workbook from WorkspaceFile
+  // Initialize and parse Excel workbook or CSV from WorkspaceFile
   useEffect(() => {
     if (!file || !isOpen) return;
 
     try {
-      let wb: XLSX.WorkBook;
       const lowerPath = file.path.toLowerCase();
+      const isCsvOrTsv = lowerPath.endsWith('.csv') || lowerPath.endsWith('.tsv');
+
+      if (isCsvOrTsv && !file.content.startsWith('data:')) {
+        // Direct CSV / TSV Parsing using RFC 4180 parser
+        const parsedGrid = parseCsvToGrid(file.content || '');
+        const defaultSheet = 'Sheet1';
+        setSheetNames([defaultSheet]);
+        setActiveSheetName(defaultSheet);
+        setWorkbookSheets({ [defaultSheet]: parsedGrid });
+        setSelectedCell({ r: 0, c: 0 });
+        setEditingCellValue(String(parsedGrid[0]?.[0] ?? ''));
+        setSearchQuery('');
+        setSortConfig(null);
+        return;
+      }
+
+      let wb: XLSX.WorkBook;
 
       if (file.content.startsWith('data:')) {
         // Base64 Data URL
@@ -79,8 +182,8 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
         // Binary base64 string
         wb = XLSX.read(file.content, { type: 'base64' });
       } else {
-        // Raw text (e.g., CSV, TSV, HTML table)
-        wb = XLSX.read(file.content, { type: 'string' });
+        // Raw text (CSV, TSV, HTML table)
+        wb = XLSX.read(file.content, { type: 'string', raw: true });
       }
 
       const names = wb.SheetNames.length > 0 ? wb.SheetNames : ['Sheet1'];
@@ -108,12 +211,12 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
       console.error('解析 Excel 文件出错:', e);
       // Fallback for raw text parsing or empty table
       const fallbackName = 'Sheet1';
-      const lines = (file.content || '').split('\n').map(line => line.split(','));
+      const parsedGrid = parseCsvToGrid(file.content || '');
       setSheetNames([fallbackName]);
       setActiveSheetName(fallbackName);
-      setWorkbookSheets({ [fallbackName]: lines.length > 0 ? lines : [['']] });
+      setWorkbookSheets({ [fallbackName]: parsedGrid });
       setSelectedCell({ r: 0, c: 0 });
-      setEditingCellValue(lines[0]?.[0] || '');
+      setEditingCellValue(String(parsedGrid[0]?.[0] ?? ''));
     }
   }, [file, isOpen]);
 
@@ -310,9 +413,9 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
       const lowerPath = file.path.toLowerCase();
 
       if (lowerPath.endsWith('.csv') || lowerPath.endsWith('.tsv')) {
-        // Export to CSV string
-        const activeWs = wb.Sheets[activeSheetName];
-        updatedContent = XLSX.utils.sheet_to_csv(activeWs || XLSX.utils.aoa_to_sheet([['']]));
+        // Export to pure standard CSV string
+        const activeGrid = workbookSheets[activeSheetName] || [['']];
+        updatedContent = gridToCsv(activeGrid);
       } else {
         // Export to XLSX Base64 Data URL
         const base64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
@@ -338,9 +441,9 @@ export const ExcelEditorModal: React.FC<ExcelEditorModalProps> = ({
       });
 
       const lowerPath = file.path.toLowerCase();
-      if (lowerPath.endsWith('.csv')) {
-        const activeWs = wb.Sheets[activeSheetName];
-        const csvStr = XLSX.utils.sheet_to_csv(activeWs || XLSX.utils.aoa_to_sheet([['']]));
+      if (lowerPath.endsWith('.csv') || lowerPath.endsWith('.tsv')) {
+        const activeGrid = workbookSheets[activeSheetName] || [['']];
+        const csvStr = gridToCsv(activeGrid);
         downloadWorkspaceFile(file.path, csvStr);
       } else {
         const base64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
