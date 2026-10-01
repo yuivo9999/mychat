@@ -302,3 +302,112 @@ ${rawText}
 
   return `${fileSections.join('\n\n')}\n\n${instructionProtocol}`;
 }
+
+/**
+ * Resolves the accurate MIME type based on file extension.
+ * Ensures downloaded files preserve their original file format/type (.py, .js, .css, .json, .html, .png, etc.)
+ * and prevents browser default fallback to text/plain (.txt).
+ */
+export function getMimeTypeFromFileName(fileName: string): string {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  const mimeMap: Record<string, string> = {
+    // Web & Frontend
+    js: 'text/javascript;charset=utf-8',
+    mjs: 'text/javascript;charset=utf-8',
+    cjs: 'text/javascript;charset=utf-8',
+    jsx: 'text/javascript;charset=utf-8',
+    ts: 'text/typescript;charset=utf-8',
+    tsx: 'text/typescript;charset=utf-8',
+    html: 'text/html;charset=utf-8',
+    htm: 'text/html;charset=utf-8',
+    css: 'text/css;charset=utf-8',
+    scss: 'text/css;charset=utf-8',
+    less: 'text/css;charset=utf-8',
+    json: 'application/json;charset=utf-8',
+    json5: 'application/json;charset=utf-8',
+    xml: 'application/xml;charset=utf-8',
+    svg: 'image/svg+xml;charset=utf-8',
+    md: 'text/markdown;charset=utf-8',
+    markdown: 'text/markdown;charset=utf-8',
+
+    // Programming Languages & Code
+    py: 'text/x-python;charset=utf-8',
+    java: 'text/x-java-source;charset=utf-8',
+    c: 'text/x-c;charset=utf-8',
+    cpp: 'text/x-c++;charset=utf-8',
+    h: 'text/x-c;charset=utf-8',
+    hpp: 'text/x-c++;charset=utf-8',
+    cs: 'text/plain;charset=utf-8',
+    go: 'text/x-go;charset=utf-8',
+    rs: 'text/x-rust;charset=utf-8',
+    php: 'text/x-php;charset=utf-8',
+    rb: 'text/x-ruby;charset=utf-8',
+    sh: 'application/x-sh;charset=utf-8',
+    bash: 'application/x-sh;charset=utf-8',
+    zsh: 'application/x-sh;charset=utf-8',
+    yaml: 'text/yaml;charset=utf-8',
+    yml: 'text/yaml;charset=utf-8',
+    toml: 'text/plain;charset=utf-8',
+    csv: 'text/csv;charset=utf-8',
+    sql: 'application/sql;charset=utf-8',
+    env: 'text/plain;charset=utf-8',
+    txt: 'text/plain;charset=utf-8',
+
+    // Images
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    ico: 'image/x-icon',
+    bmp: 'image/bmp',
+
+    // Binary / Documents
+    pdf: 'application/pdf',
+    zip: 'application/zip',
+    gz: 'application/gzip',
+    tar: 'application/x-tar',
+    mp3: 'audio/mpeg',
+    mp4: 'video/mp4',
+    wav: 'audio/wav',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  };
+
+  return mimeMap[ext] || 'application/octet-stream;charset=utf-8';
+}
+
+/**
+ * Downloads a single file from the workspace or code block, ensuring:
+ * 1. The original file extension (.py, .js, .json, .css, .html, .png, etc.) is strictly preserved.
+ * 2. The MIME type matches the file extension so browsers don't force .txt appended.
+ * 3. Handles base64 / data URLs and plain text content cleanly.
+ */
+export function downloadWorkspaceFile(filePath: string, content: string): void {
+  const fileName = filePath.split('/').pop() || 'file';
+  const mimeType = getMimeTypeFromFileName(fileName);
+
+  let url: string;
+  let shouldRevoke = false;
+
+  if (content.startsWith('data:')) {
+    url = content;
+  } else {
+    const blob = new Blob([content], { type: mimeType });
+    url = URL.createObjectURL(blob);
+    shouldRevoke = true;
+  }
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName; // Preserves exact original extension!
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+
+  if (shouldRevoke) {
+    URL.revokeObjectURL(url);
+  }
+}

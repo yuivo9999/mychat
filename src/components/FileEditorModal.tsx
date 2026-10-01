@@ -16,7 +16,7 @@ import {
   WrapText
 } from 'lucide-react';
 import { WorkspaceFile } from '../types/workspace';
-import { formatFileSize } from '../services/fileParser';
+import { formatFileSize, downloadWorkspaceFile } from '../services/fileParser';
 import { renderMarkdown } from '../services/markdown';
 
 interface FileEditorModalProps {
@@ -338,6 +338,20 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (file) {
+                  downloadWorkspaceFile(file.path, content);
+                }
+              }}
+              className="px-2.5 py-1 rounded-lg border border-neutral-800 hover:border-neutral-700 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 transition cursor-pointer flex items-center gap-1.5"
+              title="下载保存原格式文件到本地"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>下载本文件</span>
+            </button>
+
             <button
               type="button"
               onClick={handleCopyAll}

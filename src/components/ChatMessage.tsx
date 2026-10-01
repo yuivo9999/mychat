@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Message, Attachment, UserSettings } from '../types';
 import { renderMarkdown, getFileExtensionForLang } from '../services/markdown';
-import { formatFileSize } from '../services/fileParser';
+import { formatFileSize, downloadWorkspaceFile } from '../services/fileParser';
 import { ThinkingSteps } from './ThinkingSteps';
 import { AgentToolCallsViewer } from './AgentToolCallsViewer';
 import { ThinkingLogViewer, parseThinkingContent } from './ThinkingLogViewer';
@@ -294,19 +294,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       return;
     }
 
-    // Download code button
+    // Download code button (Preserves original language extension and mime type)
     const dlBtn = target.closest('.code-dl-btn') as HTMLElement;
     if (dlBtn) {
       const rawCode = decodeURIComponent(dlBtn.getAttribute('data-code') || '');
       const lang = dlBtn.getAttribute('data-lang') || 'txt';
       const ext = getFileExtensionForLang(lang);
-      const blob = new Blob([rawCode], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `code-${Date.now().toString().slice(-4)}.${ext}`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const fileName = `code-${Date.now().toString().slice(-4)}.${ext}`;
+      downloadWorkspaceFile(fileName, rawCode);
       return;
     }
 

@@ -39,6 +39,7 @@ import {
   deleteFolderFromWorkspace,
   renameFolderInWorkspace
 } from '../services/workspaceService';
+import { downloadWorkspaceFile } from '../services/fileParser';
 
 interface WorkspaceDrawerProps {
   isOpen: boolean;
@@ -372,19 +373,10 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
     onClose();
   };
 
-  // 2. Action: 下载文件 (Downloads single file)
+  // 2. Action: 下载单个文件 (Preserves exact file extension and MIME format)
   const handleDownloadSingleFile = (file: WorkspaceFile) => {
     try {
-      const fileName = file.path.split('/').pop() || 'file';
-      const blob = new Blob([file.content], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      downloadWorkspaceFile(file.path, file.content);
     } catch (e: any) {
       alert(`下载失败: ${e.message || '未知错误'}`);
     }
