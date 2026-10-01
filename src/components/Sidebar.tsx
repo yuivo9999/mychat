@@ -363,7 +363,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {projectSectionMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-30" onClick={() => setProjectSectionMenuOpen(false)} />
-                      <div className="absolute right-0 top-6 w-36 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1 z-40 text-xs">
+                      <div className="sidebar-dropdown-menu absolute right-0 top-6 w-36 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1 z-40 text-xs">
                         <button
                           onClick={() => {
                             setProjectSectionMenuOpen(false);
@@ -510,7 +510,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {chatSectionMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-30" onClick={() => setChatSectionMenuOpen(false)} />
-                      <div className="absolute right-0 top-6 w-36 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1 z-40 text-xs">
+                      <div className="sidebar-dropdown-menu absolute right-0 top-6 w-36 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-neutral-200 dark:border-neutral-800 py-1 z-40 text-xs">
                         <button
                           onClick={() => {
                             setChatSectionMenuOpen(false);
@@ -645,7 +645,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               bottom: menuDropdown.position.bottom !== undefined ? `${menuDropdown.position.bottom}px` : 'auto',
               left: menuDropdown.position.left !== undefined ? `${menuDropdown.position.left}px` : 'auto',
             }}
-            className="z-9999 w-36 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-neutral-200 dark:border-neutral-800 py-1.5 text-xs select-none animate-in fade-in zoom-in-95 duration-150"
+            className="sidebar-dropdown-menu z-9999 w-36 bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800 py-1 text-xs select-none animate-in fade-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
             {menuDropdown.type === 'conversation' && (

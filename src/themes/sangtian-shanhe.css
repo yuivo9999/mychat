@@ -371,37 +371,72 @@ html.theme-sangtian-shanhe body {
   color: #FFF8EA !important;
 }
 
-/* 侧边栏内三点展开的气泡操作菜单 (Dropdown Menu) */
+/* 侧边栏内三点展开的气泡操作菜单 (统一侧边栏横三点与竖三点下拉菜单：深乌木底 + 金边框 + 宣纸金温润文字 + 泥金图标) */
+.theme-sangtian-shanhe .sidebar-dropdown-menu,
+.theme-sangtian-shanhe .sidebar-dropdown-menu.bg-white,
+.theme-sangtian-shanhe .sidebar-dropdown-menu.dark\:bg-neutral-900,
 .theme-sangtian-shanhe aside .absolute.bg-white,
 .theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900,
-.theme-sangtian-shanhe .z-9999 {
+.theme-sangtian-shanhe .z-9999,
+.theme-sangtian-shanhe .z-9999.bg-white,
+.theme-sangtian-shanhe .z-9999.dark\:bg-neutral-900 {
   background: #2D1D13 !important; /* 深乌木实色 */
+  background-color: #2D1D13 !important;
   border: 1px solid #8E6B40 !important;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55) !important;
   border-radius: 12px !important;
+  color: #FAF0D8 !important;
 }
 
+.theme-sangtian-shanhe .sidebar-dropdown-menu button,
+.theme-sangtian-shanhe .z-9999 button,
 .theme-sangtian-shanhe aside .absolute.bg-white button,
-.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button,
-.theme-sangtian-shanhe .z-9999 button {
-  color: #EBD7B6 !important;
+.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button {
+  color: #FAF0D8 !important;
+  background: transparent !important;
 }
 
+.theme-sangtian-shanhe .sidebar-dropdown-menu button span,
+.theme-sangtian-shanhe .z-9999 button span,
+.theme-sangtian-shanhe aside .absolute.bg-white button span,
+.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button span {
+  color: #FAF0D8 !important;
+}
+
+.theme-sangtian-shanhe .sidebar-dropdown-menu button:hover,
+.theme-sangtian-shanhe .z-9999 button:hover,
 .theme-sangtian-shanhe aside .absolute.bg-white button:hover,
-.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button:hover,
-.theme-sangtian-shanhe .z-9999 button:hover {
-  background: rgba(169, 54, 45, 0.35) !important;
+.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button:hover {
+  background: rgba(169, 54, 45, 0.42) !important; /* 朱砂红高亮悬浮底 */
   color: #FFFFFF !important;
 }
 
-.theme-sangtian-shanhe aside .absolute.bg-white button svg,
-.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button svg,
-.theme-sangtian-shanhe .z-9999 button svg {
-  color: #D9B36E !important;
+.theme-sangtian-shanhe .sidebar-dropdown-menu button:hover span,
+.theme-sangtian-shanhe .z-9999 button:hover span,
+.theme-sangtian-shanhe aside .absolute.bg-white button:hover span,
+.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button:hover span {
+  color: #FFFFFF !important;
 }
 
+.theme-sangtian-shanhe .sidebar-dropdown-menu button svg,
+.theme-sangtian-shanhe .z-9999 button svg,
+.theme-sangtian-shanhe aside .absolute.bg-white button svg,
+.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button svg {
+  color: #E8AA42 !important; /* 金珀泥金色图标 */
+  stroke: #E8AA42 !important;
+}
+
+.theme-sangtian-shanhe .sidebar-dropdown-menu button:hover svg,
+.theme-sangtian-shanhe .z-9999 button:hover svg,
+.theme-sangtian-shanhe aside .absolute.bg-white button:hover svg,
+.theme-sangtian-shanhe aside .absolute.dark\:bg-neutral-900 button:hover svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+.theme-sangtian-shanhe .sidebar-dropdown-menu .border-t,
 .theme-sangtian-shanhe .z-9999 .border-t {
-  border-color: rgba(181, 142, 85, 0.25) !important;
+  border-color: rgba(181, 142, 85, 0.28) !important;
 }
 
 /* 08. 顶部栏 (TopBar.tsx: 深乌木色古风顶部栏) */
@@ -1074,4 +1109,29 @@ html.theme-sangtian-shanhe body {
 .theme-sangtian-shanhe .border-neutral-700,
 .theme-sangtian-shanhe .border-neutral-800 {
   border-color: var(--sth-line) !important;
+}
+
+/* 26. 侧边栏气泡菜单最终覆写保证（竖三点与横三点完全同色同质感） */
+.theme-sangtian-shanhe .sidebar-dropdown-menu,
+.theme-sangtian-shanhe .sidebar-dropdown-menu.bg-white,
+.theme-sangtian-shanhe .sidebar-dropdown-menu.dark\:bg-neutral-900,
+.theme-sangtian-shanhe .z-9999,
+.theme-sangtian-shanhe .z-9999.bg-white,
+.theme-sangtian-shanhe .z-9999.dark\:bg-neutral-900 {
+  background-color: #2D1D13 !important;
+  background: #2D1D13 !important;
+  color: #FAF0D8 !important;
+  border: 1px solid #8E6B40 !important;
+}
+
+.theme-sangtian-shanhe .sidebar-dropdown-menu button,
+.theme-sangtian-shanhe .z-9999 button {
+  color: #FAF0D8 !important;
+  background: transparent !important;
+}
+
+.theme-sangtian-shanhe .sidebar-dropdown-menu button svg,
+.theme-sangtian-shanhe .z-9999 button svg {
+  color: #E8AA42 !important;
+  stroke: #E8AA42 !important;
 }
