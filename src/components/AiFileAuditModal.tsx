@@ -339,8 +339,8 @@ export const AiFileAuditModal: React.FC<AiFileAuditModalProps> = ({
                   className="group p-3 rounded-xl border border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-neutral-850 hover:border-indigo-300 dark:hover:border-indigo-800 transition shadow-2xs flex flex-col gap-2"
                 >
                   {/* Top Line: Action badge, file path, timestamp */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
                       {/* Action Badge */}
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide shrink-0 ${
                         r.actionType === 'create'
@@ -352,13 +352,13 @@ export const AiFileAuditModal: React.FC<AiFileAuditModalProps> = ({
                         {r.actionType === 'create' ? '新建文件' : r.actionType === 'delete' ? '删除文件' : '修改代码'}
                       </span>
 
-                      {/* File Path */}
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      {/* File Path: Horizontally scrollable by touch/mouse so users can see full path without truncation */}
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-x-auto overscroll-x-contain py-0.5 select-text touch-pan-x scrollbar-none">
                         <FileCode className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
                         <span 
                           onClick={() => onOpenFileInWorkspace?.(r.filePath)}
-                          className="font-mono text-xs font-semibold text-neutral-800 dark:text-neutral-100 truncate hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
-                          title={r.filePath}
+                          className="font-mono text-xs font-semibold text-neutral-800 dark:text-neutral-100 whitespace-nowrap hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+                          title={`点击在工作区中打开: ${r.filePath}`}
                         >
                           {r.filePath}
                         </span>
@@ -366,11 +366,11 @@ export const AiFileAuditModal: React.FC<AiFileAuditModalProps> = ({
                     </div>
 
                     {/* Timestamp & Relative Time */}
-                    <div className="flex items-center gap-2 shrink-0 text-neutral-400 text-xs font-mono">
+                    <div className="flex items-center gap-2 shrink-0 text-neutral-400 text-xs font-mono ml-1">
                       <span className="hidden sm:inline text-[11px] text-neutral-500 dark:text-neutral-400">
                         {formatTimestamp(r.timestamp)}
                       </span>
-                      <span className="px-1.5 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 text-[10px] text-neutral-500 font-sans">
+                      <span className="px-1.5 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 text-[10px] text-neutral-500 font-sans whitespace-nowrap">
                         {getRelativeTime(r.timestamp)}
                       </span>
                     </div>
