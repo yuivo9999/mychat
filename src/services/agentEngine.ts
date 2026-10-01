@@ -161,6 +161,17 @@ export const WORKSPACE_TOOLS_SPEC = [
       required: ['library'],
     },
   },
+  {
+    name: 'run_command',
+    description: '在工作区服务器端安全终端执行 Shell 命令行与脚本（如编译打包 npm run build、安装运行测试、执行 Python 或 Node 数据分析处理等）。此工具在“运行脚本与命令”权限开启时可用。',
+    parameters: {
+      type: 'object',
+      properties: {
+        command: { type: 'string', description: '要执行的完整 Shell 命令' },
+      },
+      required: ['command'],
+    },
+  },
 ];
 
 // Build System Prompt containing workspace summary, code diagnosis protocol, and strict constraints
@@ -874,6 +885,73 @@ export async function executeWorkspaceTool(
         stepIcon: 'search',
         stepTitle: `挂载 Context7 查阅技术文档: [${library}]`,
       };
+    }
+
+    case 'run_command': {
+      const command = String(args.command || '').trim();
+      if (!command) {
+        return {
+          result: null,
+          updatedWorkspace: ws,
+          errorMessage: '命令为空。',
+          stepIcon: 'lightning',
+          stepTitle: '尝试运行命令（命令为空）',
+        };
+      }
+
+      try {
+        const res = await fetch('/api/execute-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command }),
+        });
+
+        if (res.ok) {
+          const runData = await res.json();
+          if (runData.success) {
+            return {
+              result: {
+                stdout: runData.stdout,
+                stderr: runData.stderr,
+                exitCode: runData.exitCode,
+              },
+              updatedWorkspace: ws,
+              stepIcon: 'lightning',
+              stepTitle: `成功执行终端命令: ${command}`,
+            };
+          } else {
+            return {
+              result: {
+                stdout: runData.stdout,
+                stderr: runData.stderr,
+                exitCode: runData.exitCode,
+                error: runData.error,
+              },
+              updatedWorkspace: ws,
+              errorMessage: runData.error || runData.stderr || `命令执行失败，退出码: ${runData.exitCode}`,
+              stepIcon: 'lightning',
+              stepTitle: `命令执行出错: ${command}`,
+            };
+          }
+        } else {
+          const errText = await res.text();
+          return {
+            result: null,
+            updatedWorkspace: ws,
+            errorMessage: `无法连接到编译执行后端服务: ${errText}`,
+            stepIcon: 'lightning',
+            stepTitle: `连接终端服务失败: ${command}`,
+          };
+        }
+      } catch (e: any) {
+        return {
+          result: null,
+          updatedWorkspace: ws,
+          errorMessage: `终端脚本执行异常: ${e.message}`,
+          stepIcon: 'lightning',
+          stepTitle: `终端异常: ${command}`,
+        };
+      }
     }
 
     default:

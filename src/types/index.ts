@@ -107,6 +107,7 @@ export interface ModelParameters {
   stream?: boolean; // 流式传输 (Stream)
   promptPerfect?: boolean; // 提示词优化 (Prompt Perfect)
   context7?: boolean; // Context 7-turn history balancing
+  executeScript?: boolean; // 脚本执行权限 (Script Execution)
   limitMaxTokens?: boolean; // 是否限制最大 Token 数限制
   maxTokens?: number; // 最大 Token 数 (Max Tokens)
   temperature?: number; // 温度 / 随机性 (Temperature)

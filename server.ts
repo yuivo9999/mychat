@@ -476,6 +476,25 @@ async function startServer() {
     res.json({ status: 'ok', timestamp: Date.now() });
   });
 
+  // 4. Secure Sandbox Script/Command Execution Endpoint
+  app.post('/api/execute-script', async (req, res) => {
+    const { command } = req.body;
+    if (!command) {
+      return res.status(400).json({ error: 'Missing command parameter' });
+    }
+
+    const { exec } = await import('child_process');
+    exec(command, { timeout: 20000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+      res.json({
+        success: !error,
+        exitCode: error ? error.code : 0,
+        stdout: stdout || '',
+        stderr: stderr || '',
+        error: error ? error.message : null
+      });
+    });
+  });
+
   // In development, mount Vite middleware
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

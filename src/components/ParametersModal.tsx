@@ -150,6 +150,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
     stream: '开启打字机逐字输出。关闭则等待整体生成完毕后一次性呈现。',
     promptPerfect: '开启后在发送给 AI 之前，由专用引擎自动将您的简短提示词重写为专业、结构清晰、完美的 Prompt 模板，提高生成质量。',
     context7: '开启后系统将采用“智能 7 轮高精度平衡窗口”，精准维持最近的 7 轮对话为全保真高对比度上下文，超出部分自动由智能摘要压缩。兼顾超长对话记忆与极低 Token 资源消耗。',
+    executeScript: '开启后允许 Agent 运行终端 Shell 命令行及执行脚本（如编译打包、运行测试、Python 或 Node 数据处理等）。提供极致完整的全自动编码体验！',
     maxTokens: '单次回复允许生成的最大 Token 限制（4096 约合 2000 个汉字）。',
     temperature: '控制回答的多样性。0.0~0.3 严谨确定（代码/数学）；0.7~1.0 丰富发散（创意/写作）。',
     latex: '自动通过 KaTeX 引擎将数学公式/物理符号/微积分渲染为学术级排版。',
@@ -163,6 +164,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   const streamVal = settings?.enableStreaming ?? parameters.stream ?? true;
   const promptPerfectVal = parameters.promptPerfect ?? false;
   const context7Val = parameters.context7 ?? false;
+  const executeScriptVal = parameters.executeScript ?? false;
 
   return (
     <div className="parameters-modal fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-150">
@@ -335,6 +337,46 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 <div
                   className={`param-toggle-dot bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
                     context7Val ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* 1.7. 运行脚本权限 (Execute Script) */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs">
+              <div className="space-y-0.5 pr-2">
+                <div className="flex items-center gap-1.5 relative">
+                  <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100">运行脚本与命令</span>
+                  <button
+                    type="button"
+                    onMouseEnter={() => setActiveTooltip('executeScript')}
+                    onMouseLeave={() => setActiveTooltip(null)}
+                    onClick={() => setActiveTooltip(activeTooltip === 'executeScript' ? null : 'executeScript')}
+                    className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                  >
+                    <Info className="w-3.5 h-3.5" />
+                  </button>
+                  {activeTooltip === 'executeScript' && (
+                    <div className="absolute left-0 top-6 z-20 w-56 p-2 bg-neutral-900 border border-neutral-700 text-[11px] text-neutral-300 rounded-xl shadow-xl">
+                      {tooltips.executeScript}
+                    </div>
+                  )}
+                </div>
+                <p className="param-item-sub text-[11px] text-neutral-500 dark:text-neutral-400">允许 Agent 在终端运行脚本与编译</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  updateParam('executeScript', !executeScriptVal);
+                }}
+                className={`param-toggle w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors shrink-0 ${
+                  executeScriptVal ? 'bg-[#84cc16] bg-lime-500' : 'bg-neutral-300 dark:bg-neutral-800'
+                }`}
+              >
+                <div
+                  className={`param-toggle-dot bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    executeScriptVal ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
               </button>
