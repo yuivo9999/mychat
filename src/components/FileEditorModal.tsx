@@ -15,7 +15,9 @@ import {
   Sparkles,
   WrapText,
   RefreshCw,
-  Info
+  Info,
+  CheckSquare,
+  Trash2
 } from 'lucide-react';
 import { WorkspaceFile } from '../types/workspace';
 import { formatFileSize, downloadWorkspaceFile, convertUtf16ToUtf8 } from '../services/fileParser';
@@ -223,11 +225,18 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Select all text in editor
-  const handleSelectAllText = () => {
+  // Select all text in editor without opening mobile virtual keyboard
+  const handleSelectAllText = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
     if (textareaRef.current) {
-      textareaRef.current.focus();
-      textareaRef.current.select();
+      const ta = textareaRef.current;
+      const originalReadOnly = ta.readOnly;
+      ta.readOnly = true;
+      ta.focus();
+      ta.setSelectionRange(0, ta.value.length);
+      setTimeout(() => {
+        ta.readOnly = originalReadOnly;
+      }, 50);
     }
   };
 
@@ -499,27 +508,27 @@ export const FileEditorModal: React.FC<FileEditorModalProps> = ({
           <div>
             状态: <span className={isModified ? 'text-amber-400 font-medium' : 'text-neutral-400'}>{isModified ? '修改未保存' : '已同步'}</span>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <span>快捷键: <kbd className="px-1 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300">Ctrl+S</kbd> 保存 · <kbd className="px-1 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-300">Ctrl+Z</kbd> 撤销</span>
-            
-            <div className="w-px h-3.5 bg-neutral-800 hidden sm:block mx-0.5" />
-
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleSelectAllText}
-              className="px-2 py-0.5 rounded bg-neutral-850 hover:bg-neutral-800 border border-neutral-750 text-neutral-300 transition cursor-pointer flex items-center justify-center font-sans active:scale-95 text-[11px] font-semibold"
-              title="一键选中编辑器里的所有文字 (Ctrl+A)"
+              className="px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white transition cursor-pointer flex items-center gap-1.5 text-xs font-medium shrink-0 active:scale-95"
+              title="全选文字"
             >
-              全选
+              <CheckSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <span>全选</span>
             </button>
 
             <button
               type="button"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleDeleteSelectedText}
-              className="px-2 py-0.5 rounded bg-red-950/30 hover:bg-red-950/50 border border-red-900/30 text-red-400 hover:text-red-300 transition cursor-pointer flex items-center justify-center font-sans active:scale-95 text-[11px] font-semibold"
-              title="删除当前被选中/蓝底高亮的文本"
+              className="px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-red-300 transition cursor-pointer flex items-center gap-1.5 text-xs font-medium shrink-0 active:scale-95"
+              title="删除已选中的文字"
             >
-              删除
+              <Trash2 className="w-3.5 h-3.5 text-red-400 shrink-0" />
+              <span>删除</span>
             </button>
           </div>
         </div>
