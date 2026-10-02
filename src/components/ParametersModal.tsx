@@ -20,18 +20,9 @@ import {
   Star,
   RefreshCcw,
   Check,
-  Download,
-  Upload,
-  Trash
 } from 'lucide-react';
 import { ModelParameters, UserSettings, SearchEngineItem } from '../types';
 import { DEFAULT_SEARCH_ENGINES } from '../services/db';
-import { 
-  exportPythonRuntime, 
-  importPythonRuntime, 
-  clearPythonRuntimeCache,
-  downloadPythonFromCdn
-} from '../services/pythonRuntimeServiceWorker';
 
 interface ParametersModalProps {
   isOpen: boolean;
@@ -56,99 +47,8 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   const [showAddEngineForm, setShowAddEngineModal] = useState(false);
   const [newEngineName, setNewEngineName] = useState('');
   const [newEngineUrl, setNewEngineUrl] = useState('');
-  const [isExporting, setIsExporting] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [pythonStatus, setPythonStatus] = useState<'idle' | 'success' | 'error' | 'cleared' | 'downloading'>('idle');
 
   if (!isOpen) return null;
-
-  const saveBlobAsDownload = (blob: Blob, filename: string) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  };
-
-  const handleDownloadPython = async () => {
-    try {
-      setIsDownloading(true);
-      setPythonStatus('downloading');
-      setDownloadProgress(0);
-
-      // 这里只生成并保存离线 ZIP，不写入项目缓存。
-      // 用户随后通过“导入运行时”决定何时把它安装到本项目。
-      const blob = await downloadPythonFromCdn((p) => setDownloadProgress(p));
-      if (!blob) {
-        setPythonStatus('error');
-        return;
-      }
-
-      saveBlobAsDownload(blob, `python-runtime-offline-${Date.now()}.zip`);
-      setPythonStatus('success');
-    } catch (err) {
-      console.error(err);
-      setPythonStatus('error');
-    } finally {
-      setIsDownloading(false);
-      setTimeout(() => {
-        setPythonStatus('idle');
-        setDownloadProgress(0);
-      }, 3000);
-    }
-  };
-
-  const handleExportPython = async () => {
-    try {
-      setIsExporting(true);
-      setPythonStatus('idle');
-      const blob = await exportPythonRuntime();
-      if (!blob) {
-        setPythonStatus('error');
-        return;
-      }
-      saveBlobAsDownload(blob, `python-runtime-offline-${Date.now()}.zip`);
-      setPythonStatus('success');
-    } catch (err) {
-      console.error(err);
-      setPythonStatus('error');
-    } finally {
-      setIsExporting(false);
-      setTimeout(() => setPythonStatus('idle'), 3000);
-    }
-  };
-
-  const handleImportPython = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      setIsImporting(true);
-      setPythonStatus('idle');
-      const success = await importPythonRuntime(file);
-      setPythonStatus(success ? 'success' : 'error');
-    } catch (err) {
-      console.error(err);
-      setPythonStatus('error');
-    } finally {
-      setIsImporting(false);
-      e.target.value = '';
-      setTimeout(() => setPythonStatus('idle'), 3000);
-    }
-  };
-
-  const handleClearPython = async () => {
-    if (confirm('确定要清除已缓存的本地 Python 运行时吗？下次执行将需要重新联网下载。')) {
-      await clearPythonRuntimeCache();
-      setPythonStatus('cleared');
-      setTimeout(() => setPythonStatus('idle'), 3000);
-    }
-  };
 
   const searchEngines = settings?.searchEngines || DEFAULT_SEARCH_ENGINES;
   const activeSearchEngineId = settings?.activeSearchEngineId || 'bing';
@@ -485,75 +385,6 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
               </button>
             </div>
 
-            <div className="space-y-3 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-lime-500" />
-                  <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">本地 Python 运行时管理</span>
-                </div>
-                {pythonStatus === 'success' && <span className="text-[10px] text-emerald-500 font-medium animate-pulse">✓ 操作成功</span>}
-                {pythonStatus === 'error' && <span className="text-[10px] text-red-500 font-medium">✗ 操作失败</span>}
-                {pythonStatus === 'cleared' && <span className="text-[10px] text-neutral-500 font-medium">已清除缓存</span>}
-                {pythonStatus === 'downloading' && <span className="text-[10px] text-blue-500 font-medium animate-pulse">下载中: {downloadProgress}%</span>}
-              </div>
-              <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                手动下载只负责生成并唤起浏览器保存 Python 离线包，不会自动写入本项目缓存。需要在本项目使用时，再通过“导入运行时”安装。
-              </p>
-
-              {isDownloading && (
-                <div className="w-full bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5 mb-2 overflow-hidden">
-                  <div 
-                    className="bg-blue-600 h-full transition-all duration-300 ease-out"
-                    style={{ width: `${downloadProgress}%` }}
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={handleDownloadPython}
-                  disabled={isDownloading}
-                  className="col-span-2 flex items-center justify-center gap-2 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition active:scale-95 disabled:opacity-50"
-                >
-                  {isDownloading ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                  {isDownloading ? `正在生成离线包 ${downloadProgress}%` : '下载 Python 离线包'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportPython}
-                  disabled={isExporting || isDownloading}
-                  className="flex items-center justify-center gap-2 py-2 px-3 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-[11px] font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition active:scale-95 disabled:opacity-50"
-                >
-                  {isExporting ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                  导出运行时
-                </button>
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept=".zip"
-                    onChange={handleImportPython}
-                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                    disabled={isImporting || isDownloading}
-                  />
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-[11px] font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition active:scale-95 disabled:opacity-50"
-                  >
-                    {isImporting ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                    导入运行时
-                  </button>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleClearPython}
-                className="w-full py-1.5 text-[10px] text-neutral-400 hover:text-red-500 transition-colors flex items-center justify-center gap-1"
-              >
-                <Trash className="w-3 h-3" />
-                清空本地运行时缓存
-              </button>
-            </div>
 
             {/* 2. 采样温度 */}
             <div className="space-y-2 p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs">
