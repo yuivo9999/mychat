@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "runtimeVersion": "314.0.7",
   "buildId": "68f95ca0d1d300a2c19a121dcdfaf80b1699c87cebedad8816be69570e8c9363",
   "files": [
     "pyodide.asm.mjs",
