@@ -3,11 +3,6 @@ import {
   type Workspace,
   type WorkspaceFile,
 } from '../types/workspace';
-import {
-  getPythonRuntimeIndexUrl,
-  waitForPythonRuntimeCache,
-} from './pythonRuntimeServiceWorker.ts';
-
 export type WorkspacePythonChangeType = 'added' | 'modified' | 'deleted';
 
 export interface WorkspacePythonChange {
@@ -58,6 +53,11 @@ const LOCAL_RUNTIME_LOAD_TIMEOUT_MS = 180_000;
 const LOCAL_WORKSPACE_PREPARATION_TIMEOUT_MS = 300_000;
 const LOCAL_EXECUTION_TIMEOUT_MS = 120_000;
 const LOCAL_MAX_INPUT_BYTES = WORKSPACE_LIMITS.MAX_TOTAL_UNCOMPRESSED_SIZE;
+
+function getPythonRuntimeIndexUrl(): string {
+  const scopeRoot = new URL('../../', import.meta.url);
+  return new URL('pyodide/', scopeRoot).toString();
+}
 const encoder = new TextEncoder();
 
 interface LocalWorkerResult {
@@ -430,13 +430,6 @@ export async function executeWorkspacePython(
   if (typeof Worker === 'undefined') {
     throw new Error('当前浏览器不支持 Web Worker，无法使用本地 Python 执行。');
   }
-  const runtimeCacheReady = await waitForPythonRuntimeCache(signal);
-  if (!runtimeCacheReady) {
-    throw new Error(
-      '当前浏览器未能建立安全的离线 Python 缓存。请使用支持 Service Worker 的新版 Chrome，并先联网成功打开本应用一次。',
-    );
-  }
-
   const executionId = createExecutionId();
   const startedAt = Date.now();
 

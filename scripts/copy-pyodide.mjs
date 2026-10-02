@@ -10,14 +10,6 @@ const projectRoot = resolve(scriptDirectory, '..');
 const packageEntry = require.resolve('pyodide', { paths: [projectRoot] });
 const packageRoot = resolve(dirname(packageEntry));
 const targetRoot = resolve(projectRoot, 'public/pyodide');
-const serviceWorkerPath = resolve(projectRoot, 'public/python-sw.js');
-const workerSourcePath = resolve(projectRoot, 'src/workers/pythonWorker.ts');
-const buildIdPlaceholder = '__PYTHON_RUNTIME_BUILD_ID__';
-const cacheVersionPattern = new RegExp(
-  `const CACHE_VERSION = '(?:${buildIdPlaceholder}|[a-f0-9]{64})';`,
-  'u',
-);
-
 const requiredRuntimeFiles = [
   'pyodide.asm.js',
   'pyodide.asm.mjs',
@@ -70,12 +62,6 @@ buildHash.update(workerSource);
 buildHash.update('\0');
 buildHash.update(normalizedServiceWorkerSource);
 const buildId = buildHash.digest('hex');
-
-const generatedServiceWorker = serviceWorkerSource.replace(
-  cacheVersionPattern,
-  `const CACHE_VERSION = '${buildId}';`,
-);
-await writeFile(serviceWorkerPath, generatedServiceWorker, 'utf8');
 
 const manifest = {
   schemaVersion: 1,
