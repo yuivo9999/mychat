@@ -2,6 +2,7 @@ const SERVICE_WORKER_FILE = 'python-sw.js';
 const SERVICE_WORKER_READY_TIMEOUT_MS = 180_000;
 const CONTROLLER_CHANGE_TIMEOUT_MS = 5_000;
 const STATUS_RESPONSE_TIMEOUT_MS = 5_000;
+const PYODIDE_CHINA_CDN_BASE = 'https://cdn.npmmirror.com/npm/pyodide';
 
 let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
 
@@ -165,7 +166,11 @@ export async function downloadPythonFromCdn(onProgress: (progress: number) => vo
     if (!manifestRes.ok) throw new Error('无法从服务器读取清单文件');
     const manifest = await manifestRes.json();
     const buildId = manifest.buildId;
+    const runtimeVersion = typeof manifest.runtimeVersion === 'string' ? manifest.runtimeVersion.trim() : '';
     const files = manifest.files as string[];
+    if (!buildId || !Array.isArray(files) || files.some((file) => typeof file !== 'string')) {
+      throw new Error('Python 运行时清单格式无效');
+    }
     
     // We also need to cache python-sw.js itself
     const allFiles = ['python-sw.js', ...files.map(f => `pyodide/${f}`)];
@@ -177,13 +182,21 @@ export async function downloadPythonFromCdn(onProgress: (progress: number) => vo
 
     for (const filePath of allFiles) {
       const targetUrl = new URL(filePath, scopeRoot).toString();
-      // For Chinese users, we can optionally use a CDN here if provided. 
-      // But since they are already bundled in public/, we fetch from current server 
-      // which is effectively the same as "downloading and putting in place".
-      // If we strictly want to use jsdelivr, we'd need the exact version mapping.
-      // Here we fetch from our own public/ which is the most reliable source for the bundled version.
-      const response = await fetch(targetUrl);
-      if (!response.ok) throw new Error(`无法下载文件: ${filePath}`);
+      const localUrl = targetUrl;
+      const mirrorUrl = filePath === 'python-sw.js' || !runtimeVersion
+        ? null
+        : new URL(\`${filePath.replace(/^pyodide\\//, '')}\`, \`${PYODIDE_CHINA_CDN_BASE}/${runtimeVersion}/\`).toString();
+
+      // 中国大陆优先使用 npmmirror 的 Pyodide CDN；若镜像不可用，再回退到当前应用自身的静态文件。
+      let response: Response;
+      try {
+        response = mirrorUrl ? await fetch(mirrorUrl, { cache: 'no-store' }) : await fetch(localUrl);
+        if (!response.ok) throw new Error(\`mirror HTTP ${response.status}\`);
+      } catch (mirrorError) {
+        console.warn(\`Pyodide China CDN download failed for ${filePath}, falling back to app origin.\`, mirrorError);
+        response = await fetch(localUrl);
+        if (!response.ok) throw new Error(\`无法下载文件: ${filePath}\`);
+      }
       
       const contentLength = response.headers.get('content-length');
       const total = contentLength ? parseInt(contentLength, 10) : 0;
