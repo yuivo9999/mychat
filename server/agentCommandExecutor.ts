@@ -17,6 +17,8 @@ import path from 'node:path';
 
 export interface AgentCommandExecutorConfig {
   enabled: boolean;
+  workspacePythonEnabled: boolean;
+  pythonExecutable: string;
   workRoot: string;
   timeoutMs: number;
   maxOutputBytes: number;
@@ -99,6 +101,10 @@ function loadConfig(): AgentCommandExecutorConfig {
 
   return {
     enabled: readBooleanEnv('AGENT_COMMAND_EXECUTION_ENABLED', false),
+    // Kept only for compatibility with an older in-process caller. The public browser
+    // workflow never enables or invokes this backend Python path.
+    workspacePythonEnabled: false,
+    pythonExecutable: process.platform === 'win32' ? 'py' : 'python3',
     workRoot,
     timeoutMs: readIntegerEnv('AGENT_COMMAND_TIMEOUT_MS', 120_000, 1_000, 600_000),
     maxOutputBytes: readIntegerEnv(
@@ -169,6 +175,10 @@ const IGNORED_DIRECTORY_NAMES = new Set([
   'build',
   'target',
 ]);
+
+// `spawn(..., { uid, gid })` alone does not clear supplementary groups. On Linux,
+// setpriv performs all three identity changes in one fixed, non-shell launcher.
+const LINUX_PRIVILEGE_DROP_EXECUTABLE = '/usr/bin/setpriv';
 
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/;
 const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
@@ -459,6 +469,21 @@ async function runShellCommand(
   abortSignal: AbortSignal,
   runAs: { uid: number; gid: number } | null,
 ): Promise<ShellExecutionResult> {
+  const isWindows = process.platform === 'win32';
+  const shell = isWindows ? (process.env.ComSpec || 'cmd.exe') : '/bin/sh';
+  const shellArguments = isWindows ? ['/d', '/s', '/c', command] : ['-c', command];
+  return runProcessCommand(shell, shellArguments, cwd, config, abortSignal, runAs);
+}
+
+async function runProcessCommand(
+  executable: string,
+  executableArguments: readonly string[],
+  cwd: string,
+  config: AgentCommandExecutorConfig,
+  abortSignal: AbortSignal,
+  runAs: { uid: number; gid: number } | null,
+  environmentOverrides: Readonly<Record<string, string>> = {},
+): Promise<ShellExecutionResult> {
   const stdout = new BoundedOutput(config.maxOutputBytes);
   const stderr = new BoundedOutput(config.maxOutputBytes);
   let timedOut = false;
@@ -496,18 +521,39 @@ async function runShellCommand(
     PYTHONUNBUFFERED: '1',
     PYTHONDONTWRITEBYTECODE: '1',
     npm_config_cache: path.join(cwd, '.npm-cache'),
+    ...environmentOverrides,
   };
 
-  const isWindows = process.platform === 'win32';
-  const shell = isWindows ? (process.env.ComSpec || 'cmd.exe') : '/bin/sh';
-  const shellArguments = isWindows ? ['/d', '/s', '/c', command] : ['-c', command];
-  const child = spawn(shell, shellArguments, {
+  let childExecutable = executable;
+  let childArguments = [...executableArguments];
+  if (runAs) {
+    if (process.platform !== 'linux') {
+      throw new AgentCommandApiError(
+        503,
+        'PRIVILEGE_DROP_UNSUPPORTED',
+        '当前平台无法安全清除子进程附加组，已拒绝执行命令',
+      );
+    }
+
+    childExecutable = LINUX_PRIVILEGE_DROP_EXECUTABLE;
+    childArguments = [
+      '--clear-groups',
+      '--reuid',
+      String(runAs.uid),
+      '--regid',
+      String(runAs.gid),
+      '--',
+      executable,
+      ...childArguments,
+    ];
+  }
+
+  const child = spawn(childExecutable, childArguments, {
     cwd,
     env: childEnvironment,
     detached: !isWindows,
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
-    ...(runAs ? { uid: runAs.uid, gid: runAs.gid } : {}),
   });
 
   const requestTermination = (): void => {
@@ -580,6 +626,17 @@ async function scanCommandOutput(
   let scannedEntryCount = 0;
   let changedTotalBytes = 0;
 
+  // Ignored directories (node_modules, build, dist, ...) may already contain user-managed
+  // baseline files. Only prune an ignored directory when none of its descendants came
+  // from the baseline; otherwise command modifications in it must still be synchronized.
+  const baselineDirectoryNames = new Set<string>();
+  for (const baselinePath of baselineFiles.keys()) {
+    const segments = baselinePath.split('/');
+    for (let depth = 1; depth < segments.length; depth += 1) {
+      baselineDirectoryNames.add(segments.slice(0, depth).join('/'));
+    }
+  }
+
   const recordIgnoredPath = (relativePath: string): void => {
     ignoredPathCount += 1;
     if (ignoredPaths.length < 100) ignoredPaths.push(relativePath);
@@ -626,7 +683,10 @@ async function scanCommandOutput(
         continue;
       }
       if (entry.isDirectory()) {
-        if (IGNORED_DIRECTORY_NAMES.has(entry.name)) {
+        if (
+          IGNORED_DIRECTORY_NAMES.has(entry.name) &&
+          !baselineDirectoryNames.has(relativePath)
+        ) {
           recordIgnoredPath(`${relativePath}/`);
           continue;
         }
@@ -706,6 +766,13 @@ export interface ExecuteAgentCommandInput {
   abortSignal: AbortSignal;
 }
 
+export interface ExecuteWorkspacePythonInput {
+  workspaceId: unknown;
+  scriptPath: unknown;
+  files: unknown;
+  abortSignal: AbortSignal;
+}
+
 export class AgentCommandExecutor {
   private activeExecutionCount = 0;
   private readonly lockedWorkspaces = new Set<string>();
@@ -714,6 +781,8 @@ export class AgentCommandExecutor {
 
   getStatus(): {
     enabled: boolean;
+    workspacePythonEnabled: boolean;
+    pythonExecutable: string;
     timeoutMs: number;
     maxOutputBytes: number;
     maxWorkspaceFiles: number;
@@ -723,6 +792,8 @@ export class AgentCommandExecutor {
   } {
     return {
       enabled: this.config.enabled,
+      workspacePythonEnabled: this.config.workspacePythonEnabled,
+      pythonExecutable: path.basename(this.config.pythonExecutable),
       timeoutMs: this.config.timeoutMs,
       maxOutputBytes: this.config.maxOutputBytes,
       maxWorkspaceFiles: this.config.maxWorkspaceFiles,
@@ -730,6 +801,119 @@ export class AgentCommandExecutor {
       maxConcurrentExecutions: this.config.maxConcurrentExecutions,
       privilegesDropped: getDroppedIdentity(this.config) !== null,
     };
+  }
+
+  async executePython(input: ExecuteWorkspacePythonInput): Promise<AgentCommandExecutionResult> {
+    if (!this.config.workspacePythonEnabled) {
+      throw new AgentCommandApiError(
+        403,
+        'WORKSPACE_PYTHON_EXECUTION_DISABLED',
+        '服务端未启用工作区 Python 执行。请设置 WORKSPACE_PYTHON_EXECUTION_ENABLED=true，并通过隔离容器或专用主机部署后再试。',
+      );
+    }
+
+    const workspaceId = sanitizeWorkspaceId(input.workspaceId);
+    const scriptPath = validatePythonScript(input.files, input.scriptPath);
+
+    if (this.lockedWorkspaces.has(workspaceId)) {
+      throw new AgentCommandApiError(409, 'WORKSPACE_COMMAND_BUSY', '该工作区已有任务正在执行，请等待完成');
+    }
+    if (this.activeExecutionCount >= this.config.maxConcurrentExecutions) {
+      throw new AgentCommandApiError(429, 'COMMAND_CAPACITY_EXCEEDED', '服务端执行队列已满，请稍后重试');
+    }
+
+    this.activeExecutionCount += 1;
+    this.lockedWorkspaces.add(workspaceId);
+
+    const executionId = randomUUID();
+    const startedAt = Date.now();
+    const runAs = getDroppedIdentity(this.config);
+    let sessionDirectory: string | null = null;
+
+    try {
+      await mkdir(this.config.workRoot, { recursive: true, mode: runAs ? 0o711 : 0o700 });
+      try {
+        await chmod(this.config.workRoot, runAs ? 0o711 : 0o700);
+      } catch {
+        // Some mounted filesystems do not support chmod; deployment must still isolate this root.
+      }
+
+      sessionDirectory = await mkdtemp(path.join(this.config.workRoot, `${workspaceId}-`));
+      if (!runAs) {
+        try { await chmod(sessionDirectory, 0o700); } catch { /* Best effort on non-POSIX filesystems. */ }
+      }
+
+      const prepared = await materializeWorkspace(sessionDirectory, input.files, this.config);
+      const absoluteScriptPath = resolveInsideRoot(sessionDirectory, scriptPath);
+      const execution = await runProcessCommand(
+        this.config.pythonExecutable,
+        ['-B', '-s', absoluteScriptPath],
+        sessionDirectory,
+        this.config,
+        input.abortSignal,
+        runAs,
+        {
+          PYTHONPATH: sessionDirectory,
+          PYTHONIOENCODING: 'utf-8',
+          PYTHONUTF8: '1',
+          PYTHONNOUSERSITE: '1',
+          PYTHONHASHSEED: '0',
+        },
+      );
+
+      let changedFiles: ChangedCommandFile[] = [];
+      let ignoredPaths: string[] = [];
+      let fileSyncError: string | null = null;
+      try {
+        const scan = await scanCommandOutput(sessionDirectory, prepared.baselineFiles, this.config);
+        changedFiles = scan.changedFiles;
+        ignoredPaths = scan.ignoredPaths;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '未知文件同步错误';
+        fileSyncError = `Python 已结束，但生成文件无法安全同步: ${message}`;
+      }
+
+      const exitCode = execution.result.spawnError ? null : execution.result.exitCode;
+      const success = !execution.result.spawnError &&
+        exitCode === 0 &&
+        !execution.timedOut &&
+        !execution.cancelled &&
+        !execution.outputLimitExceeded &&
+        !fileSyncError;
+      const error = execution.result.spawnError?.message ||
+        (execution.timedOut ? 'Python 执行超时并已终止' : null) ||
+        (execution.cancelled ? 'Python 执行已取消' : null) ||
+        (execution.outputLimitExceeded ? 'Python 输出超过限制并已终止' : null) ||
+        fileSyncError;
+
+      return {
+        success,
+        executionId,
+        workspaceId,
+        exitCode,
+        signal: execution.result.signal,
+        stdout: execution.stdout.toString(),
+        stderr: execution.stderr.toString(),
+        stdoutTruncated: execution.stdout.isTruncated,
+        stderrTruncated: execution.stderr.isTruncated,
+        timedOut: execution.timedOut,
+        cancelled: execution.cancelled,
+        outputLimitExceeded: execution.outputLimitExceeded,
+        durationMs: Date.now() - startedAt,
+        changedFiles,
+        ignoredPaths,
+        fileSyncError,
+        error,
+      };
+    } finally {
+      if (sessionDirectory) {
+        await rm(sessionDirectory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }).catch((error) => {
+          console.error(`Failed to clean Python session ${executionId}:`, error);
+        });
+      }
+      this.lockedWorkspaces.delete(workspaceId);
+      this.activeExecutionCount = Math.max(0, this.activeExecutionCount - 1);
+    }
   }
 
   async execute(input: ExecuteAgentCommandInput): Promise<AgentCommandExecutionResult> {
