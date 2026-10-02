@@ -1239,19 +1239,11 @@ ${adaptedContent}
                   stepTitle: "终端执行被拒绝 (脚本权限未开启)"
                 };
               } else {
-                outcome = await executeWorkspaceTool(tc.tool, tc.args, wsToOperate, {
-                  commandAbortSignal: abortController.signal,
-                });
+                outcome = await executeWorkspaceTool(tc.tool, tc.args, wsToOperate);
               }
               wsToOperate = outcome.updatedWorkspace;
 
-              const commandChangedFiles = tc.tool === 'run_command' && Array.isArray(outcome.result?.changedFiles)
-                ? outcome.result.changedFiles as Array<{ path?: unknown }>
-                : [];
-              for (const changedFile of commandChangedFiles) {
-                if (typeof changedFile.path === 'string') modifiedPaths.add(changedFile.path);
-              }
-              if (commandChangedFiles.length === 0 && outcome.diff?.path) {
+              if (outcome.diff?.path) {
                 modifiedPaths.add(outcome.diff.path);
               }
 
@@ -1348,25 +1340,10 @@ ${adaptedContent}
         );
       }
 
-      // Clean final answer. The notice must reflect actual command execution instead of
-      // always claiming that no test was run.
-      const commandToolCalls = executedToolCalls.filter(call => call.toolName === 'run_command');
-      const successfulCommandCount = commandToolCalls.filter(call => call.status === 'success').length;
-      const failedCommandCount = commandToolCalls.length - successfulCommandCount;
+      // Clean final answer
       let cleanedFinalAnswer = (systemNotices ? systemNotices : '') + (cumulativeAssistantNarrative || cleanResponseText(finalFullText));
-
-      const completionNotices: string[] = [];
       if (modifiedPaths.size > 0) {
-        completionNotices.push(`> 📦 **项目工作区已更新**：AI 已协同修改工作区文件 \`${Array.from(modifiedPaths).join('`, `')}\`。`);
-      }
-      if (commandToolCalls.length > 0) {
-        completionNotices.push(`> ⚙️ **终端执行记录**：AI 已在服务端隔离工作区副本中执行 ${commandToolCalls.length} 次命令（成功 ${successfulCommandCount} 次，失败或取消 ${failedCommandCount} 次）；详细输出见上方工具执行记录。`);
-      }
-      if (commandToolCalls.length > 0) {
-        completionNotices.push('> ⚠️ **复核提示**：请结合实际退出码、stdout 和 stderr 判断结果，并在可信的本地或 CI 环境复验。');
-      }
-      if (completionNotices.length > 0) {
-        cleanedFinalAnswer += `\n\n${completionNotices.join('\n')}`;
+        cleanedFinalAnswer += `\n\n> 📦 **项目工作区已更新**：AI 已协同修改工作区文件 \`${Array.from(modifiedPaths).join('`, `')}\`。\n> ⚠️ **运行与测试提示**：AI 仅负责分析与修改代码，未在云端运行任何代码或执行测试。请您在本地运行并测试代码；若遇到报错，请将错误信息贴回本聊天中，AI 将继续为您排查修复。`;
       }
 
       // Update THIS chat's isolated private context memory
