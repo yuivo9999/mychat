@@ -9,6 +9,8 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(scriptDirectory, '..');
 const packageEntry = require.resolve('pyodide', { paths: [projectRoot] });
 const packageRoot = resolve(dirname(packageEntry));
+const packageMetadata = JSON.parse(await readFile(resolve(packageRoot, 'package.json'), 'utf8'));
+const runtimeVersion = typeof packageMetadata.version === 'string' ? packageMetadata.version : undefined;
 const targetRoot = resolve(projectRoot, 'public/pyodide');
 const requiredRuntimeFiles = [
   'pyodide.asm.js',
@@ -51,6 +53,7 @@ const buildId = buildHash.digest('hex');
 
 const manifest = {
   schemaVersion: 1,
+  ...(runtimeVersion ? { runtimeVersion } : {}),
   buildId,
   files: runtimeFiles,
 };
