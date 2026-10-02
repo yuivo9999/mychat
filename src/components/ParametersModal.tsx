@@ -29,7 +29,8 @@ import { DEFAULT_SEARCH_ENGINES } from '../services/db';
 import { 
   exportPythonRuntime, 
   importPythonRuntime, 
-  clearPythonRuntimeCache 
+  clearPythonRuntimeCache,
+  downloadPythonFromCdn
 } from '../services/pythonRuntimeServiceWorker';
 
 interface ParametersModalProps {
@@ -57,9 +58,30 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   const [newEngineUrl, setNewEngineUrl] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [pythonStatus, setPythonStatus] = useState<'idle' | 'success' | 'error' | 'cleared'>('idle');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [pythonStatus, setPythonStatus] = useState<'idle' | 'success' | 'error' | 'cleared' | 'downloading'>('idle');
 
   if (!isOpen) return null;
+
+  const handleDownloadPython = async () => {
+    try {
+      setIsDownloading(true);
+      setPythonStatus('downloading');
+      setDownloadProgress(0);
+      const success = await downloadPythonFromCdn((p) => setDownloadProgress(p));
+      setPythonStatus(success ? 'success' : 'error');
+    } catch (err) {
+      console.error(err);
+      setPythonStatus('error');
+    } finally {
+      setIsDownloading(false);
+      setTimeout(() => {
+        setPythonStatus('idle');
+        setDownloadProgress(0);
+      }, 3000);
+    }
+  };
 
   const handleExportPython = async () => {
     try {
@@ -458,15 +480,35 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 {pythonStatus === 'success' && <span className="text-[10px] text-emerald-500 font-medium animate-pulse">✓ 操作成功</span>}
                 {pythonStatus === 'error' && <span className="text-[10px] text-red-500 font-medium">✗ 操作失败</span>}
                 {pythonStatus === 'cleared' && <span className="text-[10px] text-neutral-500 font-medium">已清除缓存</span>}
+                {pythonStatus === 'downloading' && <span className="text-[10px] text-blue-500 font-medium animate-pulse">下载中: {downloadProgress}%</span>}
               </div>
               <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                中国区用户若下载缓慢，可在联网时成功下载后通过“导出”保存。换设备后通过“导入”即可免下载直接运行。
+                中国区用户若自动预缓存缓慢，可点击手动下载。下载完成后通过“导出”保存为离线包，换设备后直接“导入”即可。
               </p>
+
+              {isDownloading && (
+                <div className="w-full bg-neutral-200 dark:bg-neutral-800 rounded-full h-1.5 mb-2 overflow-hidden">
+                  <div 
+                    className="bg-blue-600 h-full transition-all duration-300 ease-out"
+                    style={{ width: `${downloadProgress}%` }}
+                  />
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
+                  onClick={handleDownloadPython}
+                  disabled={isDownloading}
+                  className="col-span-2 flex items-center justify-center gap-2 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition active:scale-95 disabled:opacity-50"
+                >
+                  {isDownloading ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  {isDownloading ? `正在下载 ${downloadProgress}%` : '手动下载 Python 运行时 (约 30MB)'}
+                </button>
+                <button
+                  type="button"
                   onClick={handleExportPython}
-                  disabled={isExporting}
+                  disabled={isExporting || isDownloading}
                   className="flex items-center justify-center gap-2 py-2 px-3 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-[11px] font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition active:scale-95 disabled:opacity-50"
                 >
                   {isExporting ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
@@ -478,7 +520,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                     accept=".zip"
                     onChange={handleImportPython}
                     className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                    disabled={isImporting}
+                    disabled={isImporting || isDownloading}
                   />
                   <button
                     type="button"

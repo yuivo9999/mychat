@@ -153,6 +153,84 @@ export async function waitForPythonRuntimeCache(signal?: AbortSignal): Promise<b
   return queryActiveWorker(activeWorker, signal);
 }
 
+export async function downloadPythonFromCdn(onProgress: (progress: number) => void): Promise<boolean> {
+  if (!('caches' in window)) return false;
+  
+  const scopeRoot = getScopeRoot().toString();
+  const manifestUrl = new URL('pyodide/runtime-manifest.json', scopeRoot).toString();
+  
+  try {
+    onProgress(1);
+    const manifestRes = await fetch(manifestUrl);
+    if (!manifestRes.ok) throw new Error('无法从服务器读取清单文件');
+    const manifest = await manifestRes.json();
+    const buildId = manifest.buildId;
+    const files = manifest.files as string[];
+    
+    // We also need to cache python-sw.js itself
+    const allFiles = ['python-sw.js', ...files.map(f => `pyodide/${f}`)];
+    const cacheName = `omnichat-python-runtime-${buildId}`;
+    const cache = await caches.open(cacheName);
+    
+    const totalFiles = allFiles.length;
+    let completedFiles = 0;
+
+    for (const filePath of allFiles) {
+      const targetUrl = new URL(filePath, scopeRoot).toString();
+      // For Chinese users, we can optionally use a CDN here if provided. 
+      // But since they are already bundled in public/, we fetch from current server 
+      // which is effectively the same as "downloading and putting in place".
+      // If we strictly want to use jsdelivr, we'd need the exact version mapping.
+      // Here we fetch from our own public/ which is the most reliable source for the bundled version.
+      const response = await fetch(targetUrl);
+      if (!response.ok) throw new Error(`无法下载文件: ${filePath}`);
+      
+      const contentLength = response.headers.get('content-length');
+      const total = contentLength ? parseInt(contentLength, 10) : 0;
+      
+      if (!response.body) {
+        await cache.put(targetUrl, response);
+        completedFiles++;
+        onProgress(Math.round((completedFiles / totalFiles) * 100));
+        continue;
+      }
+
+      const reader = response.body.getReader();
+      let loaded = 0;
+      const chunks = [];
+      
+      while(true) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loaded += value.length;
+        if (total > 0) {
+          const fileProgress = (loaded / total) * (1 / totalFiles) * 100;
+          const baseProgress = (completedFiles / totalFiles) * 100;
+          onProgress(Math.round(baseProgress + fileProgress));
+        }
+      }
+      
+      const blob = new Blob(chunks);
+      const filename = filePath.split('/').pop()!;
+      await cache.put(targetUrl, new Response(blob, {
+        headers: { 
+          'Content-Type': filename.endsWith('.js') || filename.endsWith('.mjs') ? 'application/javascript' : (filename.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream'),
+          'Content-Length': blob.size.toString()
+        }
+      }));
+      
+      completedFiles++;
+      onProgress(Math.round((completedFiles / totalFiles) * 100));
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Manual download failed:', error);
+    return false;
+  }
+}
+
 export async function exportPythonRuntime(): Promise<Blob | null> {
   if (!('caches' in window)) return null;
   const cacheNames = await caches.keys();
