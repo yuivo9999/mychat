@@ -185,17 +185,17 @@ export async function downloadPythonFromCdn(onProgress: (progress: number) => vo
       const localUrl = targetUrl;
       const mirrorUrl = filePath === 'python-sw.js' || !runtimeVersion
         ? null
-        : new URL(\`${filePath.replace(/^pyodide\\//, '')}\`, \`${PYODIDE_CHINA_CDN_BASE}/${runtimeVersion}/\`).toString();
+        : new URL(`${filePath.replace(/^pyodide\//, '')}`, `${PYODIDE_CHINA_CDN_BASE}/${runtimeVersion}/`).toString();
 
       // 中国大陆优先使用 npmmirror 的 Pyodide CDN；若镜像不可用，再回退到当前应用自身的静态文件。
       let response: Response;
       try {
         response = mirrorUrl ? await fetch(mirrorUrl, { cache: 'no-store' }) : await fetch(localUrl);
-        if (!response.ok) throw new Error(\`mirror HTTP ${response.status}\`);
+        if (!response.ok) throw new Error(`mirror HTTP ${response.status}`);
       } catch (mirrorError) {
-        console.warn(\`Pyodide China CDN download failed for ${filePath}, falling back to app origin.\`, mirrorError);
+        console.warn(`Pyodide China CDN download failed for ${filePath}, falling back to app origin.`, mirrorError);
         response = await fetch(localUrl);
-        if (!response.ok) throw new Error(\`无法下载文件: ${filePath}\`);
+        if (!response.ok) throw new Error(`无法下载文件: ${filePath}`);
       }
       
       const contentLength = response.headers.get('content-length');
