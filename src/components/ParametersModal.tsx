@@ -64,13 +64,34 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
 
   if (!isOpen) return null;
 
+  const saveBlobAsDownload = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   const handleDownloadPython = async () => {
     try {
       setIsDownloading(true);
       setPythonStatus('downloading');
       setDownloadProgress(0);
-      const success = await downloadPythonFromCdn((p) => setDownloadProgress(p));
-      setPythonStatus(success ? 'success' : 'error');
+
+      // 这里只生成并保存离线 ZIP，不写入项目缓存。
+      // 用户随后通过“导入运行时”决定何时把它安装到本项目。
+      const blob = await downloadPythonFromCdn((p) => setDownloadProgress(p));
+      if (!blob) {
+        setPythonStatus('error');
+        return;
+      }
+
+      saveBlobAsDownload(blob, `python-runtime-offline-${Date.now()}.zip`);
+      setPythonStatus('success');
     } catch (err) {
       console.error(err);
       setPythonStatus('error');
@@ -92,14 +113,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
         setPythonStatus('error');
         return;
       }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `python-runtime-offline-${Date.now()}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      saveBlobAsDownload(blob, `python-runtime-offline-${Date.now()}.zip`);
       setPythonStatus('success');
     } catch (err) {
       console.error(err);
@@ -483,7 +497,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                 {pythonStatus === 'downloading' && <span className="text-[10px] text-blue-500 font-medium animate-pulse">下载中: {downloadProgress}%</span>}
               </div>
               <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
-                中国区用户若自动预缓存缓慢，可点击手动下载。下载完成后通过“导出”保存为离线包，换设备后直接“导入”即可。
+                手动下载只负责生成并唤起浏览器保存 Python 离线包，不会自动写入本项目缓存。需要在本项目使用时，再通过“导入运行时”安装。
               </p>
 
               {isDownloading && (
@@ -503,7 +517,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   className="col-span-2 flex items-center justify-center gap-2 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold transition active:scale-95 disabled:opacity-50"
                 >
                   {isDownloading ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                  {isDownloading ? `正在下载 ${downloadProgress}%` : '手动下载 Python 运行时 (约 30MB)'}
+                  {isDownloading ? `正在生成离线包 ${downloadProgress}%` : '下载 Python 离线包'}
                 </button>
                 <button
                   type="button"
