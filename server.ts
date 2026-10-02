@@ -1,7 +1,12 @@
 import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { createServer as createViteServer } from 'vite';
+import {
+  AgentCommandApiError,
+  agentCommandExecutor,
+} from './server/agentCommandExecutor.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,17 +14,106 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const agentCommandSessionToken = randomBytes(32).toString('base64url');
 
-  // Simple, dependency-free CORS middleware
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
+  const requireAgentCommandToken = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
+    const suppliedToken = req.get('X-Agent-Command-Token') || '';
+    const expectedToken = agentCommandSessionToken;
+    const suppliedBytes = Buffer.from(suppliedToken, 'utf8');
+    const expectedBytes = Buffer.from(expectedToken, 'utf8');
+    const tokenMatches = suppliedBytes.length === expectedBytes.length &&
+      timingSafeEqual(suppliedBytes, expectedBytes);
+
+    if (!tokenMatches) {
+      res.status(401).json({
+        success: false,
+        error: {
+          code: 'INVALID_COMMAND_TOKEN',
+          message: '命令执行令牌无效或已过期，请刷新页面后重试',
+        },
+      });
+      return;
     }
     next();
+  };
+
+  // Existing data/search APIs retain broad compatibility. Command execution is deliberately
+  // same-origin only because it has side effects and must never be triggerable by another site.
+  const configuredAppHost = (() => {
+    try {
+      return process.env.APP_URL ? new URL(process.env.APP_URL).host.toLowerCase() : null;
+    } catch {
+      console.warn('APP_URL is invalid; command requests will only be accepted on the request host.');
+      return null;
+    }
+  })();
+
+  app.use((req, res, next) => {
+    const requestOrigin = req.get('Origin');
+    const isAgentCommandRequest = req.path.startsWith('/api/agent-command');
+
+    if (isAgentCommandRequest) {
+      // Command endpoints are never wildcard-CORS enabled, including the token status endpoint.
+      res.setHeader('Cache-Control', 'no-store, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+
+      if (requestOrigin) {
+        let originHost = '';
+        try {
+          originHost = new URL(requestOrigin).host.toLowerCase();
+        } catch {
+          return res.status(403).json({
+            success: false,
+            error: { code: 'INVALID_ORIGIN', message: '请求来源无效' },
+          });
+        }
+
+        const requestHost = (req.get('Host') || '').toLowerCase();
+        const allowedHosts = new Set<string>();
+        if (requestHost) allowedHosts.add(requestHost);
+        if (configuredAppHost) allowedHosts.add(configuredAppHost);
+
+        if (!originHost || allowedHosts.size === 0 || !allowedHosts.has(originHost)) {
+          return res.status(403).json({
+            success: false,
+            error: { code: 'CROSS_ORIGIN_COMMAND_FORBIDDEN', message: '命令执行仅允许同源或已配置应用来源' },
+          });
+        }
+
+        res.header('Access-Control-Allow-Origin', requestOrigin);
+        res.header('Vary', 'Origin');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.header(
+          'Access-Control-Allow-Headers',
+          'Origin, X-Requested-With, Content-Type, Accept, X-Agent-Command-Token',
+        );
+      }
+
+      if (req.method === 'OPTIONS') {
+        // A valid command origin is required even for preflight. Without Origin, do not grant CORS.
+        if (!requestOrigin) return res.sendStatus(403);
+        return res.sendStatus(204);
+      }
+      return next();
+    }
+
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header(
+      'Access-Control-Allow-Headers',
+      'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+    );
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+    return next();
   });
+  // Authenticate command POST requests before parsing their potentially large JSON body.
+  // This middleware calls next(), so the actual route handler later in the stack still runs.
+  app.post('/api/agent-command', requireAgentCommandToken);
+
+  // Only authenticated callers reach this bounded, route-specific parser. Other JSON
+  // endpoints retain the smaller application-wide limit below.
+  app.use('/api/agent-command', express.json({ limit: '160mb' }));
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -476,22 +570,61 @@ async function startServer() {
     res.json({ status: 'ok', timestamp: Date.now() });
   });
 
-  // 4. Secure Sandbox Script/Command Execution Endpoint
-  app.post('/api/execute-script', async (req, res) => {
-    const { command } = req.body;
-    if (!command) {
-      return res.status(400).json({ error: 'Missing command parameter' });
-    }
+  // 4. Protected Agent command execution API
+  // The process token is rotated on every server start. The same-origin middleware above
+  // prevents a browser page on another origin from obtaining and using it.
+  app.get('/api/agent-command/status', (_req, res) => {
+    res.json({
+      success: true,
+      sessionToken: agentCommandSessionToken,
+      ...agentCommandExecutor.getStatus(),
+    });
+  });
 
-    const { exec } = await import('child_process');
-    exec(command, { timeout: 20000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
-      res.json({
-        success: !error,
-        exitCode: error ? error.code : 0,
-        stdout: stdout || '',
-        stderr: stderr || '',
-        error: error ? error.message : null
+  app.post('/api/agent-command', async (req, res) => {
+    const abortController = new AbortController();
+    const abortExecution = (): void => abortController.abort();
+    req.once('aborted', abortExecution);
+    res.once('close', () => {
+      if (!res.writableEnded) abortExecution();
+    });
+
+    try {
+      const result = await agentCommandExecutor.execute({
+        workspaceId: req.body?.workspaceId,
+        command: req.body?.command,
+        files: req.body?.files,
+        abortSignal: abortController.signal,
       });
+      res.json(result);
+    } catch (error: unknown) {
+      if (error instanceof AgentCommandApiError) {
+        return res.status(error.statusCode).json({
+          success: false,
+          error: { code: error.code, message: error.message },
+        });
+      }
+
+      const message = error instanceof Error ? error.message : '未知命令执行错误';
+      console.error('Agent command endpoint failed:', error);
+      return res.status(500).json({
+        success: false,
+        error: { code: 'INTERNAL_COMMAND_ERROR', message },
+      });
+    } finally {
+      req.off('aborted', abortExecution);
+    }
+  });
+
+  // Explicitly retire the old unauthenticated shell endpoint instead of leaving
+  // a dangerous compatibility alias in the server.
+  app.all('/api/execute-script', (_req, res) => {
+    res.status(410).json({
+      success: false,
+      error: {
+        code: 'LEGACY_ENDPOINT_RETIRED',
+        message: '旧执行接口已停用，请使用受保护的 /api/agent-command 接口',
+      },
     });
   });
 
