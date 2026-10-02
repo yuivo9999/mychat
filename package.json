@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "prebuild": "node scripts/copy-pyodide.mjs",
+    "build": "npm run prebuild && vite build",
     "start": "tsx server.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
@@ -26,6 +27,7 @@
     "lucide-react": "^0.546.0",
     "marked": "^18.0.14",
     "motion": "^12.23.24",
+    "pyodide": "^314.0.7",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "vite": "^8.3.0",

@@ -248,6 +248,21 @@ function sanitizeWorkspaceId(rawWorkspaceId: unknown): string {
   return rawWorkspaceId;
 }
 
+function validatePythonScript(files: unknown, rawScriptPath: unknown): string {
+  const normalized = normalizeSafeRelativePath(rawScriptPath);
+  if (!normalized.valid) {
+    throw new AgentCommandApiError(400, 'INVALID_SCRIPT_PATH', normalized.error || '脚本路径无效');
+  }
+  const scriptPath = normalized.normalizedPath;
+  if (!scriptPath.toLowerCase().endsWith('.py')) {
+    throw new Error('只能执行 .py 文件');
+  }
+  if (!files || typeof files !== 'object' || !Object.prototype.hasOwnProperty.call(files, scriptPath)) {
+    throw new AgentCommandApiError(400, 'SCRIPT_NOT_FOUND', `脚本不存在: ${scriptPath}`);
+  }
+  return scriptPath;
+}
+
 function validateCommand(rawCommand: unknown, config: AgentCommandExecutorConfig): string {
   if (typeof rawCommand !== 'string' || rawCommand.trim().length === 0) {
     throw new AgentCommandApiError(400, 'EMPTY_COMMAND', 'command 不能为空');
@@ -484,6 +499,7 @@ async function runProcessCommand(
   runAs: { uid: number; gid: number } | null,
   environmentOverrides: Readonly<Record<string, string>> = {},
 ): Promise<ShellExecutionResult> {
+  const isWindows = process.platform === 'win32';
   const stdout = new BoundedOutput(config.maxOutputBytes);
   const stderr = new BoundedOutput(config.maxOutputBytes);
   let timedOut = false;

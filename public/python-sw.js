@@ -1,7 +1,7 @@
 /* global self, caches, fetch */
 
 const CACHE_PREFIX = 'omnichat-python-runtime-';
-const CACHE_VERSION = '__PYTHON_RUNTIME_BUILD_ID__';
+const CACHE_VERSION = '68f95ca0d1d300a2c19a121dcdfaf80b1699c87cebedad8816be69570e8c9363';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const RUNTIME_DIRECTORY = 'pyodide/';
 const RUNTIME_MANIFEST = `${RUNTIME_DIRECTORY}runtime-manifest.json`;

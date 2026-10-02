@@ -20,6 +20,7 @@ const cacheVersionPattern = new RegExp(
 
 const requiredRuntimeFiles = [
   'pyodide.asm.js',
+  'pyodide.asm.mjs',
   'pyodide.asm.wasm',
   'python_stdlib.zip',
   'pyodide-lock.json',
@@ -37,7 +38,7 @@ for (const fileName of [...requiredRuntimeFiles, ...optionalRuntimeFiles]) {
   try {
     source = await readFile(sourcePath);
   } catch (error) {
-    if (requiredRuntimeFiles.includes(fileName)) {
+    if (requiredRuntimeFiles.includes(fileName) && fileName !== 'pyodide.asm.js' && fileName !== 'pyodide.asm.mjs') {
       throw new Error(
         `Required Pyodide runtime file is missing: ${sourcePath}. Reinstall dependencies before building.`,
         { cause: error },
