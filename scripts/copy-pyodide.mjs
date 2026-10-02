@@ -47,20 +47,6 @@ for (const fileName of [...requiredRuntimeFiles, ...optionalRuntimeFiles]) {
   buildHash.update('\0');
 }
 
-// Normalize an already generated Service Worker back to its template form so repeated
-// builds are idempotent instead of failing after the first build replaced the placeholder.
-const serviceWorkerSource = await readFile(serviceWorkerPath, 'utf8');
-if (!cacheVersionPattern.test(serviceWorkerSource)) {
-  throw new Error(`Service Worker has an invalid CACHE_VERSION declaration`);
-}
-const normalizedServiceWorkerSource = serviceWorkerSource.replace(
-  cacheVersionPattern,
-  `const CACHE_VERSION = '${buildIdPlaceholder}';`,
-);
-const workerSource = await readFile(workerSourcePath);
-buildHash.update(workerSource);
-buildHash.update('\0');
-buildHash.update(normalizedServiceWorkerSource);
 const buildId = buildHash.digest('hex');
 
 const manifest = {
