@@ -120,7 +120,7 @@ export const PythonExecutionModal: React.FC<PythonExecutionModalProps> = ({
               <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 p-3.5">
                 <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="text-xs leading-5 text-amber-900 dark:text-amber-200">
-                  该脚本将在当前浏览器的 Web Worker 与 WebAssembly Python 运行时中执行，不会上传工作区，也不会调用 Python 执行后端。首次打开应用时会从当前站点预缓存运行时；缓存准备完成后，即使手机处于离线状态也可执行。执行器会失败关闭地禁用常见网络入口；脚本仍可读写工作区内存文件、消耗本机 CPU/内存，并可能覆盖工作区文件，请确认内容可信后再运行。
+                  该脚本将在当前浏览器的 Web Worker 与 WebAssembly Python 运行时中执行，不会上传工作区，也不会调用 Python 执行后端。运行时直接从当前应用随包提供的本地 Pyodide 资源加载，不依赖 Service Worker 或浏览器 Cache Storage。执行器会尽力关闭常见网络入口；脚本仍可读写工作区内存文件、消耗本机 CPU/内存，并可能覆盖工作区文件，请确认内容可信后再运行。
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-neutral-600 dark:text-neutral-300">
