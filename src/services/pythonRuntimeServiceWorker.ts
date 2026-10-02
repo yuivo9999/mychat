@@ -152,3 +152,81 @@ export async function waitForPythonRuntimeCache(signal?: AbortSignal): Promise<b
   if (!activeWorker) return false;
   return queryActiveWorker(activeWorker, signal);
 }
+
+export async function exportPythonRuntime(): Promise<Blob | null> {
+  if (!('caches' in window)) return null;
+  const cacheNames = await caches.keys();
+  const runtimeCacheName = cacheNames.find(name => name.startsWith('omnichat-python-runtime-'));
+  if (!runtimeCacheName) return null;
+
+  const cache = await caches.open(runtimeCacheName);
+  const keys = await cache.keys();
+  if (keys.length === 0) return null;
+
+  const { default: JSZip } = await import('jszip');
+  const zip = new JSZip();
+  const runtimeFolder = zip.folder('pyodide');
+
+  for (const request of keys) {
+    const response = await cache.match(request);
+    if (response) {
+      const blob = await response.blob();
+      const url = new URL(request.url);
+      const filename = url.pathname.split('/').pop() || 'index';
+      runtimeFolder?.file(filename, blob);
+    }
+  }
+
+  return await zip.generateAsync({ type: 'blob' });
+}
+
+export async function importPythonRuntime(zipBlob: Blob): Promise<boolean> {
+  if (!('caches' in window)) return false;
+  const { default: JSZip } = await import('jszip');
+  const zip = await JSZip.loadAsync(zipBlob);
+  const runtimeFolder = zip.folder('pyodide');
+  if (!runtimeFolder) return false;
+
+  // We need the build ID from the manifest to create the correct cache name
+  const manifestFile = runtimeFolder.file('runtime-manifest.json');
+  if (!manifestFile) return false;
+  const manifestContent = await manifestFile.async('string');
+  const manifest = JSON.parse(manifestContent);
+  const buildId = manifest.buildId;
+  if (!buildId) return false;
+
+  const cacheName = `omnichat-python-runtime-${buildId}`;
+  const cache = await caches.open(cacheName);
+  const scopeRoot = getScopeRoot().toString();
+
+  const files = Object.keys(runtimeFolder.files);
+  for (const filePath of files) {
+    if (runtimeFolder.files[filePath].dir) continue;
+    const filename = filePath.split('/').pop()!;
+    const fileBlob = await runtimeFolder.files[filePath].async('blob');
+    
+    // Reconstruct the internal URLs used by the Service Worker
+    let targetUrl: string;
+    if (filename === 'python-sw.js') {
+       targetUrl = new URL(filename, scopeRoot).toString();
+    } else {
+       targetUrl = new URL(`pyodide/${filename}`, scopeRoot).toString();
+    }
+    
+    await cache.put(targetUrl, new Response(fileBlob, {
+      headers: { 'Content-Type': filename.endsWith('.js') || filename.endsWith('.mjs') ? 'application/javascript' : (filename.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream') }
+    }));
+  }
+
+  return true;
+}
+
+export async function clearPythonRuntimeCache(): Promise<void> {
+  if (!('caches' in window)) return;
+  const cacheNames = await caches.keys();
+  for (const name of cacheNames) {
+    if (name.startsWith('omnichat-python-runtime-')) {
+      await caches.delete(name);
+    }
+  }
+}

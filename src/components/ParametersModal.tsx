@@ -19,10 +19,18 @@ import {
   Trash2,
   Star,
   RefreshCcw,
-  Check
+  Check,
+  Download,
+  Upload,
+  Trash
 } from 'lucide-react';
 import { ModelParameters, UserSettings, SearchEngineItem } from '../types';
 import { DEFAULT_SEARCH_ENGINES } from '../services/db';
+import { 
+  exportPythonRuntime, 
+  importPythonRuntime, 
+  clearPythonRuntimeCache 
+} from '../services/pythonRuntimeServiceWorker';
 
 interface ParametersModalProps {
   isOpen: boolean;
@@ -47,8 +55,64 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   const [showAddEngineForm, setShowAddEngineModal] = useState(false);
   const [newEngineName, setNewEngineName] = useState('');
   const [newEngineUrl, setNewEngineUrl] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [pythonStatus, setPythonStatus] = useState<'idle' | 'success' | 'error' | 'cleared'>('idle');
 
   if (!isOpen) return null;
+
+  const handleExportPython = async () => {
+    try {
+      setIsExporting(true);
+      setPythonStatus('idle');
+      const blob = await exportPythonRuntime();
+      if (!blob) {
+        setPythonStatus('error');
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `python-runtime-offline-${Date.now()}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setPythonStatus('success');
+    } catch (err) {
+      console.error(err);
+      setPythonStatus('error');
+    } finally {
+      setIsExporting(false);
+      setTimeout(() => setPythonStatus('idle'), 3000);
+    }
+  };
+
+  const handleImportPython = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsImporting(true);
+      setPythonStatus('idle');
+      const success = await importPythonRuntime(file);
+      setPythonStatus(success ? 'success' : 'error');
+    } catch (err) {
+      console.error(err);
+      setPythonStatus('error');
+    } finally {
+      setIsImporting(false);
+      e.target.value = '';
+      setTimeout(() => setPythonStatus('idle'), 3000);
+    }
+  };
+
+  const handleClearPython = async () => {
+    if (confirm('确定要清除已缓存的本地 Python 运行时吗？下次执行将需要重新联网下载。')) {
+      await clearPythonRuntimeCache();
+      setPythonStatus('cleared');
+      setTimeout(() => setPythonStatus('idle'), 3000);
+    }
+  };
 
   const searchEngines = settings?.searchEngines || DEFAULT_SEARCH_ENGINES;
   const activeSearchEngineId = settings?.activeSearchEngineId || 'bing';
@@ -382,6 +446,56 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                     executeScriptVal ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
+              </button>
+            </div>
+
+            <div className="space-y-3 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-900/50 border border-neutral-200 dark:border-neutral-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-lime-500" />
+                  <span className="text-xs font-bold text-neutral-800 dark:text-neutral-200">本地 Python 运行时管理</span>
+                </div>
+                {pythonStatus === 'success' && <span className="text-[10px] text-emerald-500 font-medium animate-pulse">✓ 操作成功</span>}
+                {pythonStatus === 'error' && <span className="text-[10px] text-red-500 font-medium">✗ 操作失败</span>}
+                {pythonStatus === 'cleared' && <span className="text-[10px] text-neutral-500 font-medium">已清除缓存</span>}
+              </div>
+              <p className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                中国区用户若下载缓慢，可在联网时成功下载后通过“导出”保存。换设备后通过“导入”即可免下载直接运行。
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportPython}
+                  disabled={isExporting}
+                  className="flex items-center justify-center gap-2 py-2 px-3 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-[11px] font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition active:scale-95 disabled:opacity-50"
+                >
+                  {isExporting ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  导出运行时
+                </button>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".zip"
+                    onChange={handleImportPython}
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    disabled={isImporting}
+                  />
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-[11px] font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition active:scale-95 disabled:opacity-50"
+                  >
+                    {isImporting ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    导入运行时
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearPython}
+                className="w-full py-1.5 text-[10px] text-neutral-400 hover:text-red-500 transition-colors flex items-center justify-center gap-1"
+              >
+                <Trash className="w-3 h-3" />
+                清空本地运行时缓存
               </button>
             </div>
 
