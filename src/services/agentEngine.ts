@@ -1049,6 +1049,8 @@ export async function executeWorkspaceTool(
         let response = await sendCommand(status.sessionToken);
         // The server rotates this token on restart. Refresh once so an in-flight chat can recover.
         if (response.status === 401) {
+          // Consume the rejected response before reusing the connection, then refresh and retry once.
+          await response.text().catch(() => undefined);
           status = await loadSession();
           response = await sendCommand(status.sessionToken);
         }
