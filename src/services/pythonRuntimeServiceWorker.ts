@@ -2,7 +2,6 @@ const SERVICE_WORKER_FILE = 'python-sw.js';
 const SERVICE_WORKER_READY_TIMEOUT_MS = 180_000;
 const CONTROLLER_CHANGE_TIMEOUT_MS = 5_000;
 const STATUS_RESPONSE_TIMEOUT_MS = 5_000;
-const PYODIDE_CDN_BASE = 'https://cdn.jsdelivr.net/pyodide';
 
 let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
 
