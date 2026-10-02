@@ -55,8 +55,8 @@ const LOCAL_EXECUTION_TIMEOUT_MS = 120_000;
 const LOCAL_MAX_INPUT_BYTES = WORKSPACE_LIMITS.MAX_TOTAL_UNCOMPRESSED_SIZE;
 
 function getPythonRuntimeIndexUrl(): string {
-  const scopeRoot = new URL('../../', import.meta.url);
-  return new URL('pyodide/', scopeRoot).toString();
+  const baseUrl = new URL(import.meta.env.BASE_URL, document.baseURI);
+  return new URL('pyodide/', baseUrl).toString();
 }
 const encoder = new TextEncoder();
 
