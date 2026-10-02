@@ -67,6 +67,8 @@ export const DEFAULT_PROVIDERS: ProviderDefinition[] = [
 export const DEFAULT_MODELS: ModelItem[] = [
   // Groq.com Free Plan models.
   // Groq.com Free Plan models.
+  // NVIDIA current Free Endpoints (verified against NVIDIA Build)
+  // Groq.com Free Plan models.
   {
     id: 'openai/gpt-oss-120b',
     name: 'GPT-OSS 120B (groq.com 免费)',
@@ -872,19 +874,11 @@ export async function getModels(): Promise<ModelItem[]> {
     request.onsuccess = async () => {
       let results = (request.result as ModelItem[]) || [];
       if (results.length === 0) {
-        for (const m of DEFAULT_MODELS) {
-          const raw = getRawModelId(m);
-          const uniqueId = m.id.includes('::') ? m.id : buildUniqueModelId(m.providerId, raw);
-          store.put({ ...m, id: uniqueId, rawModelId: raw });
-        }
-        results = DEFAULT_MODELS.map(m => {
-          const raw = getRawModelId(m);
-          const uniqueId = m.id.includes('::') ? m.id : buildUniqueModelId(m.providerId, raw);
-          return { ...m, id: uniqueId, rawModelId: raw };
-        });
+        for (const m of DEFAULT_MODELS) store.put(m);
+        results = [...DEFAULT_MODELS];
       }
 
-      // Remove obsolete slugs
+      // Remove the obsolete OpenRouter free slug shipped by older builds.
       const staleOpenRouterIds = ['nvidia/nemotron-3-super:free'];
       for (const staleId of staleOpenRouterIds) {
         if (results.some(r => r.id === staleId)) {
@@ -893,45 +887,30 @@ export async function getModels(): Promise<ModelItem[]> {
         }
       }
 
-      // Normalize rawModelId
-      const normalizedResults = results.map(r => {
-        const raw = getRawModelId(r);
-        return {
-          ...r,
-          rawModelId: raw,
-        };
+      // Ensure the fixed built-in model roster is present and keep user custom models.
+      const updatedResults = results.map(r => {
+        const defaultDef = DEFAULT_MODELS.find(dm => dm.id === r.id);
+        if (defaultDef && r.name !== defaultDef.name && !r.isCustom) {
+          const updated = { ...r, name: defaultDef.name, description: defaultDef.description };
+          store.put(updated);
+          return updated;
+        }
+        return r;
       });
 
-      // Match missing defaults scoped strictly by providerId AND rawModelId
-      const deletedDefaultKeys = (() => {
-        try {
-          const raw = localStorage.getItem('omnichat_deleted_default_models');
-          return raw ? JSON.parse(raw) : [];
-        } catch {
-          return [];
-        }
-      })();
-
-      const missingDefaults = DEFAULT_MODELS.filter(dm => {
-        const dmRaw = getRawModelId(dm);
-        const uniqueId = dm.id.includes('::') ? dm.id : buildUniqueModelId(dm.providerId, dmRaw);
-        if (deletedDefaultKeys.includes(uniqueId)) {
-          return false;
-        }
-        return !normalizedResults.some(r => r.providerId === dm.providerId && getRawModelId(r) === dmRaw);
-      });
-
+      const missingDefaults = DEFAULT_MODELS.filter(dm => !updatedResults.some(r => r.id === dm.id));
       if (missingDefaults.length > 0) {
         for (const m of missingDefaults) {
-          const raw = getRawModelId(m);
-          const uniqueId = m.id.includes('::') ? m.id : buildUniqueModelId(m.providerId, raw);
-          const normalizedDefault = { ...m, id: uniqueId, rawModelId: raw };
-          store.put(normalizedDefault);
-          normalizedResults.push(normalizedDefault);
+          store.put(m);
+          updatedResults.push(m);
         }
       }
 
-      resolve(normalizedResults);
+      // Return the actual catalog. The previous code referenced an undefined
+      // `withDefaults` variable here, leaving the IndexedDB success callback
+      // with an uncaught ReferenceError and causing the UI to wait forever for
+      // models/groups.
+      resolve(updatedResults);
     };
     request.onerror = () => reject(request.error);
   });
@@ -942,36 +921,16 @@ export async function seedDefaultModels(): Promise<void> {
   const transaction = db.transaction('models', 'readwrite');
   const store = transaction.objectStore('models');
   for (const m of DEFAULT_MODELS) {
-    const raw = getRawModelId(m);
-    const uniqueId = m.id.includes('::') ? m.id : buildUniqueModelId(m.providerId, raw);
-    store.put({ ...m, id: uniqueId, rawModelId: raw });
+    store.put(m);
   }
 }
 
 export async function saveModel(model: ModelItem): Promise<void> {
   const db = await openDB();
-  const rawId = getRawModelId(model);
-  const uniqueId = model.id.includes('::') ? model.id : buildUniqueModelId(model.providerId, rawId);
-  const normalizedModel: ModelItem = {
-    ...model,
-    id: uniqueId,
-    rawModelId: rawId,
-  };
-
-  // If this model was previously marked as deleted, remove it from the deleted list!
-  try {
-    const raw = localStorage.getItem('omnichat_deleted_default_models');
-    if (raw) {
-      const deletedList: string[] = JSON.parse(raw);
-      const filtered = deletedList.filter(id => id !== uniqueId);
-      localStorage.setItem('omnichat_deleted_default_models', JSON.stringify(filtered));
-    }
-  } catch {}
-
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('models', 'readwrite');
     const store = transaction.objectStore('models');
-    const request = store.put(normalizedModel);
+    const request = store.put(model);
 
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
@@ -980,19 +939,6 @@ export async function saveModel(model: ModelItem): Promise<void> {
 
 export async function deleteModel(id: string): Promise<void> {
   const db = await openDB();
-
-  // Track that this default model was deleted by the user so we don't automatically re-seed it
-  try {
-    const raw = localStorage.getItem('omnichat_deleted_default_models');
-    const deletedList: string[] = raw ? JSON.parse(raw) : [];
-    if (!deletedList.includes(id)) {
-      deletedList.push(id);
-      localStorage.setItem('omnichat_deleted_default_models', JSON.stringify(deletedList));
-    }
-  } catch (e) {
-    console.warn('Failed to save deleted model reference:', e);
-  }
-
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('models', 'readwrite');
     const store = transaction.objectStore('models');
@@ -1098,45 +1044,20 @@ export async function deleteProvider(id: string): Promise<void> {
 
 // Settings Operations
 export async function getUserSettings(): Promise<UserSettings> {
-  // 1. Instant synchronous read from localStorage cache
-  let cached: UserSettings | null = null;
-  try {
-    const raw = localStorage.getItem('omnichat_settings_cache');
-    if (raw) {
-      cached = JSON.parse(raw);
-    }
-  } catch {}
+  const db = await openDB();
+  return new Promise((resolve) => {
+    const transaction = db.transaction('settings', 'readonly');
+    const store = transaction.objectStore('settings');
+    const request = store.get('user_settings');
 
-  // 2. Fetch from IndexedDB and update cache
-  try {
-    const db = await openDB();
-    const result = await new Promise<UserSettings>((resolve) => {
-      const transaction = db.transaction('settings', 'readonly');
-      const store = transaction.objectStore('settings');
-      const request = store.get('user_settings');
-
-      request.onsuccess = () => {
-        resolve({ ...DEFAULT_SETTINGS, ...(request.result || {}) });
-      };
-      request.onerror = () => resolve(cached || DEFAULT_SETTINGS);
-    });
-
-    try {
-      localStorage.setItem('omnichat_settings_cache', JSON.stringify(result));
-    } catch {}
-    return result;
-  } catch {
-    return cached || DEFAULT_SETTINGS;
-  }
+    request.onsuccess = () => {
+      resolve({ ...DEFAULT_SETTINGS, ...(request.result || {}) });
+    };
+    request.onerror = () => resolve(DEFAULT_SETTINGS);
+  });
 }
 
 export async function saveUserSettings(settings: UserSettings): Promise<void> {
-  // 1. Synchronously write to localStorage cache for 0ms instant UI update
-  try {
-    localStorage.setItem('omnichat_settings_cache', JSON.stringify(settings));
-  } catch {}
-
-  // 2. Asynchronously persist into IndexedDB
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('settings', 'readwrite');
@@ -1152,9 +1073,6 @@ export async function saveUserSettings(settings: UserSettings): Promise<void> {
 export async function resetAllData(): Promise<void> {
   await clearAllConversations();
   await clearAllApiKeys();
-  try {
-    localStorage.removeItem('omnichat_deleted_default_models');
-  } catch {}
   const db = await openDB();
   const tx = db.transaction(['models', 'providers', 'settings'], 'readwrite');
   tx.objectStore('models').clear();
