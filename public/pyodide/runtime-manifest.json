@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "runtimeVersion": "314.0.7",
-  "buildId": "68f95ca0d1d300a2c19a121dcdfaf80b1699c87cebedad8816be69570e8c9363",
+  "runtimeVersion": "0.26.4",
+  "buildId": "604af1662ffa18f54c3e0f1ac5d1e30f13d4d2a77e6842c6d981f3d54fa226af",
   "files": [
-    "pyodide.asm.mjs",
+    "pyodide.asm.js",
     "pyodide.asm.wasm",
     "python_stdlib.zip",
     "pyodide-lock.json"

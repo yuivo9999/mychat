@@ -107,13 +107,59 @@ async function startServer() {
     if (req.method === 'OPTIONS') return res.sendStatus(200);
     return next();
   });
-  // Authenticate command POST requests before parsing their potentially large JSON body.
-  // This middleware calls next(), so the actual route handler later in the stack still runs.
-  app.post('/api/agent-command', requireAgentCommandToken);
 
-  // Only authenticated callers reach this bounded, route-specific parser. Other JSON
-  // endpoints retain the smaller application-wide limit below.
-  app.use('/api/agent-command', express.json({ limit: '160mb' }));
+  // 1. Protected Agent command execution APIs - Define early to avoid fall-through
+  app.get('/api/agent-command/status', (_req, res) => {
+    res.json({
+      success: true,
+      sessionToken: agentCommandSessionToken,
+      ...agentCommandExecutor.getStatus(),
+    });
+  });
+
+  app.post('/api/agent-command', requireAgentCommandToken, express.json({ limit: '160mb' }), async (req, res) => {
+    const abortController = new AbortController();
+    const abortExecution = (): void => abortController.abort();
+    req.once('aborted', abortExecution);
+    res.once('close', () => {
+      if (!res.writableEnded) abortExecution();
+    });
+
+    try {
+      const result = await agentCommandExecutor.execute({
+        workspaceId: req.body?.workspaceId,
+        command: req.body?.command,
+        files: req.body?.files,
+        abortSignal: abortController.signal,
+      });
+      res.json(result);
+    } catch (error: unknown) {
+      if (error instanceof AgentCommandApiError) {
+        return res.status(error.statusCode).json({
+          success: false,
+          error: { code: error.code, message: error.message },
+        });
+      }
+
+      const message = error instanceof Error ? error.message : '未知命令执行错误';
+      console.error('Agent command endpoint failed:', error);
+      return res.status(500).json({
+        success: false,
+        error: { code: 'INTERNAL_COMMAND_ERROR', message },
+      });
+    } finally {
+      req.off('aborted', abortExecution);
+    }
+  });
+
+  // Explicitly handle disallowed methods for these routes to provide better error messages
+  app.all('/api/agent-command/status', (_req, res) => {
+    res.status(405).json({ success: false, error: { code: 'METHOD_NOT_ALLOWED', message: '请使用 GET 方法访问状态接口' } });
+  });
+  app.all('/api/agent-command', (_req, res) => {
+    res.status(405).json({ success: false, error: { code: 'METHOD_NOT_ALLOWED', message: '请使用 POST 方法访问命令执行接口' } });
+  });
+
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -568,52 +614,6 @@ async function startServer() {
   // Health check
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: Date.now() });
-  });
-
-  // 4. Protected Agent command execution API
-  // The process token is rotated on every server start. The same-origin middleware above
-  // prevents a browser page on another origin from obtaining and using it.
-  app.get('/api/agent-command/status', (_req, res) => {
-    res.json({
-      success: true,
-      sessionToken: agentCommandSessionToken,
-      ...agentCommandExecutor.getStatus(),
-    });
-  });
-
-  app.post('/api/agent-command', async (req, res) => {
-    const abortController = new AbortController();
-    const abortExecution = (): void => abortController.abort();
-    req.once('aborted', abortExecution);
-    res.once('close', () => {
-      if (!res.writableEnded) abortExecution();
-    });
-
-    try {
-      const result = await agentCommandExecutor.execute({
-        workspaceId: req.body?.workspaceId,
-        command: req.body?.command,
-        files: req.body?.files,
-        abortSignal: abortController.signal,
-      });
-      res.json(result);
-    } catch (error: unknown) {
-      if (error instanceof AgentCommandApiError) {
-        return res.status(error.statusCode).json({
-          success: false,
-          error: { code: error.code, message: error.message },
-        });
-      }
-
-      const message = error instanceof Error ? error.message : '未知命令执行错误';
-      console.error('Agent command endpoint failed:', error);
-      return res.status(500).json({
-        success: false,
-        error: { code: 'INTERNAL_COMMAND_ERROR', message },
-      });
-    } finally {
-      req.off('aborted', abortExecution);
-    }
   });
 
   // Explicitly retire the old unauthenticated shell endpoint instead of leaving
