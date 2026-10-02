@@ -1,8 +1,8 @@
-import {
-  Workspace,
-  WorkspaceFile,
-  validateSafeRelativePath,
-  WORKSPACE_LIMITS,
+import { 
+  Workspace, 
+  WorkspaceFile, 
+  ToolCallExecution, 
+  validateSafeRelativePath 
 } from '../types/workspace';
 import { ThinkingStep } from '../types';
 import { 
@@ -15,7 +15,7 @@ import { ChatContext } from '../types/workspace';
 
 export { detectWorkspaceIntent, type WorkspaceIntent };
 
-// AI Tool Calling Specification for Workspace operations
+// AI Tool Calling Specification for Workspace operations (Strictly non-executing!)
 export const WORKSPACE_TOOLS_SPEC = [
   {
     name: 'list_files',
@@ -174,16 +174,6 @@ export const WORKSPACE_TOOLS_SPEC = [
   },
 ];
 
-/**
- * Returns the tool schema visible to the model for the current permission set.
- * Keeping this decision here prevents a disabled command capability from being advertised.
- */
-export function getWorkspaceToolsSpec(executeScriptEnabled: boolean) {
-  return WORKSPACE_TOOLS_SPEC.filter((tool) => (
-    executeScriptEnabled || tool.name !== 'run_command'
-  ));
-}
-
 // Build System Prompt containing workspace summary, code diagnosis protocol, and strict constraints
 export function buildAgentSystemPrompt(
   workspace: Workspace | null,
@@ -193,9 +183,6 @@ export function buildAgentSystemPrompt(
   executeScriptEnabled?: boolean
 ): string {
   const customPrompt = baseSystemPrompt || '你是一个专业严谨的高级编程助手。';
-  const availableToolNames = getWorkspaceToolsSpec(executeScriptEnabled === true)
-    .map((tool) => tool.name)
-    .join(', ');
 
   const workspaceSummary = workspace
     ? `## 当前绑定的工作区: ${workspace.name} (版本: v${workspace.currentVersion})
@@ -274,16 +261,13 @@ ${getWorkspaceDirectoryTree(workspace).slice(0, 1500)}${Object.keys(workspace.fi
 
   const corePrinciples = executeScriptEnabled
     ? `## 核心运行原则与边界声明（已获授权终端执行模式）:
-1. **支持并鼓励执行项目代码与终端命令**：您的服务器端终端执行权限已通过安全面板对当前 Agent 开启。如果您编写了代码、需要编译打包（如 npm run build）、运行测试或者执行 Python/Node.js 脚本，您可以通过调用 \`run_command\` 工具执行任意终端命令，命令执行结束后可查看退出码、stdout、stderr、耗时与文件变更，您可以据此继续诊断并修复。
+1. **支持并鼓励执行项目代码与终端命令**：您的服务器端终端执行权限已通过安全面板对当前 Agent 开启。如果您编写了代码、需要编译打包（如 npm run build）、运行测试或者执行 Python/Node.js 脚本，您可以通过调用 \`run_command\` 工具执行任意终端命令，控制台会实时反馈执行成果与退出状态，您可以据此直接优化代码，闭环解决问题。
 2. **工具规范**：您可以连贯组合代码修改与运行验证，直到编译完全通过或脚本运行产出正确结果。`
     : `## 核心运行原则与边界声明（必须严格遵守）:
 1. **不执行项目代码**：当前权限未开启。本环境是一个安全纯净的代码分析与修改工作区。你绝对不能也无法在服务器端执行任何代码、命令行、测试、npm run/test 等。
 2. **职责分工**：你负责阅读、搜索代码并做出精确优雅的修改；由用户在本地自行运行和测试。若用户测试遇到错误，用户会将错误信息贴回本聊天中由你继续分析与修改。`;
 
   return `${customPrompt}
-
-## 当前可用工具
-${availableToolNames}
 
 ${workspaceSummary}
 ${chatPrivateMemory}
@@ -361,7 +345,6 @@ ${corePrinciples}
 - rename_file({ old_path, new_path })
 - get_file_diff({ path })
 - get_workspace_diff()
-${executeScriptEnabled ? '- run_command({ command })' : ''}
 
 当所有必要操作已完成无需再调用工具时，请直接给出清晰、结构化的中文说明。若为代码诊断，严格输出标准诊断报告；若为代码修改，列出本次修改了哪些文件、做了哪些调整，并友好提醒用户自行在本地运行测试。`;
 }
@@ -372,64 +355,6 @@ export function formatToolOutcomeForModel(
   args: Record<string, any>,
   outcome: { result: any; errorMessage?: string }
 ): string {
-  // Command failures are part of the ReAct observation. Preserve their stdout/stderr
-  // even when exitCode is non-zero so the model can diagnose and repair the project.
-  if (toolName === 'run_command') {
-    const result = outcome.result && typeof outcome.result === 'object'
-      ? outcome.result as Record<string, any>
-      : {};
-    const compactText = (value: unknown): string => {
-      const text = typeof value === 'string' ? value : '';
-      if (text.length <= 12_000) return text || '(无输出)';
-      return `${text.slice(0, 6_000)}\n…[中间输出已省略]…\n${text.slice(-6_000)}`;
-    };
-    const commandText = String(args.command || '').replace(/\r?\n/g, ' ↵ ');
-    const displayCommand = commandText.length > 500
-      ? `${commandText.slice(0, 497)}...`
-      : commandText;
-    const changedFiles = Array.isArray(result.changedFiles) ? result.changedFiles : [];
-    const skippedFiles = Array.isArray(result.skippedChangedFiles) ? result.skippedChangedFiles : [];
-    const ignoredPaths = Array.isArray(result.ignoredPaths) ? result.ignoredPaths : [];
-    const resultError = typeof result.error === 'string'
-      ? result.error
-      : result.error && typeof result.error === 'object' && typeof result.error.message === 'string'
-        ? result.error.message
-        : '';
-    const flags = [
-      result.timedOut === true ? '已超时终止' : '',
-      result.cancelled === true ? '已取消' : '',
-      result.outputLimitExceeded === true ? '输出超限' : '',
-      result.stdoutTruncated === true ? 'stdout 已截断' : '',
-      result.stderrTruncated === true ? 'stderr 已截断' : '',
-    ].filter(Boolean);
-    const changedSummary = changedFiles.length > 0
-      ? changedFiles.map((change: any) => `\`${String(change?.path || '')}\` (${String(change?.type || 'changed')})`).join('、')
-      : '无';
-    const skippedSummary = skippedFiles.length > 0
-      ? skippedFiles.slice(0, 30).map((item: unknown) => String(item)).join('、')
-      : '';
-    const ignoredSummary = ignoredPaths.length > 0
-      ? ignoredPaths.slice(0, 30).map((item: unknown) => String(item)).join('、')
-      : '';
-
-    return `### 终端命令执行结果: \`run_command\`
-- 命令: \`${displayCommand.replace(/`/g, '\\`')}\`
-- 状态: ${result.success === true ? '成功' : '失败'}
-- 退出码: ${result.exitCode ?? 'N/A'}
-- 耗时: ${typeof result.durationMs === 'number' ? result.durationMs : 0} ms
-${flags.length > 0 ? `- 终止/截断状态: ${flags.join('、')}\n` : ''}- 已回传文件变更 (${changedFiles.length}): ${changedSummary}
-- stdout:
-\`\`\`text
-${compactText(result.stdout)}
-\`\`\`
-- stderr:
-\`\`\`text
-${compactText(result.stderr)}
-\`\`\`
-${result.fileSyncError ? `- 文件同步错误: ${String(result.fileSyncError)}\n` : ''}${resultError ? `- 执行错误: ${resultError}\n` : ''}${outcome.errorMessage ? `- 最终状态: ${outcome.errorMessage}\n` : ''}${ignoredSummary ? `- 未同步的忽略项 (${ignoredPaths.length}): ${ignoredSummary}\n` : ''}${skippedSummary ? `- 拒绝同步项 (${skippedFiles.length}): ${skippedSummary}\n` : ''}
-请依据实际退出码、stdout 和 stderr 继续诊断；如需检查生成文件，请使用 read_file，然后修改并重新执行验证。`;
-  }
-
   if (outcome.errorMessage) {
     return `### 工具执行失败: \`${toolName}\`
 - 参数: \`${JSON.stringify(args)}\`
@@ -570,16 +495,11 @@ export function cleanResponseText(text: string): string {
     .trim();
 }
 
-export interface ExecuteWorkspaceToolOptions {
-  commandAbortSignal?: AbortSignal;
-}
-
 // Execute a Workspace tool strictly inside the bound Workspace
 export async function executeWorkspaceTool(
   toolName: string,
   args: Record<string, any>,
-  workspace: Workspace,
-  options: ExecuteWorkspaceToolOptions = {},
+  workspace: Workspace
 ): Promise<{
   result: any;
   updatedWorkspace: Workspace;
@@ -986,255 +906,57 @@ export async function executeWorkspaceTool(
         };
       }
 
-      const parseResponse = async (response: Response): Promise<Record<string, any>> => {
-        const rawText = await response.text();
-        if (!rawText) return {};
-        try {
-          return JSON.parse(rawText) as Record<string, any>;
-        } catch {
-          return {
-            success: false,
-            error: { message: rawText.slice(0, 2_000) || `HTTP ${response.status}` },
-          };
-        }
-      };
-
-      const loadSession = async (): Promise<Record<string, any>> => {
-        const response = await fetch('/api/agent-command/status', {
-          method: 'GET',
-          cache: 'no-store',
-          headers: { Accept: 'application/json' },
-          signal: options.commandAbortSignal,
-        });
-        const status = await parseResponse(response);
-        if (!response.ok || status.success !== true) {
-          throw new Error(status.error?.message || `终端状态接口返回 HTTP ${response.status}`);
-        }
-        if (status.enabled !== true) {
-          throw new Error('服务端命令执行未启用。请设置 AGENT_COMMAND_EXECUTION_ENABLED=true 并重启服务后重试。');
-        }
-        if (typeof status.sessionToken !== 'string' || status.sessionToken.length < 32) {
-          throw new Error('服务端未返回有效命令会话令牌，请刷新页面后重试。');
-        }
-        return status;
-      };
-
       try {
-        let status = await loadSession();
-        const projectedFiles = Object.fromEntries(
-          Object.entries(ws.files).map(([filePath, file]) => [
-            filePath,
-            {
-              content: file.content,
-              isBinary: file.isBinary === true,
-            },
-          ]),
-        );
-        const requestBody = JSON.stringify({
-          workspaceId: ws.id,
-          command,
-          files: projectedFiles,
-        });
-        const sendCommand = async (sessionToken: string): Promise<Response> => fetch('/api/agent-command', {
+        const res = await fetch('/api/execute-script', {
           method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-Agent-Command-Token': sessionToken,
-          },
-          body: requestBody,
-          signal: options.commandAbortSignal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command }),
         });
 
-        let response = await sendCommand(status.sessionToken);
-        // The server rotates this token on restart. Refresh once so an in-flight chat can recover.
-        if (response.status === 401) {
-          // Consume the rejected response before reusing the connection, then refresh and retry once.
-          await response.text().catch(() => undefined);
-          status = await loadSession();
-          response = await sendCommand(status.sessionToken);
-        }
-
-        const runData = await parseResponse(response);
-        if (!response.ok || runData.success === undefined) {
-          return {
-            result: runData,
-            updatedWorkspace: ws,
-            errorMessage: runData.error?.message || `无法连接终端执行服务 (HTTP ${response.status})`,
-            stepIcon: 'lightning',
-            stepTitle: `连接终端服务失败: ${command.slice(0, 120)}`,
-          };
-        }
-
-        const changedFileMetadata: Array<{ path: string; type: string; size?: number }> = [];
-        const skippedChangedFiles: string[] = [];
-        let commandDiff: { path: string; oldContent?: string; newContent?: string } | undefined;
-        const rawChanges = Array.isArray(runData.changedFiles) ? runData.changedFiles : [];
-        const acceptedChangePaths = new Set<string>();
-        const pendingChanges: Array<{
-          path: string;
-          type: 'added' | 'modified' | 'deleted';
-          content?: string;
-          byteSize?: number;
-          oldFile?: WorkspaceFile;
-        }> = [];
-        const changedAt = Date.now();
-        const encoder = new TextEncoder();
-
-        for (const rawChange of rawChanges) {
-          const rawPath = String(rawChange?.path || '');
-          const pathResult = validateSafeRelativePath(rawPath);
-          if (!pathResult.valid) {
-            skippedChangedFiles.push(`${rawPath || '(empty path)'}: ${pathResult.error || 'invalid path'}`);
-            continue;
-          }
-
-          const changedPath = pathResult.normalizedPath;
-          const pathKey = changedPath.toLocaleLowerCase('en-US');
-          if (acceptedChangePaths.has(pathKey)) {
-            skippedChangedFiles.push(`${changedPath} (duplicate after normalization)`);
-            continue;
-          }
-          acceptedChangePaths.add(pathKey);
-
-          const rawType = String(rawChange?.type || '');
-          if (rawType !== 'added' && rawType !== 'modified' && rawType !== 'deleted') {
-            skippedChangedFiles.push(`${changedPath} (unsupported change type: ${rawType || 'missing'})`);
-            continue;
-          }
-          if (rawType === 'deleted') {
-            pendingChanges.push({
-              path: changedPath,
-              type: rawType,
-              oldFile: ws.files[changedPath],
-            });
-            continue;
-          }
-          if (typeof rawChange.content !== 'string') {
-            skippedChangedFiles.push(`${changedPath} (missing text content)`);
-            continue;
-          }
-
-          const byteSize = encoder.encode(rawChange.content).byteLength;
-          if (byteSize > WORKSPACE_LIMITS.MAX_SINGLE_FILE_SIZE) {
-            skippedChangedFiles.push(`${changedPath} (${byteSize} bytes exceeds per-file limit)`);
-            continue;
-          }
-          pendingChanges.push({
-            path: changedPath,
-            type: rawType,
-            content: rawChange.content,
-            byteSize,
-            oldFile: ws.files[changedPath],
-          });
-        }
-
-        const nextFiles: Record<string, WorkspaceFile> = { ...ws.files };
-        for (const change of pendingChanges) {
-          if (change.type === 'deleted') {
-            delete nextFiles[change.path];
+        if (res.ok) {
+          const runData = await res.json();
+          if (runData.success) {
+            return {
+              result: {
+                stdout: runData.stdout,
+                stderr: runData.stderr,
+                exitCode: runData.exitCode,
+              },
+              updatedWorkspace: ws,
+              stepIcon: 'lightning',
+              stepTitle: `成功执行终端命令: ${command}`,
+            };
           } else {
-            nextFiles[change.path] = {
-              path: change.path,
-              content: change.content || '',
-              isBinary: false,
-              size: change.byteSize || 0,
-              updatedAt: changedAt,
+            return {
+              result: {
+                stdout: runData.stdout,
+                stderr: runData.stderr,
+                exitCode: runData.exitCode,
+                error: runData.error,
+              },
+              updatedWorkspace: ws,
+              errorMessage: runData.error || runData.stderr || `命令执行失败，退出码: ${runData.exitCode}`,
+              stepIcon: 'lightning',
+              stepTitle: `命令执行出错: ${command}`,
             };
           }
-        }
-
-        const finalPaths = Object.keys(nextFiles);
-        const finalFileCountExceeded = finalPaths.length > WORKSPACE_LIMITS.MAX_FILE_COUNT;
-        const finalTotalBytes = finalPaths.reduce(
-          (total, filePath) => total + nextFiles[filePath].size,
-          0,
-        );
-        const finalTotalBytesExceeded = finalTotalBytes > WORKSPACE_LIMITS.MAX_TOTAL_UNCOMPRESSED_SIZE;
-        const conflict = finalPaths.find((filePath, index) => finalPaths.some((candidate, candidateIndex) => (
-          index !== candidateIndex && candidate.startsWith(`${filePath}/`)
-        )));
-
-        if (finalFileCountExceeded || finalTotalBytesExceeded || conflict) {
-          const reason = finalFileCountExceeded
-            ? `最终文件数超过 ${WORKSPACE_LIMITS.MAX_FILE_COUNT}`
-            : finalTotalBytesExceeded
-              ? `最终工作区总大小超过 ${WORKSPACE_LIMITS.MAX_TOTAL_UNCOMPRESSED_SIZE} 字节`
-              : `文件/目录路径冲突: ${conflict}`;
-          for (const change of pendingChanges) {
-            skippedChangedFiles.push(`${change.path} (${reason})`);
-          }
         } else {
-          ws.files = nextFiles;
-          for (const change of pendingChanges) {
-            const type = change.type === 'deleted'
-              ? 'deleted'
-              : change.oldFile ? 'modified' : 'added';
-            const metadataType = change.type === 'deleted' ? 'deleted' : type;
-            changedFileMetadata.push({
-              path: change.path,
-              type: metadataType,
-              ...(change.byteSize !== undefined ? { size: change.byteSize } : {}),
-            });
-            if (!commandDiff) {
-              commandDiff = {
-                path: change.path,
-                ...(type !== 'added' && change.oldFile
-                  ? { oldContent: change.oldFile.content.slice(0, 4_000) }
-                  : {}),
-                ...(type !== 'deleted' && change.content !== undefined
-                  ? { newContent: change.content.slice(0, 4_000) }
-                  : {}),
-              };
-            }
-          }
+          const errText = await res.text();
+          return {
+            result: null,
+            updatedWorkspace: ws,
+            errorMessage: `无法连接到编译执行后端服务: ${errText}`,
+            stepIcon: 'lightning',
+            stepTitle: `连接终端服务失败: ${command}`,
+          };
         }
-
-        if (changedFileMetadata.length > 0) ws.updatedAt = changedAt;
-        const compactRunData = {
-          ...runData,
-          changedFiles: changedFileMetadata,
-          skippedChangedFiles,
-        };
-        const failureMessage = runData.success === true
-          ? undefined
-          : runData.fileSyncError ||
-            runData.error ||
-            (runData.exitCode !== 0
-              ? `命令退出码为 ${runData.exitCode ?? 'unknown'}`
-              : '命令执行失败');
-        const shortCommand = command.length > 120 ? `${command.slice(0, 117)}...` : command;
-
+      } catch (e: any) {
         return {
-          result: compactRunData,
+          result: null,
           updatedWorkspace: ws,
-          diff: commandDiff,
-          errorMessage: failureMessage,
+          errorMessage: `终端脚本执行异常: ${e.message}`,
           stepIcon: 'lightning',
-          stepTitle: runData.success === true
-            ? `终端命令成功 (${runData.durationMs ?? 0}ms, ${changedFileMetadata.length} 个文件变更): ${shortCommand}`
-            : `终端命令失败 (退出码 ${runData.exitCode ?? 'N/A'}): ${shortCommand}`,
-        };
-      } catch (error: unknown) {
-        const wasAborted = options.commandAbortSignal?.aborted === true ||
-          (error instanceof DOMException && error.name === 'AbortError');
-        const message = wasAborted
-          ? '用户已取消终端命令执行'
-          : error instanceof Error
-            ? error.message
-            : '未知终端错误';
-        return {
-          result: {
-            success: false,
-            cancelled: wasAborted,
-            stdout: '',
-            stderr: '',
-            error: message,
-          },
-          updatedWorkspace: ws,
-          errorMessage: `终端脚本执行异常: ${message}`,
-          stepIcon: 'lightning',
-          stepTitle: `终端异常: ${command.slice(0, 120)}`,
+          stepTitle: `终端异常: ${command}`,
         };
       }
     }
