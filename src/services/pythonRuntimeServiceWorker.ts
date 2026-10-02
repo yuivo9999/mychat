@@ -154,93 +154,103 @@ export async function waitForPythonRuntimeCache(signal?: AbortSignal): Promise<b
   return queryActiveWorker(activeWorker, signal);
 }
 
-export async function downloadPythonFromCdn(onProgress: (progress: number) => void): Promise<boolean> {
-  if (!('caches' in window)) return false;
-  
+function getRuntimeContentType(filename: string): string {
+  if (filename.endsWith('.js') || filename.endsWith('.mjs')) return 'application/javascript';
+  if (filename.endsWith('.wasm')) return 'application/wasm';
+  if (filename.endsWith('.json')) return 'application/json';
+  if (filename.endsWith('.zip')) return 'application/zip';
+  return 'application/octet-stream';
+}
+
+/**
+ * Downloads the Pyodide offline package for the user to save with the browser.
+ *
+ * Important: this function deliberately does NOT write to Cache Storage. The downloaded
+ * ZIP is imported later through importPythonRuntime(), which is the only path that installs
+ * the runtime into this app's local cache.
+ *
+ * The Pyodide directory URL itself is not a download target. Each runtime file is fetched
+ * from its concrete jsDelivr file URL:
+ * https://cdn.jsdelivr.net/pyodide/v<version>/full/<file>
+ */
+export async function downloadPythonFromCdn(onProgress: (progress: number) => void): Promise<Blob | null> {
   const scopeRoot = getScopeRoot().toString();
   const manifestUrl = new URL('pyodide/runtime-manifest.json', scopeRoot).toString();
-  
+
   try {
     onProgress(1);
-    const manifestRes = await fetch(manifestUrl);
-    if (!manifestRes.ok) throw new Error('无法从服务器读取清单文件');
+
+    const manifestRes = await fetch(manifestUrl, { cache: 'no-store' });
+    if (!manifestRes.ok) throw new Error('无法从服务器读取 Python 运行时清单');
+
     const manifest = await manifestRes.json();
-    const buildId = manifest.buildId;
-    const runtimeVersion = typeof manifest.runtimeVersion === 'string' ? manifest.runtimeVersion.trim() : '';
-    const files = manifest.files as string[];
-    if (!buildId || !Array.isArray(files) || files.some((file) => typeof file !== 'string')) {
+    const buildId = typeof manifest.buildId === 'string' ? manifest.buildId.trim() : '';
+    const runtimeVersion = typeof manifest.runtimeVersion === 'string'
+      ? manifest.runtimeVersion.trim()
+      : '';
+    const files = manifest.files as unknown;
+
+    if (
+      !/^[a-f0-9]{64}$/u.test(buildId)
+      || !/^\\d+\\.\\d+\\.\\d+$/u.test(runtimeVersion)
+      || !Array.isArray(files)
+      || files.length === 0
+      || files.some((file) => typeof file !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(file))
+    ) {
       throw new Error('Python 运行时清单格式无效');
     }
-    
-    // We also need to cache python-sw.js itself
-    const allFiles = ['python-sw.js', ...files.map(f => `pyodide/${f}`)];
-    const cacheName = `omnichat-python-runtime-${buildId}`;
-    const cache = await caches.open(cacheName);
-    
-    const totalFiles = allFiles.length;
+
+    const { default: JSZip } = await import('jszip');
+    const zip = new JSZip();
+    const runtimeFolder = zip.folder('pyodide');
+    if (!runtimeFolder) throw new Error('无法创建 Python 运行时离线包');
+
+    // The manifest is required by the import path to reconstruct the exact cache name.
+    runtimeFolder.file('runtime-manifest.json', JSON.stringify(manifest, null, 2));
+
+    // python-sw.js is part of the offline runtime package and is restored to the app root
+    // by importPythonRuntime(). Keeping it inside the pyodide folder makes the ZIP layout
+    // consistent with exportPythonRuntime().
+    const workerUrl = new URL('python-sw.js', scopeRoot).toString();
+    const workerResponse = await fetch(workerUrl, { cache: 'no-store' });
+    if (!workerResponse.ok) {
+      throw new Error(`无法下载离线服务脚本：HTTP ${workerResponse.status}`);
+    }
+    runtimeFolder.file('python-sw.js', await workerResponse.blob());
+
+    const totalFiles = files.length + 1;
     let completedFiles = 0;
 
-    for (const filePath of allFiles) {
-      const targetUrl = new URL(filePath, scopeRoot).toString();
-      const localUrl = targetUrl;
-      const mirrorUrl = filePath === 'python-sw.js' || !runtimeVersion
-        ? null
-        : new URL(`${filePath.replace(/^pyodide\//, '')}`, `${PYODIDE_CDN_BASE}/v${runtimeVersion}/full/`).toString();
+    for (const filename of files) {
+      // This is the actual downloadable file URL. Do not fetch the /full/ directory itself.
+      const fileUrl = new URL(
+        filename,
+        `${PYODIDE_CDN_BASE}/v${runtimeVersion}/full/`,
+      ).toString();
 
-      // Pyodide 官方 jsDelivr CDN 优先；若官方 CDN 不可用，再回退到当前应用自身的静态文件。
-      let response: Response;
-      try {
-        response = mirrorUrl ? await fetch(mirrorUrl, { cache: 'no-store' }) : await fetch(localUrl);
-        if (!response.ok) throw new Error(`mirror HTTP ${response.status}`);
-      } catch (mirrorError) {
-        console.warn(`Pyodide jsDelivr CDN download failed for ${filePath}, falling back to app origin.`, mirrorError);
-        response = await fetch(localUrl);
-        if (!response.ok) throw new Error(`无法下载文件: ${filePath}`);
-      }
-      
-      const contentLength = response.headers.get('content-length');
-      const total = contentLength ? parseInt(contentLength, 10) : 0;
-      
-      if (!response.body) {
-        await cache.put(targetUrl, response);
-        completedFiles++;
-        onProgress(Math.round((completedFiles / totalFiles) * 100));
-        continue;
+      const response = await fetch(fileUrl, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`无法下载 Pyodide 文件 ${filename}：HTTP ${response.status}`);
       }
 
-      const reader = response.body.getReader();
-      let loaded = 0;
-      const chunks = [];
-      
-      while(true) {
-        const {done, value} = await reader.read();
-        if (done) break;
-        chunks.push(value);
-        loaded += value.length;
-        if (total > 0) {
-          const fileProgress = (loaded / total) * (1 / totalFiles) * 100;
-          const baseProgress = (completedFiles / totalFiles) * 100;
-          onProgress(Math.round(baseProgress + fileProgress));
-        }
-      }
-      
-      const blob = new Blob(chunks);
-      const filename = filePath.split('/').pop()!;
-      await cache.put(targetUrl, new Response(blob, {
-        headers: { 
-          'Content-Type': filename.endsWith('.js') || filename.endsWith('.mjs') ? 'application/javascript' : (filename.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream'),
-          'Content-Length': blob.size.toString()
-        }
-      }));
-      
-      completedFiles++;
+      runtimeFolder.file(filename, await response.blob());
+      completedFiles += 1;
       onProgress(Math.round((completedFiles / totalFiles) * 100));
     }
-    
-    return true;
+
+    // Count the service worker as the final completed file.
+    completedFiles += 1;
+    onProgress(Math.round((completedFiles / totalFiles) * 100));
+
+    return await zip.generateAsync({
+      type: 'blob',
+      compression: 'STORE',
+    }, (metadata) => {
+      onProgress(Math.max(99, Math.round(metadata.percent)));
+    });
   } catch (error) {
-    console.error('Manual download failed:', error);
-    return false;
+    console.error('Manual Python runtime download failed:', error);
+    return null;
   }
 }
 
@@ -257,6 +267,7 @@ export async function exportPythonRuntime(): Promise<Blob | null> {
   const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const runtimeFolder = zip.folder('pyodide');
+  if (!runtimeFolder) return null;
 
   for (const request of keys) {
     const response = await cache.match(request);
@@ -264,9 +275,13 @@ export async function exportPythonRuntime(): Promise<Blob | null> {
       const blob = await response.blob();
       const url = new URL(request.url);
       const filename = url.pathname.split('/').pop() || 'index';
-      runtimeFolder?.file(filename, blob);
+      runtimeFolder.file(filename, blob);
     }
   }
+
+  // Older caches created by previous versions may not contain the manifest. Do not create
+  // an unusable export in that case.
+  if (!runtimeFolder.file('runtime-manifest.json')) return null;
 
   return await zip.generateAsync({ type: 'blob' });
 }
@@ -278,13 +293,39 @@ export async function importPythonRuntime(zipBlob: Blob): Promise<boolean> {
   const runtimeFolder = zip.folder('pyodide');
   if (!runtimeFolder) return false;
 
-  // We need the build ID from the manifest to create the correct cache name
+  // We need the build ID from the manifest to create the correct cache name.
   const manifestFile = runtimeFolder.file('runtime-manifest.json');
   if (!manifestFile) return false;
-  const manifestContent = await manifestFile.async('string');
-  const manifest = JSON.parse(manifestContent);
-  const buildId = manifest.buildId;
-  if (!buildId) return false;
+
+  let manifest: { buildId?: unknown; schemaVersion?: unknown; files?: unknown };
+  try {
+    const manifestContent = await manifestFile.async('string');
+    manifest = JSON.parse(manifestContent);
+  } catch {
+    return false;
+  }
+
+  const buildId = typeof manifest.buildId === 'string' ? manifest.buildId.trim() : '';
+  if (
+    manifest.schemaVersion !== 1
+    || !/^[a-f0-9]{64}$/u.test(buildId)
+    || !Array.isArray(manifest.files)
+    || manifest.files.length === 0
+    || manifest.files.some((file) => typeof file !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(file))
+  ) {
+    return false;
+  }
+
+  const requiredFiles = new Set(['runtime-manifest.json', 'python-sw.js', ...manifest.files]);
+  const suppliedFiles = new Set(
+    Object.keys(runtimeFolder.files)
+      .filter((filePath) => !runtimeFolder.files[filePath].dir)
+      .map((filePath) => filePath.split('/').pop() || ''),
+  );
+
+  for (const requiredFile of requiredFiles) {
+    if (!suppliedFiles.has(requiredFile)) return false;
+  }
 
   const cacheName = `omnichat-python-runtime-${buildId}`;
   const cache = await caches.open(cacheName);
@@ -293,19 +334,17 @@ export async function importPythonRuntime(zipBlob: Blob): Promise<boolean> {
   const files = Object.keys(runtimeFolder.files);
   for (const filePath of files) {
     if (runtimeFolder.files[filePath].dir) continue;
+
     const filename = filePath.split('/').pop()!;
     const fileBlob = await runtimeFolder.files[filePath].async('blob');
-    
-    // Reconstruct the internal URLs used by the Service Worker
-    let targetUrl: string;
-    if (filename === 'python-sw.js') {
-       targetUrl = new URL(filename, scopeRoot).toString();
-    } else {
-       targetUrl = new URL(`pyodide/${filename}`, scopeRoot).toString();
-    }
-    
+
+    // Reconstruct the internal URLs used by the Service Worker.
+    const targetUrl = filename === 'python-sw.js'
+      ? new URL(filename, scopeRoot).toString()
+      : new URL(`pyodide/${filename}`, scopeRoot).toString();
+
     await cache.put(targetUrl, new Response(fileBlob, {
-      headers: { 'Content-Type': filename.endsWith('.js') || filename.endsWith('.mjs') ? 'application/javascript' : (filename.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream') }
+      headers: { 'Content-Type': getRuntimeContentType(filename) },
     }));
   }
 
