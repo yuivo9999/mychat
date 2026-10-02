@@ -185,7 +185,7 @@ export async function downloadPythonFromCdn(onProgress: (progress: number) => vo
       const localUrl = targetUrl;
       const mirrorUrl = filePath === 'python-sw.js' || !runtimeVersion
         ? null
-        : new URL(`${filePath.replace(/^pyodide\//, '')}`, `${PYODIDE_CHINA_CDN_BASE}/${runtimeVersion}/`).toString();
+        : new URL(`${filePath.replace(/^pyodide\//, '')}`, `${PYODIDE_CDN_BASE}/v${runtimeVersion}/full/`).toString();
 
       // Pyodide 官方 jsDelivr CDN 优先；若官方 CDN 不可用，再回退到当前应用自身的静态文件。
       let response: Response;
