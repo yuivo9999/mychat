@@ -193,7 +193,7 @@ export async function downloadPythonFromCdn(onProgress: (progress: number) => vo
         response = mirrorUrl ? await fetch(mirrorUrl, { cache: 'no-store' }) : await fetch(localUrl);
         if (!response.ok) throw new Error(`mirror HTTP ${response.status}`);
       } catch (mirrorError) {
-        console.warn(`Pyodide China CDN download failed for ${filePath}, falling back to app origin.`, mirrorError);
+        console.warn(`Pyodide jsDelivr CDN download failed for ${filePath}, falling back to app origin.`, mirrorError);
         response = await fetch(localUrl);
         if (!response.ok) throw new Error(`无法下载文件: ${filePath}`);
       }
