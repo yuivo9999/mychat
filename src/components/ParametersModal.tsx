@@ -123,6 +123,9 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   const resetToDefaults = () => {
     onChangeParameters({
       stream: true,
+      promptPerfect: false,
+      context7: false,
+      executeScript: false,
       limitMaxTokens: false,
       maxTokens: 4096,
       temperature: 0.7,
@@ -150,7 +153,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
     stream: '开启打字机逐字输出。关闭则等待整体生成完毕后一次性呈现。',
     promptPerfect: '开启后在发送给 AI 之前，由专用引擎自动将您的简短提示词重写为专业、结构清晰、完美的 Prompt 模板，提高生成质量。',
     context7: '开启后系统将采用“智能 7 轮高精度平衡窗口”，精准维持最近的 7 轮对话为全保真高对比度上下文，超出部分自动由智能摘要压缩。兼顾超长对话记忆与极低 Token 资源消耗。',
-    executeScript: '开启后允许 Agent 运行终端 Shell 命令行及执行脚本（如编译打包、运行测试、Python 或 Node 数据处理等）。提供极致完整的全自动编码体验！',
+    executeScript: '开启后允许 Agent 在服务端隔离临时副本中执行 Shell、Python、Node、编译和测试命令。命令产生的文本文件会回传项目；运行产物不会保留。请仅在可信工作区中启用。',
     maxTokens: '单次回复允许生成的最大 Token 限制（4096 约合 2000 个汉字）。',
     temperature: '控制回答的多样性。0.0~0.3 严谨确定（代码/数学）；0.7~1.0 丰富发散（创意/写作）。',
     latex: '自动通过 KaTeX 引擎将数学公式/物理符号/微积分渲染为学术级排版。',

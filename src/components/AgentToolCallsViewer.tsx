@@ -10,7 +10,10 @@ import {
   FileCheck,
   BrainCircuit,
   Search,
-  Globe
+  Globe,
+  Terminal,
+  Clock3,
+  FileDiff
 } from 'lucide-react';
 import { ToolCallExecution } from '../types';
 
@@ -30,13 +33,15 @@ export const AgentToolCallsViewer: React.FC<AgentToolCallsViewerProps> = ({
 
   if (!toolCalls || toolCalls.length === 0) return null;
 
-  const successfulCalls = toolCalls.filter(c => c.status === 'success');
   const errorCalls = toolCalls.filter(c => c.status === 'error');
   const filesModified = modifiedFiles.length > 0 ? modifiedFiles : Array.from(
     new Set(
-      toolCalls
-        .filter(c => c.diff?.path)
-        .map(c => c.diff!.path)
+      toolCalls.flatMap((call) => {
+        const commandChanges = call.toolName === 'run_command' && Array.isArray(call.result?.changedFiles)
+          ? call.result.changedFiles.map((change: any) => change?.path).filter(Boolean)
+          : [];
+        return call.diff?.path ? [call.diff.path, ...commandChanges] : commandChanges;
+      })
     )
   );
 
@@ -54,6 +59,8 @@ export const AgentToolCallsViewer: React.FC<AgentToolCallsViewerProps> = ({
         return <BrainCircuit className="w-3.5 h-3.5 text-purple-500" />;
       case 'web_search':
         return <Globe className="w-3.5 h-3.5 text-orange-500" />;
+      case 'run_command':
+        return <Terminal className="w-3.5 h-3.5 text-lime-600 dark:text-lime-400" />;
       default:
         return <Wrench className="w-3.5 h-3.5 text-neutral-500" />;
     }
@@ -118,9 +125,73 @@ export const AgentToolCallsViewer: React.FC<AgentToolCallsViewerProps> = ({
                 </div>
 
                 {call.errorMessage && (
-                  <p className="text-[11px] text-red-600 dark:text-red-400 font-mono">
+                  <p className="text-[11px] text-red-600 dark:text-red-400 font-mono whitespace-pre-wrap break-words">
                     {call.errorMessage}
                   </p>
+                )}
+
+                {call.toolName === 'run_command' && call.result && (
+                  <div className="mt-1.5 rounded-md border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900/60 overflow-hidden">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-2 py-1.5 text-[10px] font-mono text-neutral-500 dark:text-neutral-400 border-b border-neutral-200 dark:border-neutral-700">
+                      <span className={call.result.success === true ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
+                        {call.result.success === true ? '执行成功' : '执行失败'}
+                      </span>
+                      <span>退出码: {call.result.exitCode ?? 'N/A'}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock3 className="w-3 h-3" />
+                        {typeof call.result.durationMs === 'number' ? `${call.result.durationMs} ms` : '耗时未知'}
+                      </span>
+                      {call.result.timedOut === true && <span className="text-amber-600">已超时</span>}
+                      {call.result.cancelled === true && <span className="text-amber-600">已取消</span>}
+                      {call.result.outputLimitExceeded === true && <span className="text-amber-600">输出超限</span>}
+                      {(call.result.stdoutTruncated || call.result.stderrTruncated) && (
+                        <span className="text-amber-600">日志已截断</span>
+                      )}
+                    </div>
+
+                    {Array.isArray(call.result.changedFiles) && call.result.changedFiles.length > 0 && (
+                      <div className="px-2 py-1.5 border-b border-neutral-200 dark:border-neutral-700 text-[10px] text-neutral-600 dark:text-neutral-300">
+                        <span className="inline-flex items-center gap-1 font-medium">
+                          <FileDiff className="w-3 h-3" />
+                          已同步 {call.result.changedFiles.length} 个文件：
+                        </span>
+                        <span className="ml-1 font-mono text-neutral-500 dark:text-neutral-400">
+                          {call.result.changedFiles
+                            .map((change: any) => `${change.path} (${change.type})`)
+                            .join('、')}
+                        </span>
+                      </div>
+                    )}
+
+                    {(call.result.fileSyncError ||
+                      (Array.isArray(call.result.ignoredPaths) && call.result.ignoredPaths.length > 0) ||
+                      (Array.isArray(call.result.skippedChangedFiles) && call.result.skippedChangedFiles.length > 0)) && (
+                      <div className="px-2 py-1.5 border-b border-neutral-200 dark:border-neutral-700 text-[10px] text-amber-700 dark:text-amber-400 space-y-0.5">
+                        {call.result.fileSyncError && <p>同步错误: {call.result.fileSyncError}</p>}
+                        {Array.isArray(call.result.ignoredPaths) && call.result.ignoredPaths.length > 0 && (
+                          <p className="font-mono break-words">忽略 {call.result.ignoredPaths.length} 项: {call.result.ignoredPaths.slice(0, 20).join('、')}</p>
+                        )}
+                        {Array.isArray(call.result.skippedChangedFiles) && call.result.skippedChangedFiles.length > 0 && (
+                          <p className="font-mono break-words">拒绝 {call.result.skippedChangedFiles.length} 项: {call.result.skippedChangedFiles.slice(0, 20).join('、')}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {(['stdout', 'stderr'] as const).map((streamName) => {
+                      const streamText = typeof call.result[streamName] === 'string' ? call.result[streamName] : '';
+                      if (!streamText) return null;
+                      return (
+                        <div key={streamName} className="border-b border-neutral-200 dark:border-neutral-700 last:border-b-0">
+                          <div className="px-2 pt-1.5 pb-0.5 text-[9px] uppercase tracking-wide font-semibold text-neutral-400">
+                            {streamName}
+                          </div>
+                          <pre className="px-2 pb-1.5 max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] leading-relaxed text-neutral-700 dark:text-neutral-300">
+                            {streamText}
+                          </pre>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
 
                 {call.diff && (
