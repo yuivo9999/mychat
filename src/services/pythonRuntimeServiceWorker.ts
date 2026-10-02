@@ -2,7 +2,7 @@ const SERVICE_WORKER_FILE = 'python-sw.js';
 const SERVICE_WORKER_READY_TIMEOUT_MS = 180_000;
 const CONTROLLER_CHANGE_TIMEOUT_MS = 5_000;
 const STATUS_RESPONSE_TIMEOUT_MS = 5_000;
-const PYODIDE_CHINA_CDN_BASE = 'https://cdn.npmmirror.com/npm/pyodide';
+const PYODIDE_CDN_BASE = 'https://cdn.jsdelivr.net/pyodide';
 
 let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
 
@@ -187,7 +187,7 @@ export async function downloadPythonFromCdn(onProgress: (progress: number) => vo
         ? null
         : new URL(`${filePath.replace(/^pyodide\//, '')}`, `${PYODIDE_CHINA_CDN_BASE}/${runtimeVersion}/`).toString();
 
-      // 中国大陆优先使用 npmmirror 的 Pyodide CDN；若镜像不可用，再回退到当前应用自身的静态文件。
+      // Pyodide 官方 jsDelivr CDN 优先；若官方 CDN 不可用，再回退到当前应用自身的静态文件。
       let response: Response;
       try {
         response = mirrorUrl ? await fetch(mirrorUrl, { cache: 'no-store' }) : await fetch(localUrl);
