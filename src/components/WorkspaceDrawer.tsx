@@ -26,7 +26,6 @@ import {
   FilePlus,
   Layers,
   FileSpreadsheet,
-  Play,
   ChevronDown as DropdownIcon
 } from 'lucide-react';
 import { Workspace, WorkspaceFile } from '../types/workspace';
@@ -43,17 +42,6 @@ import {
   renameFolderInWorkspace
 } from '../services/workspaceService';
 import { downloadWorkspaceFile, decodeTextFile } from '../services/fileParser';
-import {
-  createWorkspacePythonBaseline,
-  executeWorkspacePython,
-  mergeWorkspacePythonChanges,
-  type WorkspacePythonExecutionResult,
-} from '../services/pythonExecutionService';
-import {
-  PythonExecutionModal,
-  type PythonExecutionPhase,
-  type PythonExecutionSummary,
-} from './PythonExecutionModal';
 
 interface WorkspaceDrawerProps {
   isOpen: boolean;
@@ -61,7 +49,7 @@ interface WorkspaceDrawerProps {
   workspaces: Workspace[];
   activeWorkspaceId?: string;
   onSelectWorkspace: (id: string) => void;
-  onSaveWorkspace: (ws: Workspace) => void | Promise<void>;
+  onSaveWorkspace: (ws: Workspace) => void;
   onDeleteWorkspace: (id: string) => void;
   onSendAiMessage?: (prompt: string, attachments?: Attachment[]) => void;
   aiStatusText?: string;
@@ -250,16 +238,6 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
   // Editable File Modal State
   const [editingFile, setEditingFile] = useState<WorkspaceFile | null>(null);
 
-  // User-triggered Python execution state. The request and modal are bound to the workspace
-  // that owned the selected script, so switching workspaces cannot redirect an in-flight run.
-  const [isPythonExecutionModalOpen, setIsPythonExecutionModalOpen] = useState(false);
-  const [pythonWorkspaceId, setPythonWorkspaceId] = useState<string | null>(null);
-  const [pythonScriptPath, setPythonScriptPath] = useState('');
-  const [pythonExecutionPhase, setPythonExecutionPhase] = useState<PythonExecutionPhase>('confirm');
-  const [pythonExecutionResult, setPythonExecutionResult] = useState<WorkspacePythonExecutionResult | null>(null);
-  const [pythonExecutionError, setPythonExecutionError] = useState<string | null>(null);
-  const [pythonExecutionSummary, setPythonExecutionSummary] = useState<PythonExecutionSummary | null>(null);
-
   // File Upload Conflict Dialog
   const [pendingUploadFiles, setPendingUploadFiles] = useState<{ path: string; content: string }[] | null>(null);
   const [conflictFilesList, setConflictFilesList] = useState<string[]>([]);
@@ -268,32 +246,6 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
   const zipInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const pythonAbortRef = useRef<AbortController | null>(null);
-  const workspacesRef = useRef(workspaces);
-  const isMountedRef = useRef(true);
-
-  // Async execution must merge against the latest prop, not the click-time stale closure.
-  useEffect(() => {
-    workspacesRef.current = workspaces;
-  }, [workspaces]);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      pythonAbortRef.current?.abort();
-      pythonAbortRef.current = null;
-    };
-  }, []);
-
-  // Closing the workspace drawer must not leave a user-requested script running invisibly.
-  useEffect(() => {
-    if (!isOpen && pythonAbortRef.current) {
-      pythonAbortRef.current.abort();
-      pythonAbortRef.current = null;
-      setIsPythonExecutionModalOpen(false);
-    }
-  }, [isOpen]);
 
   // Close popup menus when clicking outside
   useEffect(() => {
@@ -402,111 +354,6 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
   const handleOpenFileEditor = (file: WorkspaceFile) => {
     setEditingFile(file);
     setActiveMenuPath(null);
-  };
-
-  const resetPythonExecutionModal = (): void => {
-    setIsPythonExecutionModalOpen(false);
-    setPythonWorkspaceId(null);
-    setPythonScriptPath('');
-    setPythonExecutionPhase('confirm');
-    setPythonExecutionResult(null);
-    setPythonExecutionError(null);
-    setPythonExecutionSummary(null);
-  };
-
-  const handleCancelPythonExecution = (): void => {
-    const controller = pythonAbortRef.current;
-    if (controller) controller.abort();
-    pythonAbortRef.current = null;
-    resetPythonExecutionModal();
-  };
-
-  // Open a confirmation for the exact current file, not a stale tree-node snapshot.
-  const handleOpenPythonExecution = (file: WorkspaceFile): void => {
-    setActiveMenuPath(null);
-    if (pythonAbortRef.current) return;
-    if (!currentWorkspace) {
-      alert('当前没有可执行的工作区。');
-      return;
-    }
-
-    const latestFile = currentWorkspace.files[file.path];
-    setPythonWorkspaceId(currentWorkspace.id);
-    setPythonScriptPath(file.path);
-    setPythonExecutionResult(null);
-    setPythonExecutionSummary(null);
-    setPythonExecutionError(
-      !latestFile
-        ? `工作区中不存在 Python 文件: ${file.path}`
-        : latestFile.isBinary === true
-          ? '不能执行二进制或不可读取的 Python 文件。'
-          : !latestFile.path.toLowerCase().endsWith('.py')
-            ? '只能执行 .py 文件。'
-            : null,
-    );
-    setPythonExecutionPhase(!latestFile || latestFile.isBinary === true || !latestFile.path.toLowerCase().endsWith('.py') ? 'error' : 'confirm');
-    setIsPythonExecutionModalOpen(true);
-  };
-
-  const handleConfirmPythonExecution = async (): Promise<void> => {
-    if (pythonAbortRef.current || !pythonWorkspaceId) return;
-
-    const executionWorkspaceId = pythonWorkspaceId;
-    const executionScriptPath = pythonScriptPath;
-    const executionWorkspace = workspacesRef.current.find((workspace) => workspace.id === executionWorkspaceId);
-    const executionScript = executionWorkspace?.files[executionScriptPath];
-    if (!executionWorkspace || !executionScript || executionScript.isBinary === true || !executionScript.path.toLowerCase().endsWith('.py')) {
-      setPythonExecutionError('所选 Python 文件已被删除、移动或修改，请关闭窗口后重新选择。');
-      setPythonExecutionPhase('error');
-      return;
-    }
-
-    const baseline = createWorkspacePythonBaseline(executionWorkspace);
-    const controller = new AbortController();
-    pythonAbortRef.current = controller;
-    setPythonExecutionPhase('running');
-    setPythonExecutionError(null);
-    setPythonExecutionResult(null);
-    setPythonExecutionSummary(null);
-
-    try {
-      const result = await executeWorkspacePython(
-        executionWorkspace,
-        executionScriptPath,
-        controller.signal,
-      );
-      if (!isMountedRef.current || controller.signal.aborted) return;
-
-      const latestWorkspace = workspacesRef.current.find((workspace) => workspace.id === executionWorkspaceId);
-      if (!latestWorkspace) {
-        throw new Error('Python 已结束，但原工作区已被删除，无法安全回写结果。');
-      }
-
-      // Merge against the latest browser state. A user edit made while Python was running is
-      // treated as a conflict and is never overwritten by the executor result.
-      const mergeResult = mergeWorkspacePythonChanges(latestWorkspace, baseline, result.changedFiles);
-      if (mergeResult.workspace) await onSaveWorkspace(mergeResult.workspace);
-      if (!isMountedRef.current || controller.signal.aborted) return;
-
-      setPythonExecutionResult(result);
-      setPythonExecutionSummary({
-        appliedChanges: mergeResult.appliedChanges,
-        conflicts: mergeResult.conflicts,
-        skipped: mergeResult.skipped,
-      });
-      setPythonExecutionPhase('completed');
-    } catch (error: unknown) {
-      if (!isMountedRef.current || controller.signal.aborted) return;
-      const message = error instanceof Error
-        ? error.message
-        : typeof error === 'string'
-          ? error
-          : '未知 Python 执行错误';
-      setPythonExecutionError(message);
-      setPythonExecutionPhase('error');
-    } finally {
-      if (pythonAbortRef.current === controller) pythonAbortRef.current = null;
-    }
   };
 
   // Save File Content Edits
@@ -929,21 +776,6 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
                 <Edit3 className="w-4 h-4 text-lime-500" />
                 <span>编辑文件内容</span>
               </button>
-
-              {/* 执行用户选中的 Python 文件（仅文件菜单显示） */}
-              {node.file.path.toLowerCase().endsWith('.py') && node.file.isBinary !== true && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenPythonExecution(node.file!);
-                  }}
-                  className="w-full text-left px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-950/30 flex items-center gap-3 text-blue-700 dark:text-blue-300 font-semibold transition-colors"
-                >
-                  <Play className="w-4 h-4 text-blue-500 fill-current" />
-                  <span>执行 PY</span>
-                </button>
-              )}
 
               {/* 围绕此内容展开对话 */}
               <button
@@ -1608,17 +1440,6 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
           </div>
         </div>
       )}
-
-      <PythonExecutionModal
-        isOpen={isPythonExecutionModalOpen}
-        scriptPath={pythonScriptPath}
-        phase={pythonExecutionPhase}
-        result={pythonExecutionResult}
-        error={pythonExecutionError}
-        summary={pythonExecutionSummary}
-        onConfirm={handleConfirmPythonExecution}
-        onCancel={handleCancelPythonExecution}
-      />
 
       {/* Editable File Modal */}
       {editingFile && (

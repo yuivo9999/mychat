@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
   X, 
   SlidersHorizontal, 
@@ -19,22 +19,10 @@ import {
   Trash2,
   Star,
   RefreshCcw,
-  Check,
-  Download,
-  Upload,
-  FileArchive,
-  Loader2,
-  CloudDownload,
+  Check
 } from 'lucide-react';
 import { ModelParameters, UserSettings, SearchEngineItem } from '../types';
 import { DEFAULT_SEARCH_ENGINES } from '../services/db';
-import { 
-  waitForPythonRuntimeCache, 
-  downloadPythonFromCdn, 
-  exportPythonRuntime, 
-  importPythonRuntime,
-  clearPythonRuntimeCache
-} from '../services/pythonRuntimeServiceWorker';
 
 interface ParametersModalProps {
   isOpen: boolean;
@@ -59,107 +47,6 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   const [showAddEngineForm, setShowAddEngineModal] = useState(false);
   const [newEngineName, setNewEngineName] = useState('');
   const [newEngineUrl, setNewEngineUrl] = useState('');
-
-  // Python Runtime Management State
-  const [isPythonReady, setIsPythonReady] = useState<boolean | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [downloadStatus, setDownloadStatus] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      checkPythonStatus();
-    }
-  }, [isOpen]);
-
-  const checkPythonStatus = async () => {
-    try {
-      const ready = await waitForPythonRuntimeCache();
-      setIsPythonReady(ready);
-    } catch {
-      setIsPythonReady(false);
-    }
-  };
-
-  const handleDownloadPython = async () => {
-    if (isDownloading) return;
-    setIsDownloading(true);
-    setDownloadProgress(0);
-    setDownloadStatus('准备开始下载...');
-    
-    try {
-      const success = await downloadPythonFromCdn((progress, status) => {
-        setDownloadProgress(progress);
-        if (status) setDownloadStatus(status);
-      });
-      
-      if (success) {
-        setIsPythonReady(true);
-        setTimeout(() => {
-           setDownloadStatus('下载完成！环境已就绪。');
-           setTimeout(() => setIsDownloading(false), 2000);
-        }, 500);
-      } else {
-        setTimeout(() => setIsDownloading(false), 5000);
-      }
-    } catch (err: any) {
-      setDownloadStatus(`下载失败: ${err.message}`);
-      setTimeout(() => setIsDownloading(false), 5000);
-    }
-  };
-
-  const handleExportPython = async () => {
-    try {
-      const blob = await exportPythonRuntime();
-      if (!blob) {
-        alert('导出失败：本地环境尚未就绪或为空。');
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `python-runtime-backup-${new Date().toISOString().split('T')[0]}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Export failed:', err);
-      alert('导出发生错误，请查看控制台。');
-    }
-  };
-
-  const handleImportPython = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    setIsDownloading(true);
-    setDownloadProgress(50);
-    setDownloadStatus('正在从备份恢复环境...');
-    
-    try {
-      const success = await importPythonRuntime(file);
-      if (success) {
-        setIsPythonReady(true);
-        setDownloadStatus('恢复成功！');
-      } else {
-        setDownloadStatus('恢复失败：备份文件无效。');
-      }
-    } catch (err) {
-       setDownloadStatus('恢复失败：发生内部错误。');
-    } finally {
-       setTimeout(() => setIsDownloading(false), 2000);
-       if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleClearPythonCache = async () => {
-    if (window.confirm('确定要清除本地 Python 缓存吗？这将导致下次执行需要重新下载。')) {
-      await clearPythonRuntimeCache();
-      setIsPythonReady(false);
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -236,9 +123,6 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   const resetToDefaults = () => {
     onChangeParameters({
       stream: true,
-      promptPerfect: false,
-      context7: false,
-      executeScript: false,
       limitMaxTokens: false,
       maxTokens: 4096,
       temperature: 0.7,
@@ -266,7 +150,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
     stream: '开启打字机逐字输出。关闭则等待整体生成完毕后一次性呈现。',
     promptPerfect: '开启后在发送给 AI 之前，由专用引擎自动将您的简短提示词重写为专业、结构清晰、完美的 Prompt 模板，提高生成质量。',
     context7: '开启后系统将采用“智能 7 轮高精度平衡窗口”，精准维持最近的 7 轮对话为全保真高对比度上下文，超出部分自动由智能摘要压缩。兼顾超长对话记忆与极低 Token 资源消耗。',
-    executeScript: '开启后允许 Agent 在服务端隔离临时副本中执行 Shell、Python、Node、编译和测试命令。命令产生的文本文件会回传项目；运行产物不会保留。请仅在可信工作区中启用。',
+    executeScript: '开启后允许 Agent 运行终端 Shell 命令行及执行脚本（如编译打包、运行测试、Python 或 Node 数据处理等）。提供极致完整的全自动编码体验！',
     maxTokens: '单次回复允许生成的最大 Token 限制（4096 约合 2000 个汉字）。',
     temperature: '控制回答的多样性。0.0~0.3 严谨确定（代码/数学）；0.7~1.0 丰富发散（创意/写作）。',
     latex: '自动通过 KaTeX 引擎将数学公式/物理符号/微积分渲染为学术级排版。',
@@ -498,7 +382,6 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
               </button>
             </div>
 
-
             {/* 2. 采样温度 */}
             <div className="space-y-2 p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs">
               <div className="flex items-center justify-between">
@@ -626,99 +509,6 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                   已关闭限制。模型将不受硬性截断，由其内置配置或生成上下文自适应输出。
                 </p>
               )}
-            </div>
-
-            {/* Python 环境管理 Section */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center gap-1.5 text-neutral-300 font-bold text-xs pb-1 border-b border-neutral-800/80">
-                <Terminal className="param-icon w-3.5 h-3.5 text-blue-400" />
-                <span className="param-modal-title">本地 Python 环境管理</span>
-                {isPythonReady === true && (
-                   <span className="ml-auto text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-md border border-blue-500/30">
-                     本地化就绪
-                   </span>
-                )}
-              </div>
-
-              <div className="p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700/80 space-y-3">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-neutral-600 dark:text-neutral-400">本地 Pyodide 运行时 (~30MB)</span>
-                    <span className="text-[10px] font-mono text-neutral-500 uppercase">
-                      {isPythonReady === null ? '正在检查...' : (isPythonReady ? '已缓存 (离线可用)' : '未下载')}
-                    </span>
-                  </div>
-                  
-                  {isDownloading ? (
-                    <div className="space-y-2 py-1">
-                      <div className="flex justify-between items-center text-[10px] text-blue-400 animate-pulse">
-                        <span className="flex items-center gap-1">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          {downloadStatus}
-                        </span>
-                        <span>{downloadProgress}%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-900 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-blue-500 transition-all duration-300 ease-out"
-                          style={{ width: `${downloadProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={handleDownloadPython}
-                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[11px] font-medium transition shadow-sm active:scale-95"
-                      >
-                        <CloudDownload className="w-3.5 h-3.5" />
-                        {isPythonReady ? '重新极速下载' : '手动极速下载'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-100 rounded-lg text-[11px] font-medium transition shadow-sm active:scale-95"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        导入备份环境
-                      </button>
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleImportPython} 
-                        accept=".zip" 
-                        className="hidden" 
-                      />
-                      <button
-                        type="button"
-                        onClick={handleExportPython}
-                        disabled={!isPythonReady}
-                        className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-[11px] font-medium transition shadow-sm active:scale-95 ${
-                          isPythonReady 
-                            ? 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-800 dark:text-neutral-100' 
-                            : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 cursor-not-allowed opacity-50'
-                        }`}
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        导出本地备份
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleClearPythonCache}
-                        className="flex items-center justify-center gap-1.5 py-2 px-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-[11px] font-medium transition border border-red-500/20 active:scale-95"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        清除本地缓存
-                      </button>
-                    </div>
-                  )}
-                </div>
-                
-                <p className="text-[10px] text-neutral-500 leading-relaxed italic bg-blue-500/5 p-2 rounded-lg border border-blue-500/10">
-                  提示：加速下载将通过 <span className="text-blue-400">cdn.jsdelivr.net</span> 镜像进行，大幅提升国内访问速度。环境就绪后支持离线执行 Python。
-                </p>
-              </div>
             </div>
           </div>
 
