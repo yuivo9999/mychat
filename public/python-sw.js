@@ -3,6 +3,7 @@
 const CACHE_PREFIX = 'omnichat-python-runtime-';
 const CACHE_VERSION = '68f95ca0d1d300a2c19a121dcdfaf80b1699c87cebedad8816be69570e8c9363';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
+const PYODIDE_CDN_BASE = 'https://cdn.jsdelivr.net/pyodide';
 const RUNTIME_DIRECTORY = 'pyodide/';
 const RUNTIME_MANIFEST = `${RUNTIME_DIRECTORY}runtime-manifest.json`;
 const WORKER_ASSET = 'assets/python-worker.js';
@@ -46,7 +47,7 @@ function getRuntimeFileUrls(manifest) {
     uniqueFiles.push({
       name: file,
       baseUrl: new URL(file, runtimeManifestUrl).toString(),
-      versionedUrl: `${new URL(file, runtimeManifestUrl).toString()}?v=${encodeURIComponent(CACHE_VERSION)}`,
+      versionedUrl: `${new URL(file, `${PYODIDE_CDN_BASE}/v${encodeURIComponent(manifest.runtimeVersion)}/full/`).toString()}?v=${encodeURIComponent(CACHE_VERSION)}`,
     });
   }
   return uniqueFiles;
