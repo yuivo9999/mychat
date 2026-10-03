@@ -140,7 +140,10 @@ export function validateSafeRelativePath(rawPath: string): {
     cleanSegments.push(seg);
   }
 
-  // Directory depth excludes the final file name segment.\n  const directoryDepth = Math.max(0, cleanSegments.length - 1);\n\n  if (directoryDepth > WORKSPACE_LIMITS.MAX_PATH_DEPTH) {
+  // Directory depth excludes the final file name segment.
+  const directoryDepth = Math.max(0, cleanSegments.length - 1);
+
+  if (directoryDepth > WORKSPACE_LIMITS.MAX_PATH_DEPTH) {
     return { 
       valid: false, 
       normalizedPath: '', 
