@@ -106,7 +106,7 @@ export interface ModelParameters {
   enableReasoning?: boolean; // 深度推理 (Reasoning)
   stream?: boolean; // 流式传输 (Stream)
   promptPerfect?: boolean; // 提示词优化 (Prompt Perfect)
-  context7?: boolean; // Context 7-turn history balancing
+  context7?: boolean; // Enable Context7 official documentation grounding
   executeScript?: boolean; // 脚本执行权限 (Script Execution)
   limitMaxTokens?: boolean; // 是否限制最大 Token 数限制
   maxTokens?: number; // 最大 Token 数 (Max Tokens)
