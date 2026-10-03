@@ -40,9 +40,9 @@ export function formatContext7Grounding(data: Context7SearchResult): string {
   if (info.length) sections.push('【Context7 官方文档依据】\n' + info.map((item, index) => `- ${item.breadcrumb || item.pageId || `文档 ${index + 1}`}\n${(item.content || '').slice(0, 1800)}`).join('\n\n'));
   if (code.length) sections.push('【Context7 官方代码示例】\n' + code.map((item, index) => {
     const title = item.codeTitle || item.pageTitle || `示例 ${index + 1}`;
+    const fence = String.fromCharCode(96).repeat(3);
     const snippets = (item.codeList || []).slice(0, 3).map(s =>
-      '\\`\\`\\`' + (s.language || item.codeLanguage || '') + '\\n' +
-      (s.code || '').slice(0, 3000) + '\\n\\`\\`\\`'
+      fence + (s.language || item.codeLanguage || '') + '\\n' + (s.code || '').slice(0, 3000) + '\\n' + fence
     ).join('\\n');
     return `### ${title}\n${item.codeDescription || ''}\n${snippets}`;
   }).join('\n\n'));
