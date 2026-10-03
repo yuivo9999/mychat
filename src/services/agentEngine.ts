@@ -181,7 +181,7 @@ export const WORKSPACE_TOOLS_SPEC = [
   },
   {
     name: 'query_context7_docs',
-    description: '挂载 Context7 实时技术文档库：查询第三方开源库、流行框架或 API 的最新官方文档、类型定义与使用示例（解决大模型 API 废弃与代码幻觉问题）。',
+    description: 'Context7 官方技术文档知识层。仅在第三方 API/类型/配置/版本行为需要外部事实依据时使用：先检查当前项目代码与 package.json；版本敏感、最新 API、弃用/迁移、新 SDK 集成等场景应优先查询，纯本地重构或已有代码可直接确认的场景可跳过。若未显式传 version，系统会优先从当前工作区 package.json 推断具体版本。',
     parameters: {
       type: 'object',
       properties: {
