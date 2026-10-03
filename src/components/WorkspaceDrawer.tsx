@@ -888,19 +888,19 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
           className="workspace-drawer w-full max-w-2xl h-[680px] max-h-[90vh] bg-white dark:bg-neutral-900 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800 flex flex-col overflow-hidden animate-in zoom-in-95"
         >
           {/* Header Bar */}
-          <div className="px-5 py-3 border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between shrink-0 bg-neutral-50/50 dark:bg-neutral-900/50 gap-3">
+          <div className="px-4 sm:px-5 py-3 border-b border-neutral-100 dark:border-neutral-800 flex flex-wrap items-center shrink-0 bg-neutral-50/50 dark:bg-neutral-900/50 gap-2.5 sm:gap-3">
             {/* Left: Workspace Selector & New Plus Button placed immediately to its right */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 min-w-0 flex-1 w-full sm:w-auto">
               {/* Workspace Selector Dropdown */}
-              <div className="relative workspace-dropdown shrink-0">
+              <div className="relative workspace-dropdown min-w-0 flex-1 sm:flex-none">
                 <button
                   type="button"
                   onClick={() => setIsWorkspaceDropdownOpen(!isWorkspaceDropdownOpen)}
-                  className="workspace-drawer-header-btn h-9 px-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-800 dark:text-neutral-100 transition cursor-pointer shadow-2xs flex items-center gap-1.5 shrink-0"
+                  className="workspace-drawer-header-btn h-9 w-full sm:w-auto max-w-full min-w-0 px-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800/90 hover:bg-neutral-100 dark:hover:bg-neutral-750 text-neutral-800 dark:text-neutral-100 transition cursor-pointer shadow-2xs flex items-center gap-1.5"
                   title="点击管理与切换工作区（支持重命名、新建、删除）"
                 >
                   <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                  <div className="flex flex-col text-left min-w-0 max-w-[100px] sm:max-w-[150px]">
+                  <div className="flex flex-col text-left min-w-0 flex-1 sm:max-w-[150px]">
                     <span className="text-xs font-semibold leading-tight truncate">
                       {currentWorkspace?.name || '我的工作区'}
                     </span>
@@ -1099,7 +1099,7 @@ export const WorkspaceDrawer: React.FC<WorkspaceDrawerProps> = ({
             </div>
 
             {/* Right: Actions (Upload with text removed, Download ZIP, Close) */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto w-full sm:w-auto justify-end">
               {/* Upload Dropdown */}
               <div className="relative upload-dropdown shrink-0">
                 <button
