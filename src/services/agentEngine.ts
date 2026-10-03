@@ -181,7 +181,7 @@ export const WORKSPACE_TOOLS_SPEC = [
   },
   {
     name: 'query_context7_docs',
-    description: 'Context7 官方技术文档知识层。仅在第三方 API/类型/配置/版本行为需要外部事实依据时使用：先检查当前项目代码与 package.json；版本敏感、最新 API、弃用/迁移、新 SDK 集成等场景应优先查询，纯本地重构或已有代码可直接确认的场景可跳过。若未显式传 version，系统会优先从当前工作区 package.json 推断具体版本。',
+    description: 'Context7 官方技术文档知识层。仅在第三方 API/类型/配置/版本行为需要外部事实依据时使用：先检查当前项目代码与 package.json；版本敏感、最新 API、弃用/迁移、新 SDK 集成等场景应优先查询，纯本地重构或已有代码可直接确认的场景可跳过。若未显式传 version，系统会优先从当前工作区 package.json 推断具体版本。查询结果必须与项目真实代码交叉验证，不能机械照抄。',
     parameters: {
       type: 'object',
       properties: {
@@ -195,7 +195,7 @@ export const WORKSPACE_TOOLS_SPEC = [
   },
   {
     name: 'run_command',
-    description: '在工作区服务器端安全终端执行 Shell 命令行与脚本（如编译打包 npm run build、安装运行测试、执行 Python 或 Node 数据分析处理等）。此工具在“运行脚本与命令”权限开启时可用。',
+    description: '在工作区服务器端安全终端执行 Shell 命令行与脚本。代码修改后应优先读取 package.json scripts，并使用最窄的已有验证命令进行 typecheck/lint/test/build；必须根据真实 stdout、stderr 和退出码判断结果。失败时定位根因、最小修复并重新验证，最多进行 3 轮自愈。此工具在“运行脚本与命令”权限开启时可用。',
     parameters: {
       type: 'object',
       properties: {
