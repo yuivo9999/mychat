@@ -158,6 +158,8 @@ export const WORKSPACE_TOOLS_SPEC = [
       properties: {
         library: { type: 'string', description: '第三方库或技术名称，如 "lucide-react", "react", "tailwind", "katex", "vite", "drizzle-orm"' },
         topic: { type: 'string', description: '可选，具体要查询的 API 名称、组件、Hooks 或用法主题' },
+        version: { type: 'string', description: '可选，目标库版本，例如 19.1.0；用于获取匹配版本的官方文档' },
+        language: { type: 'string', description: '可选，编程语言，例如 TypeScript、JavaScript、Python' },
       },
       required: ['library'],
     },
@@ -862,6 +864,8 @@ export async function executeWorkspaceTool(
       const library = String(args.library || '').trim();
       const topic = String(args.topic || args.query || '').trim();
       const queryStr = topic ? `${library} ${topic}` : library;
+      const version = String(args.version || '').trim();
+      const language = String(args.language || '').trim();
 
       if (!queryStr) {
         return {
@@ -877,14 +881,14 @@ export async function executeWorkspaceTool(
         const res = await fetch('/api/context7/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: queryStr, library }),
+          body: JSON.stringify({ query: queryStr, library, version: version || undefined, language: language || undefined }),
         });
         const payload = await res.json().catch(() => null);
 
         if (!res.ok) {
           const errorMessage = payload?.error || `Context7 请求失败（HTTP ${res.status}）。`;
           return {
-            result: { library, topic, source: 'Context7', error: errorMessage, status: res.status },
+            result: { library, topic, version, language, source: 'Context7', error: errorMessage, status: res.status },
             updatedWorkspace: ws,
             errorMessage,
             stepIcon: 'search',
@@ -896,6 +900,8 @@ export async function executeWorkspaceTool(
           result: {
             library,
             topic,
+            version,
+            language,
             source: 'Context7 official documentation search',
             docs: payload,
           },
@@ -906,7 +912,7 @@ export async function executeWorkspaceTool(
       } catch (error: any) {
         const errorMessage = error?.message || '无法连接到 Context7 服务。';
         return {
-          result: { library, topic, source: 'Context7', error: errorMessage },
+          result: { library, topic, version, language, source: 'Context7', error: errorMessage },
           updatedWorkspace: ws,
           errorMessage,
           stepIcon: 'search',
