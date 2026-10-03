@@ -1,10 +1,10 @@
 // Security and sanity limits for Workspace & ZIP extraction
 export const WORKSPACE_LIMITS = {
-  MAX_ZIP_SIZE: 50 * 1024 * 1024, // 50MB max ZIP file upload
-  MAX_TOTAL_UNCOMPRESSED_SIZE: 150 * 1024 * 1024, // 150MB total extracted size
-  MAX_FILE_COUNT: 1200, // Maximum 1200 files in a workspace
-  MAX_SINGLE_FILE_SIZE: 10 * 1024 * 1024, // 10MB per single file
-  MAX_PATH_DEPTH: 12, // Max directory nesting depth
+  MAX_ZIP_SIZE: 200 * 1024 * 1024, // 200MB max ZIP file upload
+  MAX_TOTAL_UNCOMPRESSED_SIZE: 400 * 1024 * 1024, // 400MB total extracted size
+  MAX_FILE_COUNT: 2200, // Maximum 2200 files in a workspace
+  MAX_SINGLE_FILE_SIZE: 200 * 1024 * 1024, // 200MB per single file
+  MAX_PATH_DEPTH: 120, // Max directory nesting depth
   BLOCKED_EXTENSIONS: ['.exe', '.dll', '.so', '.dylib', '.bin'],
 };
 
@@ -140,7 +140,7 @@ export function validateSafeRelativePath(rawPath: string): {
     cleanSegments.push(seg);
   }
 
-  if (cleanSegments.length > WORKSPACE_LIMITS.MAX_PATH_DEPTH) {
+  // Directory depth excludes the final file name segment.\n  const directoryDepth = Math.max(0, cleanSegments.length - 1);\n\n  if (directoryDepth > WORKSPACE_LIMITS.MAX_PATH_DEPTH) {
     return { 
       valid: false, 
       normalizedPath: '', 
