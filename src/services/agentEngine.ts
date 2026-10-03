@@ -854,44 +854,60 @@ export async function executeWorkspaceTool(
     }
 
     case 'query_context7_docs': {
-      const library = String(args.library || args.query || '').trim();
-      const topic = String(args.topic || '').trim();
+      const library = String(args.library || '').trim();
+      const topic = String(args.topic || args.query || '').trim();
       const queryStr = topic ? `${library} ${topic}` : library;
 
-      try {
-        const res = await fetch(`https://context7.com/api/v3/search?query=${encodeURIComponent(queryStr)}`, {
-          headers: { 'Accept': 'application/json' },
-        });
-
-        if (res.ok) {
-          const docsData = await res.json();
-          return {
-            result: {
-              library,
-              topic,
-              source: 'Context7 Realtime Documentation API',
-              docs: docsData,
-            },
-            updatedWorkspace: ws,
-            stepIcon: 'search',
-            stepTitle: `挂载 Context7 查阅官方文档: [${library}] ${topic}`,
-          };
-        }
-      } catch (e) {
-        // Fallback
+      if (!queryStr) {
+        return {
+          result: null,
+          updatedWorkspace: ws,
+          errorMessage: 'Context7 查询为空。',
+          stepIcon: 'search',
+          stepTitle: 'Context7 查询失败：缺少库名或查询内容',
+        };
       }
 
-      return {
-        result: {
-          library,
-          topic,
-          source: 'Context7 Tech Stack Index',
-          summary: `已调取 [${library}] 关于 [${topic || '推荐用法与 API 规范'}] 的最新 2026 官方权威指南。`,
-        },
-        updatedWorkspace: ws,
-        stepIcon: 'search',
-        stepTitle: `挂载 Context7 查阅技术文档: [${library}]`,
-      };
+      try {
+        const res = await fetch('/api/context7/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: queryStr, library }),
+        });
+        const payload = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          const errorMessage = payload?.error || `Context7 请求失败（HTTP ${res.status}）。`;
+          return {
+            result: { library, topic, source: 'Context7', error: errorMessage, status: res.status },
+            updatedWorkspace: ws,
+            errorMessage,
+            stepIcon: 'search',
+            stepTitle: `Context7 查询失败: [${library}]`,
+          };
+        }
+
+        return {
+          result: {
+            library,
+            topic,
+            source: 'Context7 official documentation search',
+            docs: payload,
+          },
+          updatedWorkspace: ws,
+          stepIcon: 'search',
+          stepTitle: `Context7 已检索官方文档: [${library}]${topic ? ` / ${topic}` : ''}`,
+        };
+      } catch (error: any) {
+        const errorMessage = error?.message || '无法连接到 Context7 服务。';
+        return {
+          result: { library, topic, source: 'Context7', error: errorMessage },
+          updatedWorkspace: ws,
+          errorMessage,
+          stepIcon: 'search',
+          stepTitle: `Context7 连接失败: [${library}]`,
+        };
+      }
     }
 
     case 'run_command': {
