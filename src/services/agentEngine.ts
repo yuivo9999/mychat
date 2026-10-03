@@ -12,6 +12,36 @@ import {
 } from './workspaceService';
 import { formatChatContextPrompt, detectWorkspaceIntent, WorkspaceIntent } from './chatContextService';
 import { ChatContext } from '../types/workspace';
+import { buildCodingSkillPrompt } from './codingSkillService';
+
+function getWorkspaceDependencyVersions(workspace: Workspace | null): Record<string, string> {
+  if (!workspace) return {};
+
+  const packageFile = workspace.files['package.json'];
+  if (!packageFile || packageFile.isBinary || typeof packageFile.content !== 'string') return {};
+
+  try {
+    const pkg = JSON.parse(packageFile.content);
+    return {
+      ...(pkg.dependencies || {}),
+      ...(pkg.devDependencies || {}),
+      ...(pkg.peerDependencies || {}),
+      ...(pkg.optionalDependencies || {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function resolveProjectDependencyVersion(workspace: Workspace | null, library: string): string {
+  const versions = getWorkspaceDependencyVersions(workspace);
+  const raw = versions[library];
+  if (!raw) return '';
+
+  // Context7 expects a concrete version rather than a semver range such as ^19.0.1.
+  const match = raw.match(/(?:^|~|>=|<=|>|<|=|v)?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)/);
+  return match?.[1] || raw;
+}
 
 export { detectWorkspaceIntent, type WorkspaceIntent };
 
@@ -151,19 +181,21 @@ export const WORKSPACE_TOOLS_SPEC = [
   },
   {
     name: 'query_context7_docs',
-    description: '挂载 Context7 实时技术文档库：查询第三方开源库、流行框架或 API 的最新官方文档、类型定义与使用示例（解决大模型 API 废弃与代码幻觉问题）。',
+    description: 'Context7 官方技术文档知识层。仅在第三方 API/类型/配置/版本行为需要外部事实依据时使用：先检查当前项目代码与 package.json；版本敏感、最新 API、弃用/迁移、新 SDK 集成等场景应优先查询，纯本地重构或已有代码可直接确认的场景可跳过。若未显式传 version，系统会优先从当前工作区 package.json 推断具体版本。查询结果必须与项目真实代码交叉验证，不能机械照抄。',
     parameters: {
       type: 'object',
       properties: {
         library: { type: 'string', description: '第三方库或技术名称，如 "lucide-react", "react", "tailwind", "katex", "vite", "drizzle-orm"' },
         topic: { type: 'string', description: '可选，具体要查询的 API 名称、组件、Hooks 或用法主题' },
+        version: { type: 'string', description: '可选，目标库版本，例如 19.1.0；用于获取匹配版本的官方文档' },
+        language: { type: 'string', description: '可选，编程语言，例如 TypeScript、JavaScript、Python' },
       },
       required: ['library'],
     },
   },
   {
     name: 'run_command',
-    description: '在工作区服务器端安全终端执行 Shell 命令行与脚本（如编译打包 npm run build、安装运行测试、执行 Python 或 Node 数据分析处理等）。此工具在“运行脚本与命令”权限开启时可用。',
+    description: '在工作区服务器端安全终端执行 Shell 命令行与脚本。代码修改后应优先读取 package.json scripts，并使用最窄的已有验证命令进行 typecheck/lint/test/build；必须根据真实 stdout、stderr 和退出码判断结果。失败时定位根因、最小修复并重新验证，最多进行 3 轮自愈。此工具在“运行脚本与命令”权限开启时可用。',
     parameters: {
       type: 'object',
       properties: {
@@ -267,7 +299,12 @@ ${getWorkspaceDirectoryTree(workspace).slice(0, 1500)}${Object.keys(workspace.fi
 1. **不执行项目代码**：当前权限未开启。本环境是一个安全纯净的代码分析与修改工作区。你绝对不能也无法在服务器端执行任何代码、命令行、测试、npm run/test 等。
 2. **职责分工**：你负责阅读、搜索代码并做出精确优雅的修改；由用户在本地自行运行和测试。若用户测试遇到错误，用户会将错误信息贴回本聊天中由你继续分析与修改。`;
 
+  const dependencyVersions = getWorkspaceDependencyVersions(workspace);
+  const codingSkill = buildCodingSkillPrompt({ workspaceName: workspace?.name, dependencyVersions });
+
   return `${customPrompt}
+
+${codingSkill}
 
 ${workspaceSummary}
 ${chatPrivateMemory}
@@ -857,6 +894,9 @@ export async function executeWorkspaceTool(
       const library = String(args.library || '').trim();
       const topic = String(args.topic || args.query || '').trim();
       const queryStr = topic ? `${library} ${topic}` : library;
+      const requestedVersion = String(args.version || '').trim();
+      const version = requestedVersion || resolveProjectDependencyVersion(workspace, library);
+      const language = String(args.language || '').trim();
 
       if (!queryStr) {
         return {
@@ -872,14 +912,14 @@ export async function executeWorkspaceTool(
         const res = await fetch('/api/context7/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: queryStr, library }),
+          body: JSON.stringify({ query: queryStr, library, version: version || undefined, language: language || undefined }),
         });
         const payload = await res.json().catch(() => null);
 
         if (!res.ok) {
           const errorMessage = payload?.error || `Context7 请求失败（HTTP ${res.status}）。`;
           return {
-            result: { library, topic, source: 'Context7', error: errorMessage, status: res.status },
+            result: { library, topic, version, language, source: 'Context7', error: errorMessage, status: res.status },
             updatedWorkspace: ws,
             errorMessage,
             stepIcon: 'search',
@@ -891,17 +931,19 @@ export async function executeWorkspaceTool(
           result: {
             library,
             topic,
+            version,
+            language,
             source: 'Context7 official documentation search',
             docs: payload,
           },
           updatedWorkspace: ws,
           stepIcon: 'search',
-          stepTitle: `Context7 已检索官方文档: [${library}]${topic ? ` / ${topic}` : ''}`,
+          stepTitle: `Context7 已检索官方文档: [${library}]${topic ? ` / ${topic}` : ''}${version ? ` (版本 ${version})` : ''}`,
         };
       } catch (error: any) {
         const errorMessage = error?.message || '无法连接到 Context7 服务。';
         return {
-          result: { library, topic, source: 'Context7', error: errorMessage },
+          result: { library, topic, version, language, source: 'Context7', error: errorMessage },
           updatedWorkspace: ws,
           errorMessage,
           stepIcon: 'search',
