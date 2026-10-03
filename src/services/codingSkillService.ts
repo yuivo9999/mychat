@@ -1,6 +1,19 @@
 export interface CodingSkillContext {
   userRequest?: string;
   workspaceName?: string;
+  dependencyVersions?: Record<string, string>;
+}
+
+function formatDependencyVersions(dependencyVersions: Record<string, string> = {}): string {
+  const entries = Object.entries(dependencyVersions)
+    .filter(([, version]) => version)
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  if (entries.length === 0) return '';
+
+  return entries
+    .map(([name, version]) => `- \`${name}\`: \`${version}\``)
+    .join('\n');
 }
 
 /**
@@ -60,5 +73,11 @@ export function buildCodingSkillPrompt(context: CodingSkillContext = {}): string
 7. 不泄露密钥或破坏现有安全边界。
 
 ${context.workspaceName ? `当前工作区：${context.workspaceName}` : ''}
+${context.dependencyVersions && Object.keys(context.dependencyVersions).length > 0 ? `
+
+### 当前项目实际依赖版本（优先级高于训练记忆）
+以下版本来自当前工作区的 package.json。涉及这些库时，应优先以这些版本为准，并在需要时将对应版本传给 Context7：
+${formatDependencyVersions(context.dependencyVersions)}
+` : ''}
 `;
 }
