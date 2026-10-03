@@ -14,6 +14,35 @@ import { formatChatContextPrompt, detectWorkspaceIntent, WorkspaceIntent } from 
 import { ChatContext } from '../types/workspace';
 import { buildCodingSkillPrompt } from './codingSkillService';
 
+function getWorkspaceDependencyVersions(workspace: Workspace | null): Record<string, string> {
+  if (!workspace) return {};
+
+  const packageFile = workspace.files['package.json'];
+  if (!packageFile || packageFile.isBinary || typeof packageFile.content !== 'string') return {};
+
+  try {
+    const pkg = JSON.parse(packageFile.content);
+    return {
+      ...(pkg.dependencies || {}),
+      ...(pkg.devDependencies || {}),
+      ...(pkg.peerDependencies || {}),
+      ...(pkg.optionalDependencies || {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function resolveProjectDependencyVersion(workspace: Workspace | null, library: string): string {
+  const versions = getWorkspaceDependencyVersions(workspace);
+  const raw = versions[library];
+  if (!raw) return '';
+
+  // Context7 expects a concrete version rather than a semver range such as ^19.0.1.
+  const match = raw.match(/(?:^|~|>=|<=|>|<|=|v)?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)/);
+  return match?.[1] || raw;
+}
+
 export { detectWorkspaceIntent, type WorkspaceIntent };
 
 // AI Tool Calling Specification for Workspace operations (Strictly non-executing!)
@@ -270,7 +299,8 @@ ${getWorkspaceDirectoryTree(workspace).slice(0, 1500)}${Object.keys(workspace.fi
 1. **不执行项目代码**：当前权限未开启。本环境是一个安全纯净的代码分析与修改工作区。你绝对不能也无法在服务器端执行任何代码、命令行、测试、npm run/test 等。
 2. **职责分工**：你负责阅读、搜索代码并做出精确优雅的修改；由用户在本地自行运行和测试。若用户测试遇到错误，用户会将错误信息贴回本聊天中由你继续分析与修改。`;
 
-  const codingSkill = buildCodingSkillPrompt({ workspaceName: workspace?.name });
+  const dependencyVersions = getWorkspaceDependencyVersions(workspace);
+  const codingSkill = buildCodingSkillPrompt({ workspaceName: workspace?.name, dependencyVersions });
 
   return `${customPrompt}
 
@@ -864,7 +894,8 @@ export async function executeWorkspaceTool(
       const library = String(args.library || '').trim();
       const topic = String(args.topic || args.query || '').trim();
       const queryStr = topic ? `${library} ${topic}` : library;
-      const version = String(args.version || '').trim();
+      const requestedVersion = String(args.version || '').trim();
+      const version = requestedVersion || resolveProjectDependencyVersion(workspace, library);
       const language = String(args.language || '').trim();
 
       if (!queryStr) {
@@ -907,7 +938,7 @@ export async function executeWorkspaceTool(
           },
           updatedWorkspace: ws,
           stepIcon: 'search',
-          stepTitle: `Context7 已检索官方文档: [${library}]${topic ? ` / ${topic}` : ''}`,
+          stepTitle: `Context7 已检索官方文档: [${library}]${topic ? ` / ${topic}` : ''}${version ? ` (版本 ${version})` : ''}`,
         };
       } catch (error: any) {
         const errorMessage = error?.message || '无法连接到 Context7 服务。';
