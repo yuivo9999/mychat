@@ -78,6 +78,8 @@ import { getAdapterForProvider } from './services/adapters';
 import { safeExtractText } from './services/adapters/base';
 import { performWebSearch, buildWebSearchContext } from './services/webSearch';
 import { isModelWebSearchSupported, isModelVisionCapable, isModelFileCapable, isModelReasoningSupported } from './services/modelUtils';
+import { optimizePrompt } from './services/promptPerfectService';
+import { formatContext7Grounding, searchContext7 } from './services/context7Service';
 import { isAttachmentTextReadable, formatFilesPromptForAi } from './services/fileParser';
 import { applyAppFont, initCustomFonts } from './services/fontService';
 import { Sidebar } from './components/Sidebar';
@@ -752,8 +754,8 @@ export default function App() {
     if (isContext7Enabled) {
       initialThinkingSteps.push({
         id: `step_context7_${Date.now()}`,
-        icon: 'lightning',
-        title: '⚡ Context 7 历史平衡已启动：限制最近 7 轮高精度对话，余项归档压缩',
+        icon: 'search',
+        title: 'Context7 官方技术文档检索已启用',
         status: 'completed',
       });
     }
@@ -1070,16 +1072,39 @@ export default function App() {
       let adaptedContent = userMessage.content || '';
 
       if (isPromptPerfectEnabled) {
-        adaptedContent = `[Prompt Perfect 提示词优化开启 - 系统已将用户原描述重构为如下专业工程指令]
-请作为该领域的顶级专家/资深软件架构师，针对以下用户真实需求，产出最具专业性、高度健壮、完美无瑕的解决方案。
+        adaptedContent = optimizePrompt(adaptedContent);
+      }
 
-【核心需求描述】
-${adaptedContent}
-
-【专业执行标准】
-1. **深度架构设计**：挖掘需求深处的边界情况、多线程安全/异常流捕获，并选择最优技术方案；
-2. **完整工业级代码**：如有代码编写，提供无任何占位符的完整、健壮、注释规范的标准方案；
-3. **结构化章节答复**：用清晰的结构（思路分析、核心方案、扩展考量）分层呈现，保证最佳的可读性。`;
+      // Context7 is an actual documentation-grounding step, independent from chat-history compaction.
+      if (isContext7Enabled) {
+        setStatusMessage('Context7 正在检索相关官方技术文档...');
+        const context7Result = await searchContext7(adaptedContent);
+        if (context7Result.success) {
+          const grounding = formatContext7Grounding(context7Result.data);
+          if (grounding.trim()) {
+            adaptedContent += `\n\n${grounding}\n\n[Context7 使用规则：以上内容是检索到的技术文档依据。优先遵循其中明确的 API、版本和代码示例；不要把未提供的内容声称为来自 Context7。]`;
+            initialThinkingSteps.push({
+              id: `step_context7_docs_${Date.now()}`,
+              icon: 'search',
+              title: 'Context7 已挂载官方文档与代码示例',
+              status: 'completed',
+            });
+          } else {
+            initialThinkingSteps.push({
+              id: `step_context7_empty_${Date.now()}`,
+              icon: 'search',
+              title: 'Context7 未返回可用文档，继续使用模型自身知识',
+              status: 'completed',
+            });
+          }
+        } else {
+          initialThinkingSteps.push({
+            id: `step_context7_error_${Date.now()}`,
+            icon: 'search',
+            title: `Context7 检索失败：${context7Result.error}`,
+            status: 'completed',
+          });
+        }
       }
 
       // Append natural guidance if attachments were omitted
@@ -1112,9 +1137,9 @@ ${adaptedContent}
 
       // Extract previous history before the current turn (excluding the newly appended userMessage and streaming assistantMessage)
       const previousHistory = targetConv.messages.slice(0, -2);
-      // Check if Context 7 window balancing is enabled
-      const isContext7Enabled = Boolean((targetConv.parameters || parameters)?.context7);
-      const historyWindowSize = isContext7Enabled ? 7 : 10;
+      // History compaction is independent from Context7 documentation retrieval.
+      // Keep the normal recent-message window stable so the Context7 toggle has one clear meaning.
+      const historyWindowSize = 10;
       // Prepare golden-balance hierarchical compaction (L3: Rolling Summary + L4: Code Decoupled Recent Window)
       const { compactedSummary, effectiveMessages } = prepareChatHistoryWithHierarchicalCompaction(previousHistory, historyWindowSize);
       let currentHistoryMessages = [...effectiveMessages, apiUserMessage];
