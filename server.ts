@@ -429,6 +429,93 @@ async function startServer() {
     }
   });
 
+  // Context7 official documentation proxy. Keep the API key server-side.
+  app.post('/api/context7/search', async (req, res) => {
+    const { query, library, language, version } = req.body || {};
+    const cleanQuery = String(query || '').trim().slice(0, 2000);
+    const cleanLibrary = library ? String(library).trim().slice(0, 200) : '';
+    const cleanLanguage = language ? String(language).trim().slice(0, 80) : '';
+    const cleanVersion = version ? String(version).trim().slice(0, 80) : '';
+
+    if (!cleanQuery) {
+      return res.status(400).json({ error: 'Context7 query is required.' });
+    }
+
+    const apiKey = process.env.CONTEXT7_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({
+        error: 'Context7 未配置。请在服务器环境变量中设置 CONTEXT7_API_KEY。',
+        code: 'CONTEXT7_NOT_CONFIGURED',
+      });
+    }
+
+    const params = new URLSearchParams({
+      query: cleanQuery,
+      type: 'json',
+    });
+    if (cleanLibrary) params.append('library', cleanLibrary);
+    if (cleanLanguage) params.set('language', cleanLanguage);
+    if (cleanVersion) params.set('version', cleanVersion);
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10000);
+      const response = await fetch(`https://context7.com/api/v3/search?${params.toString()}`, {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      const bodyText = await response.text();
+      let payload: any = null;
+      try {
+        payload = bodyText ? JSON.parse(bodyText) : null;
+      } catch {
+        payload = null;
+      }
+
+      if (response.status === 404) {
+        return res.status(404).json({
+          error: 'Context7 未找到匹配的官方文档。',
+          code: 'NO_DOCUMENTATION_FOUND',
+        });
+      }
+
+      if (!response.ok) {
+        const retryAfter = response.headers.get('Retry-After');
+        if (response.status === 429) {
+          return res.status(429).json({
+            error: 'Context7 请求频率受限，请稍后重试。',
+            code: 'CONTEXT7_RATE_LIMITED',
+            retryAfter,
+          });
+        }
+        return res.status(response.status).json({
+          error: payload?.message || payload?.error || `Context7 返回 HTTP ${response.status}。`,
+          code: payload?.error || 'CONTEXT7_REQUEST_FAILED',
+        });
+      }
+
+      if (!payload || typeof payload !== 'object') {
+        return res.status(502).json({
+          error: 'Context7 返回了无法解析的响应。',
+          code: 'CONTEXT7_INVALID_RESPONSE',
+        });
+      }
+
+      return res.json(payload);
+    } catch (error: any) {
+      const isAbort = error?.name === 'AbortError';
+      return res.status(502).json({
+        error: isAbort ? 'Context7 请求超时。' : (error?.message || 'Context7 网络请求失败。'),
+        code: isAbort ? 'CONTEXT7_TIMEOUT' : 'CONTEXT7_NETWORK_ERROR',
+      });
+    }
+  });
+
   // 3. General Proxy Endpoint for CORS
   app.post('/api/proxy', async (req, res) => {
     const { url, method = 'POST', headers = {}, body } = req.body;
