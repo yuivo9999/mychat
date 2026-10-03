@@ -12,6 +12,7 @@ import {
 } from './workspaceService';
 import { formatChatContextPrompt, detectWorkspaceIntent, WorkspaceIntent } from './chatContextService';
 import { ChatContext } from '../types/workspace';
+import { buildCodingSkillPrompt } from './codingSkillService';
 
 export { detectWorkspaceIntent, type WorkspaceIntent };
 
@@ -267,7 +268,11 @@ ${getWorkspaceDirectoryTree(workspace).slice(0, 1500)}${Object.keys(workspace.fi
 1. **不执行项目代码**：当前权限未开启。本环境是一个安全纯净的代码分析与修改工作区。你绝对不能也无法在服务器端执行任何代码、命令行、测试、npm run/test 等。
 2. **职责分工**：你负责阅读、搜索代码并做出精确优雅的修改；由用户在本地自行运行和测试。若用户测试遇到错误，用户会将错误信息贴回本聊天中由你继续分析与修改。`;
 
+  const codingSkill = buildCodingSkillPrompt({ workspaceName: workspace?.name });
+
   return `${customPrompt}
+
+${codingSkill}
 
 ${workspaceSummary}
 ${chatPrivateMemory}
