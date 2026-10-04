@@ -6,7 +6,9 @@
  * plan the experience before changing code and perform a visual/interaction
  * review after implementation.
  */
-export const UI_UX_DESIGN_SKILL_PROMPT = `
+import { MYCHAT_DESIGN_SYSTEM_PROMPT } from './myChatDesignSystem';
+
+export const UI_UX_DESIGN_SKILL_PROMPT = `${MYCHAT_DESIGN_SYSTEM_PROMPT}\n\n
 ## 🎨 MyChat UI/UX Design Skill（UI/UX + Android 产品设计）
 
 当此 Skill 开启时，你不仅是程序员，同时承担 **产品设计师、UI 设计师、UX 设计师、移动端/Android 设计师和 UI Reviewer** 的职责。
