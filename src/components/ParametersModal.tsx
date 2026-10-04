@@ -151,6 +151,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
     stream: '开启打字机逐字输出。关闭则等待整体生成完毕后一次性呈现。',
     promptPerfect: '开启后在发送给 AI 之前，由专用引擎自动将您的简短提示词重写为专业、结构清晰、完美的 Prompt 模板，提高生成质量。',
     context7: '开启后系统将采用“智能 7 轮高精度平衡窗口”，精准维持最近的 7 轮对话为全保真高对比度上下文，超出部分自动由智能摘要压缩。兼顾超长对话记忆与极低 Token 资源消耗。',
+    uiUxSkill: '开启后 AI 同时承担产品设计、UI/UX、移动端/Android 设计与 UI Review 职责。执行界面任务时必须先做信息架构与设计决策，再实现并进行视觉与响应式自检。',
     executeScript: '开启后允许 Agent 运行终端 Shell 命令行及执行脚本（如编译打包、运行测试、Python 或 Node 数据处理等）。提供极致完整的全自动编码体验！',
     maxTokens: '单次回复允许生成的最大 Token 限制（4096 约合 2000 个汉字）。',
     temperature: '控制回答的多样性。0.0~0.3 严谨确定（代码/数学）；0.7~1.0 丰富发散（创意/写作）。',
