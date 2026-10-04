@@ -1022,7 +1022,7 @@ export default function App() {
 
       if (isUiUxSkillEnabled) {
         effectiveSystemPrompt = effectiveSystemPrompt
-          ? `${effectiveSystemPrompt}\\n\\n${UI_UX_DESIGN_SKILL_PROMPT}`
+          ? `${effectiveSystemPrompt}\n\n${UI_UX_DESIGN_SKILL_PROMPT}`
           : UI_UX_DESIGN_SKILL_PROMPT;
       }
       let wsToOperate: Workspace | null = currentWorkspace ? JSON.parse(JSON.stringify(currentWorkspace)) : null;
