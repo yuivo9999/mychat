@@ -1016,15 +1016,15 @@ export default function App() {
         enableReasoning: isReasoningEnabled && modelSupportsReasoning,
       };
       const baseSystemPrompt = targetConv.systemPrompt || settings.defaultSystemPrompt;
+      let effectiveSystemPrompt = webContext
+        ? (baseSystemPrompt ? `${baseSystemPrompt}\\n\\n${webContext}` : webContext)
+        : baseSystemPrompt;
+
       if (isUiUxSkillEnabled) {
         effectiveSystemPrompt = effectiveSystemPrompt
           ? `${effectiveSystemPrompt}\\n\\n${UI_UX_DESIGN_SKILL_PROMPT}`
           : UI_UX_DESIGN_SKILL_PROMPT;
       }
-      let effectiveSystemPrompt = webContext
-        ? (baseSystemPrompt ? `${baseSystemPrompt}\n\n${webContext}` : webContext)
-        : baseSystemPrompt;
-
       let wsToOperate: Workspace | null = currentWorkspace ? JSON.parse(JSON.stringify(currentWorkspace)) : null;
 
       // 1. Detect Workspace Intent & Agent Mode Activation
