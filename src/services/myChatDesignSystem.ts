@@ -12,7 +12,7 @@ export const MYCHAT_DESIGN_SYSTEM_PROMPT = `
 
 ### 1. Global foundation
 - Layout viewport：应用根节点使用 100% width/height + 100dvh，body/root 默认禁止页面级滚动。
-- Font：默认 `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif`。
+- Font：默认 \`-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif\`。
 - Code：JetBrains Mono / Consolas / Monaco / monospace。
 - Markdown：正文约 0.95rem、line-height 1.7；紧凑模式约 0.875rem、line-height 1.55。
 - Base scrollbar：6px；透明轨道；thumb 使用半透明中性灰并采用 pill radius。
@@ -46,7 +46,7 @@ export const MYCHAT_DESIGN_SYSTEM_PROMPT = `
 - 不要把语义状态颜色当成装饰色；保持 success/warning/error 的含义稳定。
 
 ### 5. Chat surface
-- Chat message uses dedicated semantic classes such as `user-message`, `assistant-message`, `user-message-avatar`, `ai-message-avatar`.
+- Chat message uses dedicated semantic classes such as \`user-message\`, \`assistant-message\`, \`user-message-avatar\`, \`ai-message-avatar\`.
 - 修改聊天视觉时优先修改这些语义 class 或现有组件，而不是给单个消息硬编码新的颜色。
 - Markdown code blocks、inline code、blockquote 已有独立样式；不要在组件内重复造一套。
 - Streaming cursor 已存在，不要重复添加第二种流式指示器。
@@ -55,7 +55,7 @@ export const MYCHAT_DESIGN_SYSTEM_PROMPT = `
 ### 6. Existing theme contract
 MyChat 已存在多套主题/皮肤。主题 CSS 会对 Tailwind utility 做覆盖，因此：
 - 组件必须尽量使用语义/现有 utility，让主题有机会覆盖。
-- 不要在新组件里大量写 `!important` 或固定 hex，除非是主题文件本身。
+- 不要在新组件里大量写 \`!important` 或固定 hex，除非是主题文件本身。
 - 深色/浅色和主题皮肤必须一起考虑。
 - 当前《桑田山河 · 朱印》主题的核心 token：
   - paper: #F4E8C8
