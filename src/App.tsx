@@ -80,6 +80,7 @@ import { performWebSearch, buildWebSearchContext } from './services/webSearch';
 import { isModelWebSearchSupported, isModelVisionCapable, isModelFileCapable, isModelReasoningSupported } from './services/modelUtils';
 import { optimizePrompt } from './services/promptPerfectService';
 import { formatContext7Grounding, searchContext7 } from './services/context7Service';
+import { UI_UX_DESIGN_SKILL_PROMPT } from './services/uiUxSkill';
 import { isAttachmentTextReadable, formatFilesPromptForAi } from './services/fileParser';
 import { applyAppFont, initCustomFonts } from './services/fontService';
 import { Sidebar } from './components/Sidebar';
@@ -732,6 +733,7 @@ export default function App() {
 
     const isPromptPerfectEnabled = Boolean((targetConv?.parameters || parameters)?.promptPerfect);
     const isContext7Enabled = Boolean((targetConv?.parameters || parameters)?.context7);
+    const isUiUxSkillEnabled = Boolean((targetConv?.parameters || parameters)?.uiUxSkill);
 
     const initialThinkingSteps: ThinkingStep[] = [
       {
@@ -756,6 +758,15 @@ export default function App() {
         id: `step_context7_${Date.now()}`,
         icon: 'search',
         title: 'Context7 官方技术文档检索已启用',
+        status: 'completed',
+      });
+    }
+
+    if (isUiUxSkillEnabled) {
+      initialThinkingSteps.push({
+        id: `step_uiux_skill_${Date.now()}`,
+        icon: 'brain',
+        title: 'UI/UX Design Skill 已启用：设计 → 实现 → UI Review',
         status: 'completed',
       });
     }
@@ -1005,6 +1016,11 @@ export default function App() {
         enableReasoning: isReasoningEnabled && modelSupportsReasoning,
       };
       const baseSystemPrompt = targetConv.systemPrompt || settings.defaultSystemPrompt;
+      if (isUiUxSkillEnabled) {
+        effectiveSystemPrompt = effectiveSystemPrompt
+          ? `${effectiveSystemPrompt}\\n\\n${UI_UX_DESIGN_SKILL_PROMPT}`
+          : UI_UX_DESIGN_SKILL_PROMPT;
+      }
       let effectiveSystemPrompt = webContext
         ? (baseSystemPrompt ? `${baseSystemPrompt}\n\n${webContext}` : webContext)
         : baseSystemPrompt;
