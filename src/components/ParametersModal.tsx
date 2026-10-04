@@ -142,6 +142,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
         compactMode: false,
         boldHeadings: true,
         enableChatContextMemory: false,
+        uiUxSkill: false,
       });
     }
   };
@@ -164,6 +165,7 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
   const streamVal = settings?.enableStreaming ?? parameters.stream ?? true;
   const promptPerfectVal = parameters.promptPerfect ?? false;
   const context7Val = parameters.context7 ?? false;
+  const uiUxSkillVal = parameters.uiUxSkill ?? false;
   const executeScriptVal = parameters.executeScript ?? false;
 
   return (
@@ -339,6 +341,27 @@ export const ParametersModal: React.FC<ParametersModalProps> = ({
                     context7Val ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
+              </button>
+            </div>
+
+            {/* 1.65. UI/UX Design Skill */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-neutral-900 dark:text-neutral-100 shadow-2xs">
+              <div className="space-y-0.5 pr-2">
+                <div className="flex items-center gap-1.5 relative">
+                  <span className="param-item-label text-xs font-semibold text-neutral-900 dark:text-neutral-100">UI/UX Design Skill</span>
+                  <button type="button" onMouseEnter={() => setActiveTooltip('uiUxSkill')} onMouseLeave={() => setActiveTooltip(null)} onClick={() => setActiveTooltip(activeTooltip === 'uiUxSkill' ? null : 'uiUxSkill')} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
+                    <Info className="w-3.5 h-3.5" />
+                  </button>
+                  {activeTooltip === 'uiUxSkill' && (
+                    <div className="absolute left-0 top-6 z-20 w-60 p-2 bg-neutral-900 border border-neutral-700 text-[11px] text-neutral-300 rounded-xl shadow-xl">
+                      {tooltips.uiUxSkill}
+                    </div>
+                  )}
+                </div>
+                <p className="param-item-sub text-[11px] text-neutral-500 dark:text-neutral-400">专注 UI/UX、移动端与 Android 设计并执行 UI Review</p>
+              </div>
+              <button type="button" onClick={() => updateParam('uiUxSkill', !uiUxSkillVal)} className={`param-toggle w-10 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-colors shrink-0 ${uiUxSkillVal ? 'bg-[#84cc16] bg-lime-500' : 'bg-neutral-300 dark:bg-neutral-800'}`}>
+                <div className={`param-toggle-dot bg-white dark:bg-black w-4 h-4 rounded-full shadow-md transform transition-transform ${uiUxSkillVal ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
             </div>
 
